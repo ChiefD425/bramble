@@ -43,7 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          path-to-document: https://github.com/flythenimbus/bramble/blob/main/CLA.md
+          path-to-document: ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md
           branch: cla-signatures
           path-to-signatures: signatures/version1/cla.json
           # The maintainer (Webvana's code is already covered by APP-STORE-EXCEPTION.md) and bots,
@@ -53,8 +53,8 @@ jobs:
             Thank you for the pull request. Before it can be merged, $you need to agree that the
             contribution is licensed under the GPLv3 with Bramble's app store permission. It is a
             one-page agreement, not a copyright assignment:
-            https://github.com/flythenimbus/bramble/blob/main/CLA.md. To agree, post this comment
-            on the pull request:
+            ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md.
+            To agree, post this comment on the pull request:
           custom-allsigned-prcomment: Every committer has signed the contributor agreement.
           create-file-commit-message: "chore(cla): create the signatures file"
           signed-commit-message: "chore(cla): $contributorName signed the contributor agreement in #$pullRequestNo"
