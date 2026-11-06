@@ -1,10 +1,5 @@
 # Bramble contributor agreement
 
-> **DRAFT - NOT LEGAL ADVICE - REQUIRES LAWYER REVIEW**
->
-> A lawyer has not reviewed this text yet. Until this banner is removed, read it as a proposal,
-> not as a binding agreement.
-
 Thank you for contributing to Bramble. This short agreement records one thing: that your
 contribution carries the same license as the rest of Bramble, so the apps built from it can keep
 shipping through app stores. It is not a copyright assignment, and it is not a traditional
