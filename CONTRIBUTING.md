@@ -167,7 +167,8 @@ Every push and pull request runs, in order: WASM build, WASM verification (a
 behavioural gate over the full crypto surface), workspace typecheck, Biome,
 i18n check, the full test suite, and an extension build. All of it must be green.
 CodeQL runs separately over JavaScript/TypeScript, Rust, Swift, and GitHub
-Actions.
+Actions. Pull requests also get the `CLA` check, red until every committer has
+signed [CLA.md](CLA.md) (see Licensing).
 
 You can reproduce the whole gate locally with `pnpm run typecheck && pnpm run
 ci:check && pnpm test`.
@@ -179,3 +180,19 @@ Bramble is GPLv3, with an additional permission for app stores (see
 restrictions the GPL alone does not allow. By contributing you agree that your
 contribution is licensed under the GPLv3 with that permission. See
 [LICENSE](LICENSE).
+
+[CLA.md](CLA.md) is the one-page agreement that records this. It is not a
+copyright assignment: you keep your copyright, and it gives nobody the right to
+relicense your work on other terms. `services/mailbox` is AGPLv3 and outside the
+permission, so a contribution there is AGPLv3 only.
+
+To sign, open your pull request and post the comment the bot asks for:
+
+```
+I have read the CLA Document and I hereby sign the CLA
+```
+
+The `CLA` check turns green and the signature is kept on the `cla-signatures`
+branch. You sign once; later pull requests are covered. Make your commits with
+an email address linked to your GitHub account, or the bot cannot match them to
+you.
