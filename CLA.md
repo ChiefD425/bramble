@@ -6,9 +6,9 @@ shipping through app stores. It is not a copyright assignment, and it is not a t
 Contributor License Agreement. You keep your copyright.
 
 "You" means the person or organization submitting a contribution. "Contribution" means code,
-documentation, translations or other material you intentionally submit to
-[github.com/flythenimbus/bramble](https://github.com/flythenimbus/bramble) for inclusion in
-Bramble, usually in a pull request. "Webvana" means Webvana Inc., which maintains Bramble.
+documentation, translations or other material you intentionally submit to this repository for
+inclusion in Bramble, usually in a pull request. "Webvana" means Webvana Inc., which maintains
+Bramble.
 
 ## What you agree to
 
@@ -16,10 +16,9 @@ Bramble, usually in a pull request. "Webvana" means Webvana Inc., which maintain
    (GPLv3; the text is in [LICENSE](LICENSE)) together with the additional permission for app
    stores under GPLv3 section 7 that is published in
    [APP-STORE-EXCEPTION.md](APP-STORE-EXCEPTION.md). You agree to that permission as it reads at
-   commit `8f165e958fdb6b817ad6e6b4477ee1c69b9dde61` of this repository's `main` branch
-   ([permanent link](https://github.com/flythenimbus/bramble/blob/8f165e958fdb6b817ad6e6b4477ee1c69b9dde61/APP-STORE-EXCEPTION.md)).
-   That file is the complete statement of the permission. This agreement does not repeat, add to
-   or change it.
+   commit `8f165e958fdb6b817ad6e6b4477ee1c69b9dde61` of this repository's `main` branch. That
+   file is the complete statement of the permission. This agreement does not repeat, add to or
+   change it.
 
 2. **AGPL parts are not covered.** `services/mailbox`, and any other path that
    APP-STORE-EXCEPTION.md excludes, is licensed under the GNU Affero General Public License
