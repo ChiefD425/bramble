@@ -14,7 +14,7 @@ type VaultSlice = {
 	entries: Entry[];
 	unlockedWithRecoveryCode?: boolean;
 };
-type RegistrySlice = { ready: boolean; count: number; hasActive: boolean };
+type RegistrySlice = { ready: boolean; count: number; hasActive: boolean; activeId?: string };
 
 const login = (id: string): Entry => ({
 	id,
@@ -105,17 +105,28 @@ describe("route guards", () => {
 describe("unlock returns to the interrupted screen", () => {
 	const open: VaultSlice = { isLocked: false, ready: true, entries: [login("abc")] };
 
-	async function lockThenUnlock(path: string, unlocked: VaultSlice = open) {
-		const router = await load(path, open);
-		const set = async (vault: VaultSlice) => {
+	const active = (activeId: string): RegistrySlice => ({
+		ready: true,
+		count: 2,
+		hasActive: true,
+		activeId,
+	});
+
+	async function lockThenUnlock(
+		path: string,
+		unlocked: VaultSlice = open,
+		vaults: { locked?: RegistrySlice; unlocked?: RegistrySlice } = {},
+	) {
+		const router = await load(path, open, vaults.locked);
+		const set = async (vault: VaultSlice, registry?: RegistrySlice) => {
 			router.update({
-				context: { vault: { unlockedWithRecoveryCode: false, ...vault }, registry: undefined },
+				context: { vault: { unlockedWithRecoveryCode: false, ...vault }, registry },
 			});
 			await router.invalidate();
 		};
-		await set({ ...open, isLocked: true });
+		await set({ ...open, isLocked: true }, vaults.locked);
 		const locked = router.state.location.pathname;
-		await set(unlocked);
+		await set(unlocked, vaults.unlocked ?? vaults.locked);
 		return { router, locked };
 	}
 
@@ -124,6 +135,20 @@ describe("unlock returns to the interrupted screen", () => {
 		expect(locked).toBe("/");
 		expect(router.state.location.pathname).toBe("/settings");
 		expect(router.state.location.search).toMatchObject({ tab: "sync" });
+	});
+
+	it("returns there when the same vault unlocks", async () => {
+		const { router } = await lockThenUnlock("/settings?tab=sync", open, { locked: active("a") });
+		expect(router.state.location.pathname).toBe("/settings");
+	});
+
+	// "Create another vault" on the unlock screen opens the new vault without the picker.
+	it("opens a different vault on its list, not the screen the lock left", async () => {
+		const { router } = await lockThenUnlock("/settings?tab=sync", open, {
+			locked: active("a"),
+			unlocked: active("b"),
+		});
+		expect(router.state.location.pathname).toBe("/vault");
 	});
 
 	it("returns to an open entry", async () => {
@@ -150,32 +175,10 @@ describe("unlock returns to the interrupted screen", () => {
 		expect(router.state.location.search).toMatchObject({ tab: "security" });
 	});
 
-	// The redirects replace history entries, and scroll restoration keys by entry by default.
-	it("keeps the list's search and its scroll key", async () => {
-		const router = await load("/vault?q=bank", open);
-		const key = () => router.options.getScrollRestorationKey?.(router.state.location);
-		const before = key();
-		const set = async (vault: VaultSlice) => {
-			router.update({
-				context: { vault: { unlockedWithRecoveryCode: false, ...vault }, registry: undefined },
-			});
-			await router.invalidate();
-		};
-		await set({ ...open, isLocked: true });
-		await set(open);
+	it("returns to the list with its search", async () => {
+		const { router } = await lockThenUnlock("/vault?q=bank");
+		expect(router.state.location.pathname).toBe("/vault");
 		expect(router.state.location.search).toMatchObject({ q: "bank" });
-		expect(before).toBeDefined();
-		expect(key()).toBe(before);
-	});
-
-	// Pushing the list afresh (a save) must not inherit the old offset; going back does.
-	it("gives a freshly pushed list its own scroll key", async () => {
-		const router = await load("/vault", open);
-		const key = () => router.options.getScrollRestorationKey?.(router.state.location);
-		const first = key();
-		await router.navigate({ to: "/vault/new/$type", params: { type: "login" } });
-		await router.navigate({ to: "/vault" });
-		expect(key()).not.toBe(first);
 	});
 
 	it("ignores a return path that isn't an in-app one", async () => {

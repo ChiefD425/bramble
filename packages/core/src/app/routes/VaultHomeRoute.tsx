@@ -6,10 +6,11 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlatform } from "../../context/PlatformContext";
 import { usePrefs } from "../../hooks/usePrefs";
 import { isLogin, useVault } from "../../hooks/useVault";
+import { useVaultRegistry } from "../../hooks/useVaultRegistry";
 import { reusedPasswordIds } from "../../vault/password-reuse";
 import { allTags } from "../../vault/tags";
 import { DefaultManagerCard } from "../components/DefaultManagerCard";
@@ -25,20 +26,20 @@ import {
 	type VaultListItem,
 } from "../screens/VaultHome/VaultHome";
 import { DEFAULT_SEARCH, type VaultSearch } from "../screens/VaultHome/vault-search";
-import { scrollKey } from "../scroll-key";
 
 /**
- * Where the list last unmounted. The router records a list's offset when a navigation leaves
- * it, but a lock unmounts the list before navigating to the unlock screen, so the unlock
- * reopens it from here (its redirect carries the list's scroll key).
+ * Where the list was when a lock took it down. The router records a list's offset when a
+ * navigation leaves it, but a lock unmounts the list before navigating to the unlock screen.
+ * The unlock returns to the same href in the same vault, which reopens the list here, once.
  */
-let leftAt: { key: string; offset: number } | undefined;
+let lockedAt: { vault: string | undefined; href: string; offset: number } | undefined;
 
 /** Vault list route: projects entries into rows via their entry-mode descriptors. */
 export function VaultHomeRoute() {
 	const navigate = useNavigate();
-	const key = scrollKey(useLocation());
-	const scrollEntry = useElementScrollRestoration({ id: VAULT_LIST_SCROLL_ID, getKey: scrollKey });
+	const href = useLocation({ select: (l) => l.href });
+	const { activeId } = useVaultRegistry();
+	const scrollEntry = useElementScrollRestoration({ id: VAULT_LIST_SCROLL_ID });
 	// Per-field `??` (not spread): a `.catch`ed param can be present-but-undefined.
 	const raw = useSearch({ from: "/_app/vault" });
 	const search = useMemo<VaultSearch>(
@@ -53,6 +54,9 @@ export function VaultHomeRoute() {
 		[raw.q, raw.type, raw.sort, raw.archived, raw.attachments, raw.health],
 	);
 	const { entries, files, conflicts, ready, isLocked, deleteEntry, touchEntry } = useVault();
+	// Read when the list unmounts: true only if a lock is what took it down.
+	const locking = useRef(false);
+	locking.current = isLocked;
 	const { shell } = usePlatform();
 	const { prefs, loaded: prefsLoaded, update } = usePrefs();
 	// Hide stored breach flags when breach checking is off.
@@ -161,9 +165,13 @@ export function VaultHomeRoute() {
 			tags={tags}
 			statsCollapsed={prefs.statsCollapsed}
 			onToggleStats={() => void update("statsCollapsed", !prefs.statsCollapsed)}
-			initialScrollOffset={leftAt?.key === key ? leftAt.offset : scrollEntry?.scrollY}
+			initialScrollOffset={
+				lockedAt && lockedAt.vault === activeId && lockedAt.href === href
+					? lockedAt.offset
+					: scrollEntry?.scrollY
+			}
 			onLeave={(offset) => {
-				leftAt = { key, offset };
+				lockedAt = locking.current ? { vault: activeId, href, offset } : undefined;
 			}}
 			// The update first: it may carry a security fix.
 			nudge={

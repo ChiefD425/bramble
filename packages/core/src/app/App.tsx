@@ -70,7 +70,7 @@ function InnerApp({
 	);
 	// Registry slice for the launch-time picker decision.
 	const registry = useMemo(
-		() => ({ ready: registryReady, count: vaults.length, hasActive: activeId != null }),
+		() => ({ ready: registryReady, count: vaults.length, hasActive: activeId != null, activeId }),
 		[registryReady, vaults.length, activeId],
 	);
 	const consumed = useRef(false);

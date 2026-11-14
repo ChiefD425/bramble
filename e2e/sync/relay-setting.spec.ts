@@ -81,6 +81,8 @@ test("emptying the relay field goes back to the hosted relay", async ({ ext, mob
 	await restartSync(mobile);
 
 	await addLogin(popup, "Reached over the hosted address");
+	// The unlock went back to Settings, where the lock left it; the entry shows on the list.
+	await mobile.page.getByRole("button", { name: "Go to vault" }).click();
 	await expect(mobile.page.getByText("Reached over the hosted address")).toBeVisible({
 		timeout: RECONNECT_WITHIN_MS,
 	});

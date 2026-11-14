@@ -216,6 +216,36 @@ test("unlocking returns to the row the list was on", async ({ context, extension
 	await expect.poll(() => topRow(popup)).toBe(rows[0]);
 });
 
+// The router already holds an older offset for this history entry (from the record), which it
+// must not apply over the one the lock took.
+test("unlocking returns to the row after a record was opened first", async ({
+	context,
+	extensionId,
+}) => {
+	test.setTimeout(120_000);
+	const popup = await popupWithLongList(context, extensionId);
+	const first = await scrollDeep(popup);
+	await openRecord(popup, first[2]!);
+	await popup.getByRole("button", { name: "Go back" }).click();
+	await expect.poll(() => topRow(popup)).toBe(first[0]);
+
+	await list(popup).hover();
+	for (let i = 0; i < 6; i++) {
+		await popup.mouse.wheel(0, 300);
+		await popup.waitForTimeout(30);
+	}
+	await popup.waitForTimeout(300);
+	const rows = await visibleRows(popup);
+	expect(rows[0]).not.toBe(first[0]);
+
+	await lock(popup);
+	await unlock(popup);
+
+	await expect.poll(() => topRow(popup)).toBe(rows[0]);
+	await popup.waitForTimeout(1000);
+	expect(await topRow(popup)).toBe(rows[0]);
+});
+
 test("unlocking keeps the search and its scroll", async ({ context, extensionId }) => {
 	test.setTimeout(120_000);
 	const popup = await popupWithLongList(context, extensionId);

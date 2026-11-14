@@ -1,7 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown, ListChecks, type LucideIcon, TrendingDown, TrendingUp } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { Entry, EntryType } from "../../../hooks/useVault";
 import { AddDropdown } from "../../components/AddDropdown";
 import { EntryRow } from "../../components/EntryRow";
@@ -188,7 +196,9 @@ export function VaultHome({
 	useEffect(() => {
 		leave.current = onLeave;
 	});
-	useEffect(() => () => leave.current?.(rowVirtualizer.scrollOffset ?? 0), [rowVirtualizer]);
+	// A layout cleanup runs before React detaches the list, so scrollTop is still on screen. The
+	// virtualizer's own offset can lag it (a scroll whose event hasn't been handled yet).
+	useLayoutEffect(() => () => leave.current?.(scrollRef.current?.scrollTop ?? 0), []);
 
 	return (
 		<main className="flex-1 min-h-0 flex flex-col w-full max-w-5xl mx-auto px-4 py-5">

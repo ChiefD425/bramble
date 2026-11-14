@@ -17,7 +17,6 @@ import { passkeyVerifySearchSchema } from "./routes/passkey-verify-search";
 import { VaultHomeRoute } from "./routes/VaultHomeRoute";
 import { settingsSearchSchema } from "./screens/Settings/settings-search";
 import { vaultSearchSchema } from "./screens/VaultHome/vault-search";
-import { carryScroll, scrollKey } from "./scroll-key";
 
 // Code-split the routes that aren't on the first-paint path (Settings pulls in
 // backup/sync/import/restore; the entry forms pull in every field editor). The
@@ -65,6 +64,7 @@ interface RegistryGuard {
 	ready: boolean;
 	count: number;
 	hasActive: boolean;
+	activeId?: string;
 }
 
 /** Router context: guard slices, undefined until React injects them. */
@@ -83,7 +83,7 @@ const authRoute = createRoute({
 	validateSearch: authSearchSchema,
 	// WARNING: intentionally NOT gated on `ready`. Adding a ready gate here
 	// "for symmetry" with _app reintroduces a redirect loop.
-	beforeLoad: ({ context, search, location }) => {
+	beforeLoad: ({ context, search }) => {
 		if (context.vault && !context.vault.isLocked) {
 			// A recovery-code unlock usually means a forgotten password: land on changing it.
 			if (context.vault.unlockedWithRecoveryCode) {
@@ -92,8 +92,9 @@ const authRoute = createRoute({
 					search: { tab: "security", highlight: "master-password" },
 				});
 			}
-			if (search.redirect) {
-				throw redirect({ href: search.redirect, state: carryScroll(location) });
+			// Back to the screen the lock left, unless another vault opened (e.g. one just created).
+			if (search.redirect && search.vault === (context.registry?.activeId ?? undefined)) {
+				throw redirect({ href: search.redirect });
 			}
 			throw redirect({ to: "/vault" });
 		}
@@ -123,15 +124,14 @@ const appLayoutRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	id: "_app",
 	// Guard for all authed routes: bounce to the unlock screen when locked, remembering the
-	// screen and its scroll so the unlock returns to both. Gated on `ready` to avoid redirecting
-	// a popped-out window pre-hydration.
+	// screen so the unlock returns to it. Gated on `ready` to avoid redirecting a popped-out
+	// window pre-hydration.
 	beforeLoad: ({ context, location, matches }) => {
 		if (context.vault?.ready && context.vault.isLocked) {
 			if (isOneShot(matches)) throw redirect({ to: "/" });
 			throw redirect({
 				to: "/",
-				search: { redirect: location.href },
-				state: carryScroll(location),
+				search: { redirect: location.href, vault: context.registry?.activeId ?? undefined },
 			});
 		}
 	},
@@ -253,7 +253,6 @@ export function createAppRouter(initialPath = "/") {
 		// The list only. Unrestricted, the router carries offsets between screens whose
 		// scrollers share a DOM path (record, Settings, Generator).
 		scrollRestoration: ({ location }) => location.pathname === "/vault",
-		getScrollRestorationKey: scrollKey,
 	});
 }
 
