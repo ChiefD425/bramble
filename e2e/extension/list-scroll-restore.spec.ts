@@ -280,3 +280,24 @@ test("unlocking returns to the Settings tab", async ({ context, extensionId }) =
 	await expect(tabs).toBeVisible();
 	await expect(tabs.getByRole("button", { name: "Sync" })).toHaveAttribute("aria-current", "true");
 });
+
+// The order lives in the list's address, which a reopened popup or the home button starts
+// without; the remembered one fills in.
+test("the sort order sticks after reopening and going home", async ({ context, extensionId }) => {
+	test.setTimeout(120_000);
+	const popup = await popupWithLongList(context, extensionId);
+	await popup.getByLabel("Sort").selectOption("name-desc");
+	await expect.poll(() => topRow(popup)).toBe("Open Entry 149");
+
+	await popup.getByRole("button", { name: "Settings", exact: true }).click();
+	await popup.getByRole("button", { name: "Go to vault" }).click();
+	await expect.poll(() => topRow(popup)).toBe("Open Entry 149");
+
+	await popup.close();
+	const reopened = await context.newPage();
+	await reopened.setViewportSize({ width: 500, height: 800 });
+	await openPopup(reopened, extensionId);
+	await expectUnlocked(reopened);
+	await expect(reopened.getByLabel("Sort")).toHaveValue("name-desc");
+	await expect.poll(() => topRow(reopened)).toBe("Open Entry 149");
+});

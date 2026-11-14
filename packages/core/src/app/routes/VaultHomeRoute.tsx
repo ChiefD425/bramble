@@ -40,25 +40,25 @@ export function VaultHomeRoute() {
 	const href = useLocation({ select: (l) => l.href });
 	const { activeId } = useVaultRegistry();
 	const scrollEntry = useElementScrollRestoration({ id: VAULT_LIST_SCROLL_ID });
+	const { prefs, loaded: prefsLoaded, update } = usePrefs();
 	// Per-field `??` (not spread): a `.catch`ed param can be present-but-undefined.
 	const raw = useSearch({ from: "/_app/vault" });
 	const search = useMemo<VaultSearch>(
 		() => ({
 			q: raw.q ?? DEFAULT_SEARCH.q,
 			type: raw.type ?? DEFAULT_SEARCH.type,
-			sort: raw.sort ?? DEFAULT_SEARCH.sort,
+			sort: raw.sort ?? prefs.vaultSort,
 			archived: raw.archived ?? DEFAULT_SEARCH.archived,
 			attachments: raw.attachments ?? DEFAULT_SEARCH.attachments,
 			health: raw.health ?? DEFAULT_SEARCH.health,
 		}),
-		[raw.q, raw.type, raw.sort, raw.archived, raw.attachments, raw.health],
+		[raw.q, raw.type, raw.sort, prefs.vaultSort, raw.archived, raw.attachments, raw.health],
 	);
 	const { entries, files, conflicts, ready, isLocked, deleteEntry, touchEntry } = useVault();
 	// Read when the list unmounts: true only if a lock is what took it down.
 	const locking = useRef(false);
 	locking.current = isLocked;
 	const { shell } = usePlatform();
-	const { prefs, loaded: prefsLoaded, update } = usePrefs();
 	// Hide stored breach flags when breach checking is off.
 	const showBreaches = prefs.breachCheckEnabled;
 
@@ -120,9 +120,11 @@ export function VaultHomeRoute() {
 		);
 	}, [entries, files, showBreaches, conflicts]);
 
-	// replace: typing shouldn't stack history entries.
-	const onSearchChange = (patch: Partial<VaultSearch>) =>
-		navigate({ to: "/vault", search: (prev) => ({ ...prev, ...patch }), replace: true });
+	// replace: typing shouldn't stack history entries. A sort is also kept for the next open.
+	const onSearchChange = (patch: Partial<VaultSearch>) => {
+		if (patch.sort) void update("vaultSort", patch.sort);
+		return navigate({ to: "/vault", search: (prev) => ({ ...prev, ...patch }), replace: true });
+	};
 
 	const onSelectEntry = useCallback(
 		(entryId: string) => navigate({ to: "/vault/$entryId", params: { entryId } }),
@@ -136,7 +138,8 @@ export function VaultHomeRoute() {
 
 	// Until the vault has finished decrypting, `entries` is []; showing VaultHome
 	// here would flash "Your vault is empty" on a large vault. Show a loader instead.
-	if (!ready) {
+	// Prefs too, or the list would open in one order and re-sort into the remembered one.
+	if (!ready || !prefsLoaded) {
 		return (
 			<main className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 text-muted-foreground">
 				<Loader2 className="w-6 h-6 animate-spin" />

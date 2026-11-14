@@ -16,6 +16,8 @@ const SORT_KEYS = [
 ] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 
+export const isSortKey = (v: unknown): v is SortKey => SORT_KEYS.includes(v as SortKey);
+
 /** The Overview cards as filters: every item, breached logins, or the logins that are not. */
 const HEALTH_FILTERS = ["all", "atRisk", "strong"] as const;
 export type HealthFilter = (typeof HEALTH_FILTERS)[number];
@@ -48,7 +50,8 @@ export const DEFAULT_SEARCH: VaultSearch = {
 };
 
 // Route search-param validator. All-optional (`.catch` drops garbage) so bad
-// params fall back to DEFAULT_SEARCH and `navigate({ to: "/vault" })` needs no search.
+// params fall back to DEFAULT_SEARCH (the sort to the remembered one, prefs.vaultSort) and
+// `navigate({ to: "/vault" })` needs no search.
 export const vaultSearchSchema = z.object({
 	q: z.string().optional().catch(undefined),
 	type: z.enum(TYPE_FILTERS).optional().catch(undefined),

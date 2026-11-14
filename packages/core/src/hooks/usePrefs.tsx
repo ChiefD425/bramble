@@ -14,6 +14,7 @@ import {
 	normalizeReviewNudgeState,
 	type ReviewNudgeState,
 } from "../app/review-nudge";
+import { DEFAULT_SEARCH, isSortKey, type SortKey } from "../app/screens/VaultHome/vault-search";
 import { usePlatform } from "../context/PlatformContext";
 import { syncKeyFor } from "../sync/sync-keys";
 import {
@@ -68,6 +69,9 @@ const PREF_DEFAULT_MANAGER_PROMPT_DISMISSED = "pref.defaultManagerPromptDismisse
 // The password generator's last-used settings, so the field's one-tap regenerate produces what
 // the user picked in the panel rather than a fixed house style.
 const PREF_GENERATOR = "pref.generator";
+// The vault list's last-picked sort order, for when its address names none (a fresh open, or
+// the home button).
+const PREF_VAULT_SORT = "pref.vaultSort";
 // The email alias provider: which service, its settings, and the API key. Synced, so configuring
 // it on one device reaches the others; see docs/synced-settings.md and docs/email-aliases.md.
 export const PREF_ALIAS_PROVIDER = "pref.aliasProvider";
@@ -123,6 +127,8 @@ export interface Prefs {
 	lockOnScreenLock: boolean;
 	// Home: collapse the Total / At Risk / Strong stats row.
 	statsCollapsed: boolean;
+	// Home: the vault list's sort order.
+	vaultSort: SortKey;
 	// Desktop: the backup section's "start at login" suggestion has been declined.
 	autostartPromptDismissed: boolean;
 	// Extension: the vault list's default-password-manager card has been declined.
@@ -155,6 +161,7 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	passkeyConfirmOncePerUnlock: PREF_PASSKEY_CONFIRM_ONCE,
 	lockOnScreenLock: PREF_LOCK_ON_SCREEN_LOCK,
 	statsCollapsed: PREF_STATS_COLLAPSED,
+	vaultSort: PREF_VAULT_SORT,
 	autostartPromptDismissed: PREF_AUTOSTART_PROMPT_DISMISSED,
 	defaultManagerPromptDismissed: PREF_DEFAULT_MANAGER_PROMPT_DISMISSED,
 	generator: PREF_GENERATOR,
@@ -200,6 +207,7 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	passkeyConfirmOncePerUnlock: "device",
 	lockOnScreenLock: "device",
 	statsCollapsed: "device",
+	vaultSort: "device",
 	autostartPromptDismissed: "device",
 	defaultManagerPromptDismissed: "device",
 	biometricPasscodeFallback: "vault",
@@ -266,6 +274,7 @@ const DEFAULT_PREFS: Prefs = {
 	passkeyConfirmOncePerUnlock: DEFAULT_PASSKEY_CONFIRM_ONCE,
 	lockOnScreenLock: DEFAULT_LOCK_ON_SCREEN_LOCK,
 	statsCollapsed: DEFAULT_STATS_COLLAPSED,
+	vaultSort: DEFAULT_SEARCH.sort,
 	autostartPromptDismissed: DEFAULT_AUTOSTART_PROMPT_DISMISSED,
 	defaultManagerPromptDismissed: DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED,
 	generator: DEFAULT_GENERATOR_SETTINGS,
@@ -374,7 +383,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s] = await Promise.all([
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u] = await Promise.all([
 				storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
 				storage.getMeta<boolean>(PREF_BREACH_CHECK),
 				storage.getMeta<number>(PREF_CLIPBOARD_SECONDS),
@@ -404,6 +413,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				storage.getMeta<boolean>(PREF_PASSKEY_CONFIRM_ONCE),
 				storage.getMeta<boolean>(PREF_UPDATE_CHECK),
 				storage.getMeta<unknown>(PREF_APP_UPDATE),
+				storage.getMeta<unknown>(PREF_VAULT_SORT),
 			]);
 			if (cancelled) return;
 			// One `now` for the read: a fresh install's clock starts here rather than at whichever
@@ -426,6 +436,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				passkeyConfirmOncePerUnlock: typeof q === "boolean" ? q : DEFAULT_PASSKEY_CONFIRM_ONCE,
 				lockOnScreenLock: typeof j === "boolean" ? j : DEFAULT_LOCK_ON_SCREEN_LOCK,
 				statsCollapsed: typeof k === "boolean" ? k : DEFAULT_STATS_COLLAPSED,
+				vaultSort: isSortKey(u) ? u : DEFAULT_SEARCH.sort,
 				autostartPromptDismissed: typeof l === "boolean" ? l : DEFAULT_AUTOSTART_PROMPT_DISMISSED,
 				biometricPasscodeFallback: typeof m === "boolean" ? m : DEFAULT_BIOMETRIC_PASSCODE_FALLBACK,
 				// Field by field: a stored object written by an older or hand-edited build is not
