@@ -1,14 +1,11 @@
 What's new in this release:
 
-- Choose the app's language in Settings. Korean is new.
-- Create an email alias from the generator, without making a login first.
-- Duplicate an entry from its detail screen.
-- Reused passwords now count as At Risk, with a Reused badge.
-- More two-factor setup links work, including Steam Guard.
-- Imports tag what they add with the date and time.
-- AutoFill follows each login's subdomain match setting.
-- The vault list keeps its place when you go back from an entry.
-- Sync reconnects more reliably.
-- Security updates to the libraries the app is built on.
+- Search looks through notes too, and shows name matches first.
+- After the app locks, unlocking takes you back to the screen you were on, with your search and your place in the list.
+- The vault list remembers the sort order you picked.
+- The sync log shows when each line happened and which device it's about. Settings > Sync has a Sync now button.
+- The app lets you know when a newer version is out.
+- Sync starts as soon as the first device you invite joins.
+- Devices connect for sync more reliably.
 
 No account, no cloud. Everything stays on your devices.

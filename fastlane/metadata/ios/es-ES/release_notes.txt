@@ -1,14 +1,11 @@
-Novedades de esta versión:
+Novedades en esta versión:
 
-- Elija el idioma de la aplicación en Configuración. Se añade el coreano.
-- Cree un alias de correo electrónico desde el generador, sin crear antes un inicio de sesión.
-- Duplique una entrada desde su pantalla de detalles.
-- Las contraseñas reutilizadas ahora cuentan como «En riesgo», con la insignia «Reutilizada».
-- Ahora funcionan más enlaces de configuración de autenticación de dos factores, incluido Steam Guard.
-- Las importaciones etiquetan lo que añaden con la fecha y la hora.
-- La función AutoFill respeta la configuración de coincidencia de subdominio de cada inicio de sesión.
-- La lista de la caja fuerte conserva su posición al regresar desde una entrada.
-- La sincronización se reconecta de forma más fiable.
-- Actualizaciones de seguridad de las bibliotecas en las que se basa la aplicación.
+- La búsqueda también revisa las notas y muestra primero las coincidencias por nombre.
+- Cuando la app se bloquea, al desbloquearla se vuelve a la pantalla en la que estaba, con la búsqueda y la posición en la lista.
+- La lista de la bóveda recuerda el orden de clasificación elegido.
+- El registro de sincronización muestra cuándo se produjo cada línea y a qué dispositivo corresponde. Configuración > Sincronización incluye un botón Sincronizar ahora.
+- La app avisa cuando está disponible una versión más reciente.
+- La sincronización comienza en cuanto se une el primer dispositivo invitado.
+- Los dispositivos se conectan para sincronizarse de forma más fiable.
 
 Sin cuenta, sin nube. Todo permanece en sus dispositivos.

@@ -1,14 +1,11 @@
 Neu in dieser Version:
 
-- Wählen Sie die Sprache der App in den Einstellungen. Koreanisch ist neu.
-- Erstellen Sie einen E-Mail-Alias über den Generator, ohne zuerst ein Login anzulegen.
-- Duplizieren Sie einen Eintrag über seinen Detailbildschirm.
-- Wiederverwendete Passwörter erscheinen jetzt unter „Risiko besteht“, mit dem Hinweis „Wiederverwendet“.
-- Weitere Einrichtungslinks für Zwei-Faktor-Authentifizierung funktionieren, einschließlich Steam Guard.
-- Importe kennzeichnen hinzugefügte Einträge mit Datum und Uhrzeit.
-- AutoFill berücksichtigt die Subdomain-Abgleichseinstellung jedes Logins.
-- Die Tresorliste behält ihre Position, wenn Sie von einem Eintrag zurückkehren.
-- Die Synchronisierung stellt die Verbindung zuverlässiger wieder her.
-- Sicherheitsupdates für die Bibliotheken, auf denen die App basiert.
+- Die Suche durchsucht auch Notizen und zeigt Treffer im Namen zuerst an.
+- Nach dem Sperren der App gelangen Sie beim Entsperren zurück zum vorherigen Bildschirm, inklusive Ihrer Suche und Position in der Liste.
+- Die Tresorliste merkt sich die gewählte Sortierreihenfolge.
+- Das Synchronisierungsprotokoll zeigt, wann jeder Eintrag stattfand und um welches Gerät es sich handelt. Unter „Einstellungen > Synchronisierung“ gibt es die Schaltfläche „Jetzt synchronisieren“.
+- Die App informiert Sie, wenn eine neuere Version verfügbar ist.
+- Die Synchronisierung startet, sobald das erste von Ihnen eingeladene Gerät beitritt.
+- Geräte verbinden sich zuverlässiger für die Synchronisierung.
 
 Kein Konto, keine Cloud. Alles bleibt auf Ihren Geräten.
