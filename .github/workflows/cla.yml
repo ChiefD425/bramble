@@ -9,7 +9,8 @@ name: CLA
 #
 # pull_request_target runs in this repository with a write token, so nothing from the pull request
 # may ever be checked out or run here. The only step is the action, pinned by commit
-# (docs/ci-releases.md); Dependabot proposes the moves.
+# (docs/ci-releases.md). It is our fork of ribtoks/cla-github-action v2.6.2 with only the runtime
+# moved to node24; take upstream fixes into the fork by hand.
 on:
   issue_comment:
     types: [created]
@@ -39,7 +40,7 @@ jobs:
       contents: write # commit each signature to the cla-signatures branch
       actions: write # re-run the failed check once the signing comment lands, so it turns green
     steps:
-      - uses: ribtoks/cla-github-action@f22feedd1f3f46f23fab3bc100081d349f9108af # v2.6.2
+      - uses: bramble-sh/cla-github-action@2850b5c5f9fbd32f82d68a4f5d321ed54257a80a # v2.6.2 on node24
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
