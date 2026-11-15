@@ -5,7 +5,8 @@ name: CLA
 # request, records a signing comment as an entry in a JSON file on the cla-signatures branch (main
 # is protected, so the token cannot commit to it), and keeps this check red until everyone on the
 # pull request has signed. To make everyone sign again after a material change to CLA.md, bump the
-# version in path-to-signatures.
+# version in path-to-signatures and first commit {"signedContributors": []} at the new path on
+# cla-signatures: the action never creates the file (it compares a 404 status to a string).
 #
 # pull_request_target runs in this repository with a write token, so nothing from the pull request
 # may ever be checked out or run here. The only step is the action, pinned by commit
