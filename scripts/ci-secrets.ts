@@ -24,7 +24,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { yubiKeyIdentity } from "./age-yubikey-identity.ts";
+import { releaseIdentity } from "./age-yubikey-identity.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
 
 const REPO = "bramble-sh/bramble";
@@ -66,9 +66,9 @@ function decrypt(name: string): Buffer {
 	if (!idFile) {
 		scratch = mkdtempSync(join(tmpdir(), "bramble-ci-secrets-"));
 		idFile = join(scratch, "id.txt");
-		writeFileSync(idFile, yubiKeyIdentity());
+		writeFileSync(idFile, releaseIdentity());
 	}
-	notifyYubiKeyTouch(`decrypt ${name} for CI`);
+	notifyYubiKeyTouch(`decrypt ${name} for CI`, true);
 	const out = execFileSync("age", ["-d", "-i", idFile, path], {
 		stdio: ["inherit", "pipe", "inherit"],
 	});

@@ -7,8 +7,18 @@
 //
 // The stub is not key material. It points at a slot; decrypting still needs the physical key,
 // its PIN, and a touch.
+//
+// Touch ID can stand in for it on this Mac: a Secure Enclave age identity (age-plugin-se), which
+// `pnpm keys:touch-id` adds as a second recipient on a release secret. See docs/release-signing.md.
 
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+/** A reference to a Secure Enclave key that never leaves this Mac and opens only with Touch ID. */
+export const SE_IDENTITY =
+	process.env.AGE_SE_IDENTITY ?? join(homedir(), ".config/bramble/age-se-identity.txt");
 
 /** Set these when more than one slot is configured and the wrong one would be picked. */
 const SERIAL = process.env.AGE_YUBIKEY_SERIAL;
@@ -85,4 +95,47 @@ function listSlots(): { serial: string; slot: string; recipient: string }[] {
 		slot: m[2] as string,
 		recipient: /^\s*(age1\S+)\s*$/m.exec(m[3] as string)?.[1] ?? "",
 	}));
+}
+
+const has = (bin: string): boolean => {
+	try {
+		execFileSync("/bin/sh", ["-c", `command -v ${bin}`], { stdio: "ignore" });
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+/** The Touch ID identity, where it is set up and its plugin is installed. */
+export function touchIdIdentity(): string | undefined {
+	return existsSync(SE_IDENTITY) && has("age-plugin-se")
+		? readFileSync(SE_IDENTITY, "utf8")
+		: undefined;
+}
+
+/**
+ * Identities for `age -d -i`, Touch ID first: age tries them in order, so a file wrapped to both
+ * opens with a fingerprint and an unplugged YubiKey is only an error when nothing else can open it.
+ */
+export function combineIdentities(touchId: string | undefined, yubiKey: () => string): string {
+	const parts = touchId ? [touchId.trim()] : [];
+	try {
+		parts.push(yubiKey().trim());
+	} catch (e) {
+		if (!touchId) throw e;
+	}
+	return `${parts.join("\n")}\n`;
+}
+
+/** What to decrypt a release secret with: Touch ID where set up, and the YubiKey if plugged in. */
+export function releaseIdentity(): string {
+	return combineIdentities(touchIdIdentity(), yubiKeyIdentity);
+}
+
+/** The Touch ID recipient (`age1se1…`) for re-wrapping a secret, or undefined where not set up. */
+export function touchIdRecipient(): string | undefined {
+	if (!touchIdIdentity()) return undefined;
+	return execFileSync("age-plugin-se", ["recipients", "-i", SE_IDENTITY], {
+		encoding: "utf8",
+	}).trim();
 }

@@ -651,6 +651,34 @@ re-verifies the archive against the public key compiled into the app
 (`scripts/verify-updater-signature.mjs`), because an archive signed with the wrong key produces a
 release that looks complete and updates nobody.
 
+
+### Touch ID instead of the YubiKey (this Mac)
+
+So a release run at this Mac can be approved with a fingerprint rather than by fetching the
+YubiKey, a secret can be wrapped to a second recipient: an age identity held in the Mac's Secure
+Enclave by [age-plugin-se](https://github.com/remko/age-plugin-se). Its private key cannot leave
+this Mac, and each use asks for Touch ID. The YubiKey keeps working for the same file, and the
+offline passphrase backups are untouched.
+
+One-time setup, then one YubiKey touch per secret you convert:
+
+```sh
+brew install age-plugin-se
+age-plugin-se keygen --access-control any-biometry -o ~/.config/bramble/age-se-identity.txt
+pnpm keys:touch-id                                   # the desktop updater key
+pnpm keys:touch-id ~/.config/bramble/asc-api-key.age # any other, by path
+```
+
+`keys:touch-id` decrypts the file with the YubiKey, encrypts it to both recipients, asks for Touch
+ID once to prove the new file opens to the same secret, and only then swaps it in, keeping the old
+one as `<file>.yubikey-only`. The plaintext stays in memory. `scripts/age-yubikey-identity.ts` then
+offers Touch ID first and the YubiKey second, so a converted secret never asks for the key and an
+unconverted one behaves as before. The identity file is only a reference to the enclave key, and
+`AGE_SE_IDENTITY` overrides its path. Today the desktop updater key, the App Store Connect key and
+`ci:secrets` read through it; the Chrome, Firefox, Android and APT paths still use the YubiKey.
+
+What it trades: the secret is no longer YubiKey-only, so anyone at this unlocked Mac with your
+fingerprint can open it. It still cannot be copied off the Mac.
 ### One-time setup
 
 Needs the YubiKey plugged in, and assumes you already made an age identity for it in the

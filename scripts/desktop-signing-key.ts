@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { yubiKeyIdentity } from "./age-yubikey-identity.ts";
+import { releaseIdentity } from "./age-yubikey-identity.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
 
 export const KEY_AGE =
@@ -50,11 +50,11 @@ export function signingKey(onError: (message: string) => never): string | undefi
 	try {
 		const idFile = join(tmp, "id.txt");
 		try {
-			writeFileSync(idFile, yubiKeyIdentity());
+			writeFileSync(idFile, releaseIdentity());
 		} catch (e) {
 			onError(`error: ${(e as Error).message}`);
 		}
-		notifyYubiKeyTouch("decrypt the desktop updater signing key");
+		notifyYubiKeyTouch("decrypt the desktop updater signing key", true);
 		return execFileSync("age", ["-d", "-i", idFile, KEY_AGE], {
 			encoding: "utf8",
 			stdio: ["inherit", "pipe", "inherit"],

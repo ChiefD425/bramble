@@ -28,7 +28,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { yubiKeyIdentity, yubiKeyRecipient } from "./age-yubikey-identity.ts";
+import { releaseIdentity, yubiKeyRecipient } from "./age-yubikey-identity.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
 
 export const ASC_KEY_AGE =
@@ -67,11 +67,11 @@ export function ascApiKey(onError: (message: string) => never): AscApiKey | unde
 	try {
 		const idFile = join(tmp, "id.txt");
 		try {
-			writeFileSync(idFile, yubiKeyIdentity());
+			writeFileSync(idFile, releaseIdentity());
 		} catch (e) {
 			onError(`error: ${(e as Error).message}`);
 		}
-		notifyYubiKeyTouch("decrypt the App Store Connect API key");
+		notifyYubiKeyTouch("decrypt the App Store Connect API key", true);
 		const json = execFileSync("age", ["-d", "-i", idFile, ASC_KEY_AGE], {
 			encoding: "utf8",
 			stdio: ["inherit", "pipe", "inherit"],

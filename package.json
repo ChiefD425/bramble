@@ -10,6 +10,7 @@
 		"prepare": "git config core.hooksPath .githooks || true",
 		"build": "pnpm --filter @vault/platform-extension run build:chromium",
 		"build:firefox": "pnpm --filter @vault/platform-extension run build:firefox",
+		"keys:touch-id": "node scripts/age-add-touch-id.ts",
 		"build:macos": "node --env-file-if-exists=.env.local scripts/build-macos.ts",
 		"build:macos:aarch64": "node --env-file-if-exists=.env.local scripts/build-macos.ts --aarch64",
 		"build:macos:local-update": "node --env-file-if-exists=.env.local scripts/build-macos.ts --config src-tauri/tauri.local-update.conf.json",
