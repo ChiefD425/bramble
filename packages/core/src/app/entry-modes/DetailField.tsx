@@ -26,16 +26,19 @@ export function DetailValue({ children, mono, wrap }: DetailValueProps) {
 	);
 }
 
-/** A revealed secret numbered by character. The numbers are CSS content, so copy and screen readers get only the secret. */
+/**
+ * A revealed secret numbered by character. The numbers are CSS content and the cells are inline,
+ * so copy, innerText and screen readers get the secret in one piece.
+ */
 export function NumberedChars({ value }: { value: string }) {
 	return (
-		<span className="flex flex-wrap gap-x-0.5 gap-y-1.5">
+		<span className="block">
 			{Array.from(value, (char, i) => (
 				<span
 					// biome-ignore lint/suspicious/noArrayIndexKey: the position is the identity
 					key={i}
 					data-pos={i + 1}
-					className="min-w-3.5 text-center whitespace-pre after:block after:font-sans after:text-[10px] after:leading-none after:text-muted-foreground after:tabular-nums after:content-[attr(data-pos)_/_'']"
+					className="mr-0.5 mb-1.5 inline-block min-w-3.5 text-center align-top whitespace-pre after:block after:font-sans after:text-[10px] after:leading-none after:text-muted-foreground after:tabular-nums after:content-[attr(data-pos)_/_'']"
 				>
 					{char}
 				</span>
