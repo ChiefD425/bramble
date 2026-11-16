@@ -34,6 +34,7 @@ PERCHÉ LOCAL-FIRST
 I gestori cloud conservano i vault di tutti sui propri server, che rappresentano un unico, enorme bersaglio. Quando subiscono una violazione, non viene esposto un solo vault, ma milioni contemporaneamente, spesso con notifica solo mesi dopo.
 
 Bramble ribalta la situazione:
+
 - Nessun server da violare. Il Suo vault non lascia mai il Suo controllo.
 - Nessun account, nessun abbonamento, nessuna pubblicità, nessuna telemetria. Niente a cui iscriversi.
 - I Suoi dati, i Suoi dispositivi. Lo sincronizzi tra i Suoi dispositivi, lo tenga su una sola macchina oppure ne esegua il backup crittografato sullo spazio di archiviazione che preferisce. Nulla di leggibile viene mai parcheggiato su server altrui.

@@ -34,6 +34,7 @@ POR QUÉ DAR PRIORIDAD A LO LOCAL
 Los gestores en la nube guardan las cajas fuertes de todos en sus servidores, lo que supone un objetivo gigantesco. Cuando se produce una brecha, no se filtra una sola caja fuerte, sino millones a la vez y, a menudo, se comunica meses después.
 
 Bramble le da la vuelta a esto:
+
 - No hay servidor que vulnerar. Su caja fuerte nunca sale de su control.
 - Sin cuenta, sin suscripción, sin anuncios, sin telemetría. No hay que registrarse para nada.
 - Sus datos, sus dispositivos. Sincronícela entre sus propios dispositivos, manténgala en un solo equipo o haga copias de seguridad cifradas en el almacenamiento que elija. Nada legible se guarda jamás en el servidor de terceros.

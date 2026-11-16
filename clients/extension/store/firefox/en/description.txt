@@ -34,6 +34,7 @@ WHY LOCAL-FIRST
 Cloud managers keep everyone's vaults on their servers, which is one giant target. When one is breached, it isn't one vault that leaks but millions at once, often disclosed months later.
 
 Bramble flips that around:
+
 - No server to breach. Your vault never leaves your control.
 - No account, no subscription, no ads, no telemetry. Nothing to sign up for.
 - Your data, your devices. Sync it across your own devices, keep it on one machine, or back it up encrypted to storage you choose. Nothing readable is ever parked on someone else's server.

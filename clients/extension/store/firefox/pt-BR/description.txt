@@ -34,6 +34,7 @@ POR QUE LOCAL PRIMEIRO
 Os gerenciadores na nuvem mantêm os cofres de todos em seus servidores, o que é um alvo gigante. Quando um é violado, não é um cofre que vaza, mas milhões de uma só vez, muitas vezes divulgado meses depois.
 
 O Bramble inverte isso:
+
 - Nenhum servidor para violar. Seu cofre nunca sai do seu controle.
 - Sem conta, sem assinatura, sem anúncios, sem telemetria. Nada para cadastrar.
 - Seus dados, seus dispositivos. Sincronize-os entre seus próprios dispositivos, mantenha-os em uma máquina ou faça backup criptografado no armazenamento que você escolher. Nada legível jamais fica armazenado no servidor de outra pessoa.
