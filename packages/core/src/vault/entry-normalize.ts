@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { EntryData } from "../hooks/useVault";
 import { HlcSchema } from "../sync/hlc";
+import { undoEpochShift } from "../util/epoch-shift";
 import { isPrfSecret, largeBlobSchema } from "./passkey";
 
 // Runtime mirror of EntryData; the z.ZodType<EntryData> annotation fails the
@@ -112,6 +113,18 @@ export function normalizeEntryData(raw: Record<string, unknown>): EntryData {
 		const legacy = typeof candidate.url === "string" ? candidate.url : "";
 		candidate.urls = legacy ? [legacy] : [];
 		delete candidate.url;
+	}
+	// Entries imported from 1Password's iOS export before from-cxf.ts undid its 2001 dates.
+	for (const key of ["createdAt", "updatedAt"]) {
+		const at = candidate[key];
+		if (typeof at === "number") candidate[key] = undoEpochShift(at);
+	}
+	if (Array.isArray(candidate.passkeys)) {
+		candidate.passkeys = candidate.passkeys.map((p: unknown) =>
+			p && typeof p === "object" && "createdAt" in p && typeof p.createdAt === "number"
+				? { ...p, createdAt: undoEpochShift(p.createdAt) }
+				: p,
+		);
 	}
 	// Tripwire for our own write/migration bugs (bytes are AES-GCM-authenticated).
 	if (!entryDataSchema.safeParse(candidate).success) {

@@ -23,6 +23,7 @@ import { asText, type RawField, summarize, toCustomFields } from "../import/shar
 import type { ImportParserContext, ImportResult } from "../import/types";
 import { base64UrlToBase64, base64UrlToBytes } from "../util/bytes";
 import { cardBrand } from "../util/card";
+import { undoEpochShift } from "../util/epoch-shift";
 import { buildTotpUri } from "../util/totp";
 import { keptExtensions, MAX_PRF_SECRET_BYTES } from "../vault/passkey";
 import { normalizeTags } from "../vault/tags";
@@ -251,8 +252,10 @@ async function entryFor(
 	const g = group(item.credentials ?? []);
 	const name = item.title || item.subtitle || "Untitled";
 	const notes = g.notes.join("\n\n") || undefined;
-	const createdAt = item.creationAt !== undefined ? item.creationAt * 1000 : undefined;
-	const updatedAt = item.modifiedAt !== undefined ? item.modifiedAt * 1000 : undefined;
+	const createdAt =
+		item.creationAt !== undefined ? undoEpochShift(item.creationAt * 1000) : undefined;
+	const updatedAt =
+		item.modifiedAt !== undefined ? undoEpochShift(item.modifiedAt * 1000) : undefined;
 	// Metadata every entry kind carries, spread into whichever branch below wins. Tags
 	// ride here rather than per-branch so a new entry type can't quietly drop them.
 	const tags = normalizeTags(item.tags);

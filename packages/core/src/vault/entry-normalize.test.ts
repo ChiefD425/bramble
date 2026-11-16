@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { APPLE_EPOCH_OFFSET_MS } from "../util/epoch-shift";
 import { entryDataSchema, normalizeEntryData } from "./entry-normalize";
 
 describe("normalizeEntryData — legacy migrations", () => {
@@ -76,6 +77,47 @@ describe("normalizeEntryData — legacy migrations", () => {
 		});
 		expect(result.type).toBe("card");
 		expect((result as unknown as Record<string, unknown>).urls).toBeUndefined();
+	});
+});
+
+describe("normalizeEntryData: dates counted from 2001", () => {
+	const created = Date.UTC(2012, 4, 5);
+	const updated = Date.UTC(2024, 1, 6);
+	const shifted = (ms: number) => ms + APPLE_EPOCH_OFFSET_MS;
+	const login = (dates: { createdAt: number; updatedAt: number }) => ({
+		type: "login",
+		name: "Bank",
+		username: "doug",
+		password: "x",
+		urls: [],
+		...dates,
+		passkeys: [
+			{
+				credentialId: "aWQ=",
+				rpId: "bank.example",
+				userHandle: "aA==",
+				alg: -7,
+				publicKeyCose: "",
+				privateKey: "",
+				signCount: 0,
+				createdAt: dates.createdAt,
+			},
+		],
+	});
+
+	it("repairs an entry imported with 1Password's shifted dates", () => {
+		const result = normalizeEntryData(
+			login({ createdAt: shifted(created), updatedAt: shifted(updated) }),
+		);
+		if (result.type !== "login") throw new Error("expected login");
+		expect(result.createdAt).toBe(created);
+		expect(result.updatedAt).toBe(updated);
+		expect(result.passkeys?.[0]?.createdAt).toBe(created);
+	});
+
+	it("leaves real dates alone", () => {
+		const raw = login({ createdAt: created, updatedAt: updated });
+		expect(normalizeEntryData(raw)).toEqual(raw);
 	});
 });
 

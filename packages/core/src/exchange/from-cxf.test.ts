@@ -8,6 +8,7 @@ import {
 	bytesToBase64,
 	bytesToBase64Url,
 } from "../util/bytes";
+import { APPLE_EPOCH_OFFSET_MS } from "../util/epoch-shift";
 import { parseCxf } from "./from-cxf";
 import { testParserContext } from "./test-crypto";
 
@@ -76,6 +77,27 @@ describe("parseCxf: logins", () => {
 			createdAt: 1_700_000_000_000,
 			updatedAt: 1_750_000_500_000,
 		});
+	});
+
+	it("pulls back dates an exporter counted from 2001 (1Password on iOS)", async () => {
+		const shifted = JSON.parse(
+			payload(basicAuth, {
+				type: "passkey",
+				credentialId: "-_--",
+				rpId: "github.com",
+				userHandle: "-_--",
+				key: keyB64Url,
+			}),
+		);
+		const item = shifted.accounts[0].items[0];
+		item.creationAt = 1_336_232_400 + APPLE_EPOCH_OFFSET_MS / 1000;
+		item.modifiedAt = 1_707_299_700 + APPLE_EPOCH_OFFSET_MS / 1000;
+		const res = await parseCxf(JSON.stringify(shifted), testParserContext);
+		const entry = res.imported[0];
+		if (!entry || !isLogin(entry)) throw new Error("expected a login");
+		expect(entry.createdAt).toBe(1_336_232_400_000);
+		expect(entry.updatedAt).toBe(1_707_299_700_000);
+		expect(entry.passkeys?.[0]?.createdAt).toBe(1_336_232_400_000);
 	});
 
 	it("matches a login on a port exactly (#145)", async () => {

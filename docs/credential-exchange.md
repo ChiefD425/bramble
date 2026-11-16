@@ -149,7 +149,7 @@ Two decisions worth knowing before Phase 3 wires the UI:
 | `note` / `.notes` | `Note{content}` | A note entry becomes an Item with a single Note credential; a login's `notes` becomes a second credential on the same Item. |
 | `ssh-key` | `CustomFields`, **not** `SSHKey` | See below. |
 | `customFields[]` | `CustomFields{fields[]}` | `hidden` -> `concealed-string` field type. |
-| `createdAt` / `updatedAt` | `Item.creationAt` / `.modifiedAt` | ms -> UNIX seconds. |
+| `createdAt` / `updatedAt` | `Item.creationAt` / `.modifiedAt` | ms -> UNIX seconds. 1Password's iOS export counts its dates from 2001, so they arrive 31 years in the future; `undoEpochShift` moves a future date back when the offset puts it in the past, at import and on read for entries imported before. |
 
 **The passkey private key is PKCS#8 on the wire and a bare scalar at rest.** `core-rust` stores
 `B64.encode(secret.to_bytes())` and signs with `SecretKey::from_slice`, i.e. the raw 32 bytes, while
