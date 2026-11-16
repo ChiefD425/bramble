@@ -2,7 +2,8 @@
 // clients/extension/store/firefox/<locale>/*.txt. One PATCH updates every
 // locale at once. The name + short manifest description already localize from the
 // package _locales (see chrome-manifest.mjs); this is the long detailed description
-// (and optionally a richer summary), which is not a manifest field.
+// (and optionally a richer summary), which is not a manifest field. The same PATCH sends
+// the contact and donation links from store/firefox/listing.json.
 //
 //   node scripts/metadata-firefox.ts             # PATCH the live AMO listing
 //   node scripts/metadata-firefox.ts --dry-run   # print what would be sent, send nothing
@@ -12,7 +13,15 @@
 // holding { "apiKey": "...", "apiSecret": "..." }. See docs/release-signing.md.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { amoJwt } from "./amo-auth.ts";
@@ -37,6 +46,7 @@ const AMO_LOCALE: Record<string, string> = {
 	es: "es-ES",
 	fr: "fr",
 	it: "it",
+	ko: "ko",
 	"pt-BR": "pt-BR",
 };
 // store filename -> AMO listing field.
@@ -44,6 +54,8 @@ const FIELDS: Record<string, string> = {
 	"summary.txt": "summary",
 	"description.txt": "description",
 };
+// Long text fields print as lengths in the dry run; short ones print in full.
+const FIELDS_SHOWN_BY_LENGTH = new Set(Object.values(FIELDS));
 
 const fail = (msg: string): never => {
 	console.error(`error: ${msg}`);
@@ -63,26 +75,41 @@ const guid = JSON.parse(readFileSync(MANIFEST, "utf8")).browser_specific_setting
 if (!guid) fail("no browser_specific_settings.gecko.id in the Firefox manifest");
 
 // Build { summary: {locale: text}, description: {locale: text} } from the files present.
-const payload: Record<string, Record<string, string>> = {};
+const texts: Record<string, Record<string, string>> = {};
 for (const dir of readdirSync(STORE)) {
-	const amo = AMO_LOCALE[dir];
-	if (!amo) continue; // skip the en source's siblings / any unmapped dir
+	if (!statSync(join(STORE, dir)).isDirectory()) continue;
+	const amo =
+		AMO_LOCALE[dir] ?? fail(`no AMO locale for store/firefox/${dir}; add it to AMO_LOCALE`);
 	for (const [file, field] of Object.entries(FIELDS)) {
 		const path = join(STORE, dir, file);
 		if (!existsSync(path)) continue;
-		if (!payload[field]) payload[field] = {};
-		payload[field][amo] = readFileSync(path, "utf8").trim();
+		texts[field] ??= {};
+		texts[field][amo] = readFileSync(path, "utf8").trim();
 	}
 }
-const fields = Object.keys(payload);
-if (!fields.length) fail("no summary.txt / description.txt under store/firefox/<locale>/");
+if (!Object.keys(texts).length)
+	fail("no summary.txt / description.txt under store/firefox/<locale>/");
+const payload: Record<string, Record<string, string> | string> = { ...texts };
+
+// Contact and donation links. AMO stores support_email/support_url per locale, so they go
+// under en-US (the default locale); contributions_url is a plain string.
+const LINKS = join(STORE, "listing.json");
+if (existsSync(LINKS)) {
+	const links = JSON.parse(readFileSync(LINKS, "utf8"));
+	for (const field of ["support_email", "support_url"])
+		if (links[field]) payload[field] = { "en-US": links[field] };
+	if (links.contributions_url) payload.contributions_url = links.contributions_url;
+}
 
 console.log(`AMO listing for ${guid} (${API_BASE})`);
-for (const field of fields) {
-	const locs = Object.entries(payload[field])
-		.map(([l, t]) => `${l}(${t.length})`)
-		.join("  ");
-	console.log(`  ${field}: ${locs}`);
+for (const [field, value] of Object.entries(payload)) {
+	const shown =
+		typeof value === "string"
+			? value
+			: Object.entries(value)
+					.map(([l, t]) => (FIELDS_SHOWN_BY_LENGTH.has(field) ? `${l}(${t.length})` : `${l}: ${t}`))
+					.join("  ");
+	console.log(`  ${field}: ${shown}`);
 }
 if (DRY_RUN) {
 	console.log("\ndry run — omit --dry-run to PATCH the live listing.");
@@ -123,8 +150,8 @@ try {
 		body: JSON.stringify(payload),
 	});
 	if (!res.ok) fail(`AMO PATCH ${res.status}: ${await res.text()}`);
-	const locales = Object.keys(payload[fields[0]]).length;
-	console.log(`\npushed ${fields.join(" + ")} across ${locales} locale(s) to ${guid}.`);
+	const locales = Object.keys(texts.description ?? texts.summary ?? {}).length;
+	console.log(`\npushed ${Object.keys(payload).join(" + ")} (${locales} locale(s)) to ${guid}.`);
 } finally {
 	rmSync(tmp, { recursive: true, force: true });
 }

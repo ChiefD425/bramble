@@ -1,1 +1,1 @@
-Application locale avant tout, gestionnaire de mots de passe chiffré. Aucun cloud central ne conserve vos secrets.
+Gestionnaire de mots de passe gratuit et open source. Votre coffre reste chiffré sur vos propres appareils et se synchronise entre eux, sans compte ni serveur qui le détient.

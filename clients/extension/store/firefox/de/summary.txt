@@ -1,1 +1,1 @@
-Lokale, verschlüsselte Passwortverwaltung. Keine zentrale Cloud-Speicherung Ihrer Geheimnisse.
+Kostenloser Open-Source-Passwortmanager. Ihr Tresor bleibt auf Ihren eigenen Geräten verschlüsselt und synchronisiert sich zwischen ihnen – ohne Konto und ohne Server, der ihn speichert.

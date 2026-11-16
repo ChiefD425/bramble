@@ -1,1 +1,1 @@
-Gerenciador de senhas criptografado e focado no armazenamento local. Nenhuma nuvem central armazena seus segredos.
+Gerenciador de senhas gratuito e de código aberto. Seu cofre permanece criptografado nos seus próprios dispositivos e sincroniza entre eles, sem conta e sem servidor para armazená-lo.

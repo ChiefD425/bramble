@@ -1,1 +1,1 @@
-Gestor de contraseñas cifrado y de prioridad local. Sin nube central que almacene sus secretos.
+Gestor de contraseñas gratuito y de código abierto. Su bóveda permanece cifrada en sus propios dispositivos y se sincroniza entre ellos, sin cuenta y sin ningún servidor que la aloje.
