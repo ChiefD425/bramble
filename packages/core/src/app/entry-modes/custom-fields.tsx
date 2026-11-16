@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { SelectField } from "../components/ui/select-field";
 import { TextField } from "../components/ui/text-field";
 import { useRevealState } from "../hooks/useRevealState";
-import { DetailField, DetailValue } from "./DetailField";
+import { DetailField, DetailValue, NumberedChars } from "./DetailField";
 
 /** Form-side shape of a custom field: the persisted `hidden` boolean becomes a "text"/"password" type. */
 export interface CustomFieldFormValue {
@@ -187,7 +187,13 @@ export function CustomFieldsDetail({ fields, copied, copy }: CustomFieldsDetailP
 						}
 					>
 						<DetailValue mono={field.hidden} wrap={field.hidden && !masked}>
-							{masked ? "•".repeat(Math.min(field.value.length, 16)) : field.value || "-"}
+							{masked ? (
+								"•".repeat(Math.min(field.value.length, 16))
+							) : field.hidden && field.value ? (
+								<NumberedChars value={field.value} />
+							) : (
+								field.value || "-"
+							)}
 						</DetailValue>
 					</DetailField>
 				);

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type Platform, PlatformProvider } from "../../context/PlatformContext";
 import { cardMode } from "./card";
+import { CustomFieldsDetail } from "./custom-fields";
 import { loginMode } from "./login";
 import { noteMode } from "./note";
 import { sshKeyMode } from "./ssh-key";
@@ -115,5 +116,47 @@ describe("login detail websites", () => {
 		const links = screen.getAllByRole("link", { name: "Open website" });
 		expect(links.map((a) => a.getAttribute("href"))).toEqual(["https://example.com:1234/"]);
 		expect(screen.getAllByRole("button", { name: "Copy website" })).toHaveLength(2);
+	});
+});
+
+describe("revealed secrets", () => {
+	const cells = () => [...document.querySelectorAll("[data-pos]")];
+	const positions = () => cells().map((c) => [c.textContent, c.getAttribute("data-pos")]);
+
+	it("numbers each character of a revealed password", () => {
+		show(
+			loginMode,
+			entry({ id: "l1", type: "login", name: "Bank", urls: [], username: "", password: "a b" }),
+		);
+		expect(cells()).toEqual([]);
+		fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+		expect(positions()).toEqual([
+			["a", "1"],
+			[" ", "2"],
+			["b", "3"],
+		]);
+		expect(cells()[0]?.parentElement?.textContent).toBe("a b");
+	});
+
+	it("numbers a revealed hidden field, not a visible one", () => {
+		render(
+			<I18nProvider i18n={i18n}>
+				<CustomFieldsDetail
+					fields={[
+						{ key: "Memorable word", value: "otter", hidden: true },
+						{ key: "Branch", value: "Leeds" },
+					]}
+					copied={null}
+					copy={vi.fn()}
+				/>
+			</I18nProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Show value" }));
+		expect(
+			positions()
+				.map(([c]) => c)
+				.join(""),
+		).toBe("otter");
+		expect(screen.getByText("Leeds")).toBeTruthy();
 	});
 });
