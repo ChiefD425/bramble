@@ -8,7 +8,7 @@
 //   pnpm keys:touch-id ~/.config/bramble/asc-api-key.age ...
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -60,6 +60,8 @@ try {
 		execFileSync("age", ["-e", "-r", yubiKey, "-r", touchId as string, "-o", next], {
 			input: plaintext,
 		});
+		// age -o follows the umask (0644 here); the originals are owner-only.
+		chmodSync(next, 0o600);
 		console.error(`Approve with Touch ID to check ${next} opens.`);
 		const check = execFileSync("age", ["-d", "-i", touchOnly, next], {
 			stdio: ["ignore", "pipe", "inherit"],
