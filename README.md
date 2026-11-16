@@ -185,7 +185,7 @@ Parts of Bramble were written with AI assistance (Claude Opus), but every line w
 
 ## Contributing
 
-Open source and contributions welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the setup steps, the coding standard, and what CI expects. A few things worth knowing up front:
+Open source and contributions welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the setup steps, the coding standard, and what CI expects, and [GOVERNANCE.md](GOVERNANCE.md) covers who decides what and what the project commits to. A few things worth knowing up front:
 
 - **Open an issue first for anything big.** Bug reports and small fixes can go straight to a PR. The tracker is at [github.com/bramble-sh/bramble/issues](https://github.com/bramble-sh/bramble/issues).
 - **Security software has a higher bar.** Expect changes to come with tests, and the crypto and vault-format paths to get extra scrutiny.
