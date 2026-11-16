@@ -1,47 +1,51 @@
-Bramble es un gestor de contraseñas que vive en su navegador y mantiene sus secretos en su propio equipo. Sin cuenta, sin servidor que almacene su bóveda, sin empresa que pueda sufrir una filtración y exponerlo todo. Usted tiene la bóveda, usted tiene la contraseña, y eso es todo.
+Bramble es un gestor de contraseñas gratuito y de código abierto que guarda sus secretos en sus propios dispositivos. Sin cuenta, sin servidor que custodie su bóveda, sin empresa que pueda sufrir una filtración y revelarlo todo. Usted conserva la bóveda, usted conserva la contraseña y eso es todo.
 
-Funciona en Chrome, Edge, Brave, Arc y otros navegadores Chromium. Instálelo y estará operativo en aproximadamente un minuto.
+Funciona en Chrome, Edge, Brave, Arc y otros navegadores basados en Chromium. Instálelo y estará funcionando en aproximadamente un minuto. Bramble también tiene aplicaciones para macOS, Linux, iOS y Android, y su bóveda se sincroniza entre todas ellas.
 
 QUÉ HACE
 
-Sus contraseñas se cifran en su dispositivo y se guardan en el almacenamiento privado del propio navegador. No hay cuenta ni servidor que almacene su bóveda. Configúrelo una vez y comenzará a autocompletar inicios de sesión, guardar nuevos y generar contraseñas de inmediato.
+Sus contraseñas se cifran en su dispositivo y se guardan en el almacenamiento privado del propio navegador. Configúrelo una vez y podrá autocompletar inicios de sesión, guardar contraseñas nuevas y generarlas al instante.
 
-¿Tiene más de un dispositivo? Vincúlelos y Bramble sincroniza su bóveda directamente entre ellos, con cifrado de extremo a extremo. El relé que presenta sus dispositivos solo ve texto cifrado y no almacena nada, por lo que sus secretos nunca llegan al servidor de nadie. ¿Quiere una copia en sus propias manos? Exporte un archivo de copia de seguridad cifrado en cualquier momento.
+¿Tiene más de un dispositivo? Empareje sus dispositivos y Bramble sincronizará su bóveda directamente entre ellos, con cifrado de extremo a extremo. El relé que pone en contacto sus dispositivos solo ve texto cifrado y no almacena nada, por lo que sus secretos nunca acaban en el servidor de nadie.
 
 CARACTERÍSTICAS
 
-- Local primero, siempre. Su bóveda cifrada permanece en su dispositivo, en el almacenamiento privado del navegador. Sin cuenta, sin copia en el servidor.
-- Sincronización entre dispositivos. Sus dispositivos se mantienen sincronizados a través de un canal de igual a igual con cifrado de extremo a extremo; el relé que los conecta solo ve texto cifrado y no almacena nada.
-- Criptografía sólida. Argon2id para su clave, AES-256-GCM para los datos, cifrado en sobre para que cada entrada tenga su propia clave. Los secretos se eliminan de la memoria después de su uso.
-- Todo cifrado. Nombres de sitios, nombres de usuario, notas, todo.
-- Autocompletado inteligente por dominio. www.example.com, ca.accounts.example.com y example.com coinciden con un mismo inicio de sesión. Una entrada, varias URL.
-- Claves de acceso. Bramble es su propio autenticador de claves de acceso: cree e inicie sesión con claves de acceso, almacenadas en su bóveda y cifradas como todo lo demás.
+- Primero lo local, siempre. Su bóveda cifrada permanece en su dispositivo, en el almacenamiento privado del navegador. Sin cuenta, sin copia en ningún servidor.
+- Sincronización punto a punto. Sus dispositivos se mantienen sincronizados mediante una conexión cifrada de extremo a extremo, fusionando entrada por entrada. El relé que los conecta solo ve texto cifrado y no almacena nada.
+- Criptografía seria. Argon2id para su clave, AES-256-GCM para los datos y cifrado por envoltura para que cada entrada tenga su propia clave. Los secretos se eliminan de la memoria después de usarse.
+- Todo cifrado. Nombres de sitios, usuarios, notas: absolutamente todo.
+- Autocompletado inteligente por dominio. www.example.com, ca.accounts.example.com y example.com coinciden con un único inicio de sesión. El menú desplegable en la página llega a formularios dentro de iframes y shadow DOM.
+- Llaves de acceso. Bramble es su autenticador de llaves de acceso: créelas e inicie sesión con ellas, guardadas en su bóveda y sincronizadas como todo lo demás.
 - Más que inicios de sesión. Inicios de sesión, tarjetas de pago, notas seguras y claves SSH, cada uno con sus propios campos.
+- Alias de correo electrónico. Obtenga una dirección de reenvío única para cada sitio mediante Addy.io, SimpleLogin o Fastmail, o desde un dominio propio; se ofrece directamente en el formulario de registro.
+- Desbloqueo con un toque. Registre una YubiKey, Touch ID o Windows Hello y desbloquee con un toque mediante WebAuthn PRF. Úselo junto con su contraseña maestra o conviértalo en su única forma de acceso.
+- Códigos de recuperación. Cada bóveda recibe un código de recuperación seguro al configurarse: una copia de seguridad imprimible que la desbloquea con independencia de su contraseña maestra.
+- Códigos TOTP/2FA. Pegue una URI otpauth:// o un secreto y Bramble genera los códigos.
+- Copias de seguridad cifradas. Exporte su bóveda a un archivo cifrado en cualquier momento o programe copias de seguridad cifradas en Dropbox, un bucket compatible con S3 o WebDAV. El proveedor solo ve texto cifrado.
+- Sin dependencia. Exporte a un archivo KeePass (.kdbx) estándar cuando desee marcharse.
+- Varias bóvedas. Mantenga bóvedas separadas una al lado de la otra, cada una protegida por su propia contraseña maestra.
 - Generador de contraseñas integrado.
-- Desbloqueo con clave de hardware. Registre una YubiKey, Touch ID o Windows Hello y desbloquee con un toque mediante WebAuthn PRF. Úselo junto con su contraseña maestra, o conviértalo en su única forma de acceso.
-- Copias de seguridad cifradas. Exporte toda su bóveda a un archivo cifrado en cualquier momento, para obtener una copia offline que usted conserva. Aún necesita su contraseña maestra para abrirla.
-- Códigos de recuperación. Cada bóveda obtiene un código de recuperación seguro durante la configuración: una copia de seguridad imprimible que la desbloquea independientemente de su contraseña maestra.
-- Códigos TOTP / 2FA. Pegue una URI otpauth:// o un secreto y Bramble genera los códigos.
-- Verificación de filtraciones opcional. Consulta en Have I Been Pwned mediante k-anonimato, para que nada sobre su contraseña salga de su equipo. Desactivado por defecto.
-- Bloqueo automático después de 15 minutos de inactividad (configurable).
-- Importación desde KeePass, Bitwarden, Proton Pass y 1Password.
+- Comprobación de filtraciones opcional. Consulta en Have I Been Pwned mediante k-anonimato, de modo que nada sobre su contraseña sale de su equipo. Desactivada por defecto.
+- Bloqueo automático tras 15 minutos de inactividad (configurable).
+- Importación desde 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords y Google Password Manager.
 
-POR QUÉ LOCAL PRIMERO
+POR QUÉ PRIMERO LO LOCAL
 
-Los gestores en la nube mantienen las bóvedas de todos en sus servidores, lo que constituye un objetivo enorme. Cuando uno es vulnerado, no se filtra una bóveda, sino millones a la vez, a menudo revelado meses después.
+Los gestores en la nube guardan las bóvedas de todos en sus servidores, lo que supone un objetivo gigantesco. Cuando se produce una filtración, no se filtra una sola bóveda, sino millones a la vez y, a menudo, no se hace pública hasta meses después.
 
-Bramble invierte esto:
-- Sin servidor que vulnerar. Su bóveda nunca sale de su control.
-- Sin cuenta, sin suscripción, sin telemetría. Nada que requiera registro.
-- Sus datos, sus dispositivos. Sincronícelos entre sus propios dispositivos, manténgalos en una sola máquina o exporte una copia de seguridad cifrada que usted conserve. Nada se almacena nunca en el servidor de otro.
-- Solo confíe en el código. El código es de código abierto y se ejecuta completamente en su dispositivo.
+Bramble le da la vuelta a esto:
+
+- No hay ningún servidor que vulnerar. Su bóveda nunca sale de su control.
+- Sin cuenta, sin suscripción, sin anuncios, sin telemetría. No hay que registrarse para nada.
+- Sus datos, sus dispositivos. Sincronícelos entre sus propios dispositivos, manténgalos en un solo equipo o haga copias de seguridad cifradas en el almacenamiento que elija. Nada legible queda nunca en un servidor ajeno.
+- Nada en lo que confiar excepto el código. Bramble es de código abierto bajo la GPL y el código está publicado en GitHub.
 
 CÓMO FUNCIONA EL CIFRADO
 
-Bramble utiliza ranuras de clave estilo LUKS y cifrado en sobre. Una Clave de Bóveda aleatoria protege sus datos. Cada método de desbloqueo (contraseña maestra, clave de seguridad, código de recuperación) deriva su propia Clave de Cifrado de Clave que desenvuelve una copia de esa misma Clave de Bóveda, por lo que agregar o revocar un método de desbloqueo nunca vuelve a cifrar una sola entrada. Luego, la Clave de Bóveda desenvuelve una clave nueva por entrada para cada elemento. Todo es AES-256-GCM.
+Bramble utiliza ranuras de clave al estilo LUKS y cifrado por envoltura. Una única clave de bóveda aleatoria protege sus datos. Cada método de desbloqueo (contraseña maestra, clave de seguridad, código de recuperación) deriva su propia clave de cifrado de claves que desenvuelve una copia de esa misma clave de bóveda, de modo que añadir o revocar un método de desbloqueo nunca vuelve a cifrar ni una sola entrada. La clave de bóveda desenvuelve después una clave nueva por entrada para cada elemento. Todo utiliza AES-256-GCM.
 
 ¿VIENE DE KEEPASS?
 
-Se sentirá como en casa: su bóveda cifrada, su control, sin intermediario en la nube, y Bramble importa sus archivos KDBX4. Las diferencias: vive en su navegador (sin aplicación de escritorio independiente ni puente de complementos), el autocompletado está integrado con coincidencia de dominios y un menú desplegable en la página, y ofrece una compilación moderna única con Argon2id y AES-256-GCM en lugar de una variedad de complementos. Interfaz limpia, modo oscuro incluido.
+Se sentirá como en casa: su bóveda cifrada, su control, sin intermediarios en la nube. Bramble importa sus archivos KDBX4 (incluidos los archivos de clave) y exporta de nuevo a .kdbx cuando usted quiera. Las diferencias: el autocompletado está integrado, con coincidencia por dominio y un menú desplegable en la página, así que no hace falta un puente de complementos; la sincronización entre sus dispositivos también está integrada; y se distribuye como una única versión moderna con Argon2id y AES-256-GCM en lugar de una maraña de complementos. Interfaz limpia, modo oscuro incluido.
 
 Lea la política de privacidad completa enlazada en esta página.
