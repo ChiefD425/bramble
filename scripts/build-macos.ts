@@ -26,7 +26,16 @@
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,6 +43,7 @@ import { makeAppImagePortable } from "./appimage-portability.ts";
 import { ensureTools } from "./appimage-tools.ts";
 import { type AscApiKey, ascApiKey } from "./asc-api-key.ts";
 import { KEY_AGE, signingKey } from "./desktop-signing-key.ts";
+import { SMOKE_SIGSUM_KEY, sshEd25519Hex } from "./smoke-sigsum.ts";
 
 const fail = (message: string): never => {
 	console.error(message);
@@ -332,6 +342,36 @@ const forwarded = passed.filter((a) => a !== "--aarch64" && !PHASES.includes(a))
 const universal =
 	process.platform === "darwin" && !hostOnly && !forwarded.some((a) => a.startsWith("--target"));
 
+/**
+ * The local-update test build trusts Sigsum's test log and a throwaway key made here, so
+ * `pnpm updater:smoke` can log the archive it serves (docs/update-transparency.md). A fresh key per
+ * compile, kept beside the build; the bundle half reuses it.
+ */
+const localUpdate = passed.some((a) => a.includes("local-update"));
+function smokeKey(): string {
+	if (!bundleOnly) {
+		mkdirSync(dirname(SMOKE_SIGSUM_KEY), { recursive: true });
+		rmSync(SMOKE_SIGSUM_KEY, { force: true });
+		rmSync(`${SMOKE_SIGSUM_KEY}.pub`, { force: true });
+		execFileSync("ssh-keygen", [
+			"-q",
+			"-t",
+			"ed25519",
+			"-N",
+			"",
+			"-C",
+			"bramble-smoke",
+			"-f",
+			SMOKE_SIGSUM_KEY,
+		]);
+	}
+	return sshEd25519Hex(readFileSync(`${SMOKE_SIGSUM_KEY}.pub`, "utf8"));
+}
+
+const smoke = localUpdate
+	? { args: ["--features", "update-log-test"], env: { BRAMBLE_UPDATE_LOG_TEST_KEY: smokeKey() } }
+	: { args: [], env: {} };
+
 /** Same target and --config for both halves: `tauri bundle` reads the build `tauri build` left. */
 const tauri = (command: "build" | "bundle", extra: string[], env: NodeJS.ProcessEnv) =>
 	execFileSync(
@@ -343,6 +383,7 @@ const tauri = (command: "build" | "bundle", extra: string[], env: NodeJS.Process
 			"tauri",
 			command,
 			...extra,
+			...smoke.args,
 			...forwarded,
 			...(universal ? ["--target", "universal-apple-darwin"] : []),
 		],
@@ -362,7 +403,7 @@ const universalEnv =
  * Connect credentials on `process.env`, and a copy taken before that produced a build that was
  * signed, passed every check, and was silently not notarized.
  */
-const envNow = () => ({ ...process.env, ...universalEnv });
+const envNow = () => ({ ...process.env, ...universalEnv, ...smoke.env });
 
 /** Signing material the compile step never sees, wherever it came from (.env.local, CI). */
 const SIGNING_ENV = [

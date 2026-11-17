@@ -183,6 +183,10 @@ required-features = ["proxy-bin"]
 [features]
 default = ["proxy-bin"]
 proxy-bin = []
+# The local-update test build only: trust Sigsum's test log and the throwaway key in
+# BRAMBLE_UPDATE_LOG_TEST_KEY, so `pnpm updater:smoke` can serve a logged update. Never for a
+# release; see src/update_log.rs.
+update-log-test = []
 
 # Dependencies are optimised even in dev builds. Argon2 is the reason: opening a default
 # KeePassXC database (64 MiB, 106 rounds) costs ~51s unoptimised against ~3s optimised, which

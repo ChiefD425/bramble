@@ -8,7 +8,11 @@
 //! See docs/update-transparency.md.
 
 use serde_json::Value;
-use sigsum::policy::{Policy, SIGSUM_GENERIC_2025_1};
+use sigsum::policy::Policy;
+#[cfg(not(feature = "update-log-test"))]
+use sigsum::policy::SIGSUM_GENERIC_2025_1 as POLICY;
+#[cfg(feature = "update-log-test")]
+use sigsum::policy::SIGSUM_TEST1_2025 as POLICY;
 use sigsum::{Hash, PublicKey, SigsumSignature};
 
 /// Where the update manifest (website/public/desktop/latest.json) keeps the proofs: a map from the
@@ -17,12 +21,24 @@ pub const PROOFS_FIELD: &str = "sigsum_proofs";
 
 /// Bramble's leaf-signing keys for the log: one signs in CI, the other is an offline backup, so
 /// losing one does not strand every install.
+#[cfg(not(feature = "update-log-test"))]
 const RELEASE_KEYS: &str = include_str!("../sigsum-keys.txt");
+
+/// The local-update test build (`pnpm build:macos:local-update`) trusts Sigsum's test log and a
+/// throwaway key made for that build instead, so `pnpm updater:smoke` can log what it serves.
+/// Anyone can log to the test log, so such a build must never ship: release-desktop.mjs refuses a
+/// binary carrying this marker.
+#[cfg(feature = "update-log-test")]
+const RELEASE_KEYS: &str = env!("BRAMBLE_UPDATE_LOG_TEST_KEY");
+#[cfg(feature = "update-log-test")]
+const TEST_BUILD_MARKER: &str = "BRAMBLE-UPDATE-LOG-TEST-BUILD: trusts Sigsum's test log";
 
 /// Whether `artifact` is logged under Bramble's keys according to the pinned policy, by the proof
 /// `manifest` carries for it. Needs no network: the proof is complete in itself.
 pub fn verify_logged(artifact: &[u8], manifest: &Value) -> Result<(), String> {
-    verify_with(artifact, manifest, &release_keys(), &SIGSUM_GENERIC_2025_1)
+    #[cfg(feature = "update-log-test")]
+    log::warn!("{TEST_BUILD_MARKER}");
+    verify_with(artifact, manifest, &release_keys(), &POLICY)
 }
 
 fn release_keys() -> Vec<PublicKey> {
@@ -104,6 +120,7 @@ mod tests {
         assert!(check(&other, &lying, &[key(TEST_KEY)]).is_err());
     }
 
+    #[cfg(not(feature = "update-log-test"))]
     #[test]
     fn refuses_a_proof_signed_by_another_key() {
         let err = check(ARTIFACT, &manifest(PROOF), &release_keys()).unwrap_err();
@@ -136,10 +153,19 @@ mod tests {
         assert!(err.contains("not in the public log"), "{err}");
     }
 
+    #[cfg(not(feature = "update-log-test"))]
     #[test]
     fn production_policy_and_keys_parse() {
-        assert_eq!(SIGSUM_GENERIC_2025_1.name, "sigsum-generic-2025-1");
+        assert_eq!(POLICY.name, "sigsum-generic-2025-1");
         assert_eq!(release_keys().len(), 2);
+    }
+
+    /// Run with BRAMBLE_UPDATE_LOG_TEST_KEY set to TEST_KEY, as the test build's key.
+    #[cfg(feature = "update-log-test")]
+    #[test]
+    fn a_test_build_trusts_the_test_log_and_its_own_key() {
+        assert_eq!(POLICY.name, "sigsum-test1-2025");
+        verify_logged(ARTIFACT, &manifest(PROOF)).unwrap();
     }
 
     /// The first inclusion-proof node with its first hex digit changed.

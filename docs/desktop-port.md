@@ -1387,6 +1387,10 @@ the machine, so it would buy nothing and cost an upload, a wait, and a submissio
 privileges, and watch the server log: a request for `latest.json` then one for the archive is the
 whole handshake.
 
+The installed app also wants a Sigsum proof (docs/update-transparency.md). The local-update build
+trusts Sigsum's test log and a throwaway key, and the smoke server logs the archive there before it
+serves it, so it needs `sigsum-submit` and network.
+
 `--slow[=seconds]` spreads the download out (default 10s). Six megabytes off localhost arrives in
 milliseconds, so without it the percentage in Settings is gone before it can be read, which makes
 the one part of the UI worth watching the one part you cannot see. The manifest is never throttled.

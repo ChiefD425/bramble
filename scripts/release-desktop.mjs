@@ -132,12 +132,12 @@ if (!skipLocal && !existsSync(updaterDir)) {
 const localEndpoint = existsSync(PATCH)
   ? JSON.parse(readFileSync(PATCH, "utf8")).plugins?.updater?.endpoints?.[0]
   : undefined;
+// The binary to scan, inside whatever the platform's bundle is.
+const binaries = MAC
+  ? [join(updaterDir, "Bramble.app/Contents/MacOS/bramble-desktop")]
+  : [join(TARGET, "release/bramble-desktop")];
 if (localEndpoint) {
   const host = new URL(localEndpoint).host;
-  // The binary to scan, inside whatever the platform's bundle is.
-  const binaries = MAC
-    ? [join(updaterDir, "Bramble.app/Contents/MacOS/bramble-desktop")]
-    : [join(TARGET, "release/bramble-desktop")];
   for (const path of binaries) {
     const binary = path.split("/").pop();
     if (existsSync(path) && readFileSync(path).includes(host)) {
@@ -148,6 +148,19 @@ if (localEndpoint) {
       );
       process.exit(1);
     }
+  }
+}
+
+// The same build also trusts Sigsum's test log (the update-log-test feature), where anyone can log
+// anything, so a released copy would install whatever an attacker logged there. Its marker string
+// is in src/update_log.rs.
+for (const path of binaries) {
+  if (existsSync(path) && readFileSync(path).includes("BRAMBLE-UPDATE-LOG-TEST-BUILD")) {
+    console.error(
+      `${path.split("/").pop()} was built with the update-log-test feature, which trusts Sigsum's\n` +
+        "test log. It must not be released. Rebuild without it (pnpm build:macos, not :local-update).",
+    );
+    process.exit(1);
   }
 }
 

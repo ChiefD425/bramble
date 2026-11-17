@@ -83,11 +83,13 @@ node scripts/sigsum-monitor.ts
   alike, since we cannot target one user through the Chrome Web Store, AMO, the App Store or a
   GitHub APK download, and the extensions are checked daily against their source instead.
 
-**`pnpm updater:smoke` stops at the log check.** It serves a local archive, which has no proof,
-so the app refuses it after the download and the signature check. The bundle swap after that is
-untested until there is a build that trusts Sigsum's test log for this purpose, behind a guard
-that keeps such a build out of a release (the way `release-desktop.mjs` already refuses one built
-against the local update endpoint).
+**Testing an update locally.** `pnpm build:macos:local-update` builds with the `update-log-test`
+feature: that build trusts Sigsum's test log and a throwaway key made for it
+(`target/smoke-sigsum-key`), and `pnpm updater:smoke` logs the archive it serves there and puts the
+proof in its manifest, so the whole path runs, proof check included. Anyone can log to the test log,
+so such a build must never ship: `release-desktop.mjs` refuses any binary carrying the marker string
+from `update_log.rs`, as it already refuses one built against the local endpoint, and the feature
+does not compile without the key.
 
 ## Keys
 

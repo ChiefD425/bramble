@@ -15,17 +15,18 @@
 // expected, and the reason there is a second, two-build step in the docs for confirming the
 // version actually changes.
 //
-// Since update transparency (docs/update-transparency.md) the app also requires a Sigsum proof,
-// and an archive served from here has none, so the update is refused after the download and the
-// signature check: "this update is not in the public log". That refusal is what this shows now.
-// Exercising the bundle swap again needs a build that trusts Sigsum's test log, which does not
-// exist yet.
+// The app also requires a Sigsum proof (docs/update-transparency.md). The local-update build trusts
+// Sigsum's test log and a throwaway key made with it, so this logs the archive there with that key
+// and serves the proof in the manifest. Needs sigsum-submit and network.
 
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SMOKE_SIGSUM_KEY } from "./smoke-sigsum.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** Overridable so this can be exercised against a scratch directory rather than a real build. */
@@ -86,6 +87,29 @@ if (!files.includes(`${archive}.sig`))
 	// unsigned test artifact.
 	fail(`${archive} has no .sig. The build needs TAURI_SIGNING_PRIVATE_KEY set.`);
 
+if (!existsSync(SMOKE_SIGSUM_KEY))
+	fail(`no ${SMOKE_SIGSUM_KEY}. Rebuild with \`pnpm build:macos:local-update\`, which makes it.`);
+// Logged on Sigsum's test log, which the local-update build trusts and nothing released does.
+// sigsum-submit keeps a valid proof it finds, so a second run over the same archive is instant.
+const archivePath = join(MACOS, archive);
+try {
+	execFileSync("sigsum-submit", ["-P", "sigsum-test1-2025", "-k", SMOKE_SIGSUM_KEY, archivePath], {
+		stdio: "inherit",
+	});
+} catch (e) {
+	fail(
+		(e as NodeJS.ErrnoException).code === "ENOENT"
+			? "sigsum-submit not found:\n  go install sigsum.org/sigsum-go/cmd/sigsum-submit@v0.14.1"
+			: "could not log the archive on Sigsum's test log (above); it may be down, try again shortly.",
+	);
+}
+const sigsumProofs = {
+	[createHash("sha256").update(readFileSync(archivePath)).digest("hex")]: readFileSync(
+		`${archivePath}.proof`,
+		"utf8",
+	),
+};
+
 const { version } = JSON.parse(readFileSync(CONF, "utf8"));
 const offered = bump(version);
 const PORT = port();
@@ -104,6 +128,7 @@ const manifest = {
 			url: `http://127.0.0.1:${PORT}/${archive}`,
 		},
 	},
+	sigsum_proofs: sigsumProofs,
 };
 const manifestPath = join(MACOS, "latest.local.json");
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
