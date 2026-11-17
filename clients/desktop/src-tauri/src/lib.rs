@@ -35,6 +35,10 @@ mod spotlight;
 mod storage;
 mod stream;
 mod sync_crypto;
+#[cfg(desktop)]
+mod update_log;
+#[cfg(desktop)]
+mod updates;
 
 use tauri::{Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
@@ -243,6 +247,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             core_version,
             self_updatable,
+            #[cfg(desktop)]
+            updates::updates_install,
             tray_theme,
             hide_to_tray,
             quit_app,

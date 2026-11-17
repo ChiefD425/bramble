@@ -1,9 +1,13 @@
-# Checks, every day, that what users get is what the source says (docs/reproducible-builds.md):
-# rebuilds the extension each store is serving right now from its tag and compares it file by file
-# with the store's package and the GitHub release.
+# Checks, every day, that what users get is what the source says (docs/reproducible-builds.md,
+# docs/update-transparency.md):
 #
-# The script needs only Docker and network, so anyone can run it, and a failure here is for the
-# maintainer to explain in public.
+# - Rebuilds the extension each store is serving right now from its tag and compares it file by
+#   file with the store's package and the GitHub release.
+# - Reads the Sigsum logs for anything signed with Bramble's desktop release keys that is not a
+#   published release.
+#
+# Both scripts need only network, so anyone can run them, and a failure here is for the maintainer
+# to explain in public.
 
 name: Verify releases
 
@@ -70,3 +74,23 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: node scripts/verify-release.ts "$TAG"
 
+  sigsum:
+    name: Monitor the Sigsum logs
+    runs-on: ubuntu-24.04
+    # Up to a 30-minute wait: a release logs its artifacts minutes before it publishes them.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Every entry under Bramble's keys is a published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/sigsum-monitor.ts --grace 30

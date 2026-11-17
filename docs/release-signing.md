@@ -590,6 +590,10 @@ It is also effectively permanent. Verification uses the public key compiled into
 already has, so rotating the keypair does not roll out — it strands every existing install on a
 manual re-download. Treat losing it as unrecoverable-by-design and keep the offline backup.
 
+A signature alone cannot show that everyone got the same build, so every updater artifact is also
+logged to Sigsum before release, and the app refuses an update that is not in the log. That adds a
+third key, its backup, and a DNS record; see [update-transparency.md](update-transparency.md).
+
 ### Why the key is not ON the YubiKey
 
 Tauri's CLI signs with minisign and takes the key as a path or a string; it cannot drive a hardware

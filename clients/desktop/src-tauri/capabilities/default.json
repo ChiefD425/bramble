@@ -12,7 +12,7 @@
 		"dialog:allow-ask",
 		"dialog:allow-message",
 		"opener:allow-open-url",
-		"updater:default",
+		"updater:allow-check",
 		"process:allow-restart",
 		"log:default"
 	]

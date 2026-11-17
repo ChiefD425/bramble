@@ -14,6 +14,12 @@
 // app therefore still reports the old version afterwards and will offer the same update again:
 // expected, and the reason there is a second, two-build step in the docs for confirming the
 // version actually changes.
+//
+// Since update transparency (docs/update-transparency.md) the app also requires a Sigsum proof,
+// and an archive served from here has none, so the update is refused after the download and the
+// signature check: "this update is not in the public log". That refusal is what this shows now.
+// Exercising the bundle swap again needs a build that trusts Sigsum's test log, which does not
+// exist yet.
 
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";

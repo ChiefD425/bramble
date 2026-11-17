@@ -3,10 +3,12 @@
 // The only channel is a signed GitHub release, so this is how a fix reaches anyone running it. The
 // plugin verifies the download against the public key compiled into this build before applying it,
 // which is what makes fetching a binary from the internet and running it acceptable at all: a
-// tampered or substituted asset fails the signature and is discarded.
+// tampered or substituted asset fails the signature and is discarded. Installing happens in Rust
+// (`updates_install`), which also requires the build to be in the public Sigsum log; see
+// docs/update-transparency.md. The webview may only check.
 
 import type { ShellAdapter } from "@core/adapters/shell";
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { desktopStorage } from "./storage";
@@ -34,8 +36,11 @@ export function canSelfUpdate(): boolean {
 /** Device-level rather than a vault preference: the launch check runs before anything is unlocked. */
 const CHECK_ON_LAUNCH_KEY = "updates.checkOnLaunch";
 
-/** Held between check and install so the user is not made to wait for a second round trip. */
-let pending: Awaited<ReturnType<typeof check>> | null = null;
+/** `updates_install`'s progress events, the plugin's own shape (src-tauri/src/updates.rs). */
+type DownloadEvent =
+	| { event: "Started"; data: { contentLength?: number | null } }
+	| { event: "Progress"; data: { chunkLength: number } }
+	| { event: "Finished" };
 
 /**
  * Download progress, shared rather than returned, because an install can start from the launch
@@ -51,8 +56,8 @@ function report(value: number | null | undefined): void {
 
 export const desktopUpdates: NonNullable<ShellAdapter["updates"]> = {
 	async check() {
-		pending = await check();
-		return pending ? { version: pending.version, notes: pending.body ?? undefined } : null;
+		const update = await check();
+		return update ? { version: update.version, notes: update.body ?? undefined } : null;
 	},
 
 	// Only an explicit false turns it off. A fresh install checks, because a fix that reaches
@@ -74,33 +79,36 @@ export const desktopUpdates: NonNullable<ShellAdapter["updates"]> = {
 	},
 
 	async install() {
-		// Re-check rather than trust a stale handle: the window may have sat open for days, and a
-		// download URL from that far back is worth re-resolving.
-		const update = pending ?? (await check());
-		if (!update) return;
 		let total = 0;
 		let seen = 0;
+		const onEvent = new Channel<DownloadEvent>();
+		onEvent.onmessage = (event) => {
+			if (event.event === "Started") {
+				total = event.data.contentLength ?? 0;
+				// Null rather than 0 when the server sent no length: watchers show a spinner
+				// instead of a bar that would sit at zero and look stuck.
+				report(total ? 0 : null);
+			} else if (event.event === "Progress") {
+				seen += event.data.chunkLength;
+				report(total ? Math.min(1, seen / total) : null);
+			} else if (event.event === "Finished") {
+				report(1);
+			}
+		};
+		let installed: boolean;
 		try {
-			await update.downloadAndInstall((event) => {
-				if (event.event === "Started") {
-					total = event.data.contentLength ?? 0;
-					// Null rather than 0 when the server sent no length: watchers show a spinner
-					// instead of a bar that would sit at zero and look stuck.
-					report(total ? 0 : null);
-				} else if (event.event === "Progress") {
-					seen += event.data.chunkLength;
-					report(total ? Math.min(1, seen / total) : null);
-				} else if (event.event === "Finished") {
-					report(1);
-				}
-			});
+			// Checks again itself: the window may have sat open for days since the last check.
+			installed = await invoke<boolean>("updates_install", { onEvent });
 		} catch (e) {
 			// Back to idle, or a failed download would leave every watcher stuck at a percentage
 			// that will never move.
 			report(undefined);
 			throw e;
 		}
-		pending = null;
+		if (!installed) {
+			report(undefined);
+			return;
+		}
 		// Applied on relaunch, so this does not return.
 		await relaunch();
 	},

@@ -139,6 +139,9 @@ const PLANS: Plan[] = [
 		secrets: {
 			TAURI_SIGNING_PRIVATE_KEY: wrapper("desktop-updater-key.age"),
 			TAURI_SIGNING_PRIVATE_KEY_PASSWORD: envVar("TAURI_SIGNING_PRIVATE_KEY_PASSWORD"),
+			// Logging updater artifacts to Sigsum (scripts/sigsum-log.ts, docs/update-transparency.md).
+			SIGSUM_SIGNING_KEY: wrapper("sigsum-signing-key.age"),
+			SIGSUM_RATE_LIMIT_KEY: wrapper("sigsum-rate-limit-key.age"),
 			APPLE_SIGNING_IDENTITY: envVar("APPLE_SIGNING_IDENTITY"),
 			// The names Tauri reads to import a signing identity into a throwaway keychain on a runner.
 			// Not in any wrapper: it lives in the login keychain, so it arrives as an exported .p12.

@@ -1,0 +1,5 @@
+# Bramble's Sigsum leaf-signing keys, hex: an update installs only if one of them logged it.
+# Read by src/update_log.rs (compiled into the app) and scripts/sigsum-monitor.ts.
+# See docs/update-transparency.md.
+79d10aca2f8d1704ddd39cc9d756366aed72b342e552b8aaec5f8805789677fe signing, in CI (desktop-release)
+1a1d40ab5b1cc3bffe06b212bbf42aac295ce65fea95ecd9ddee8ff6da36910b backup, offline

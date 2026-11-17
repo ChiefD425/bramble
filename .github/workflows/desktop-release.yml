@@ -428,6 +428,21 @@ jobs:
           name: rpm-signed
           path: dist-linux/rpm/
 
+      # Logs every updater artifact before it is published; installed apps refuse an update that is
+      # not in the log. Built from source at a pinned version, which Go's checksum database checks.
+      # docs/update-transparency.md.
+      - name: Setup Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: "1.26"
+          cache: false
+
+      - name: Install sigsum-submit
+        run: |
+          set -euo pipefail
+          go install sigsum.org/sigsum-go/cmd/sigsum-submit@v0.14.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
       # The ruleset on main refuses GITHUB_TOKEN, which it evaluates as the GitHub Actions app, and
       # exempting that app would exempt every workflow. This one is on the bypass list and carries
       # contents:write and nothing else, so it may commit and may do nothing else. docs/ci-releases.md.
@@ -449,6 +464,8 @@ jobs:
           SKIP: ${{ inputs.skip }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          SIGSUM_SIGNING_KEY: ${{ secrets.SIGSUM_SIGNING_KEY }}
+          SIGSUM_RATE_LIMIT_KEY: ${{ secrets.SIGSUM_RATE_LIMIT_KEY }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}

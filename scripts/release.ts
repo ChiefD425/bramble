@@ -77,6 +77,7 @@ import { signingKey } from "./desktop-signing-key.ts";
 import { commitOverReleases, createTag } from "./github-commit.ts";
 import { composeNotes } from "./release-notes.mjs";
 import { watchDesktopRelease } from "./release-watch.ts";
+import { isUpdaterArtifact, logToSigsum } from "./sigsum-log.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
 
 const HOME = process.env.HOME ?? "";
@@ -1699,6 +1700,8 @@ async function runnerPublishDesktop(version: string, tag: string): Promise<void>
 	if (!process.env.GITHUB_ACTIONS) fail("--runner-publish runs in desktop-release.yml");
 	const dryRun = flags.has("--dry-run");
 	const bundle = "clients/desktop/src-tauri/target/universal-apple-darwin/release/bundle";
+	// Before the hour of bundling and notarizing, not after it.
+	requireBins(["sigsum-submit"], "docs/update-transparency.md");
 	runnerPrepareDesktop(version);
 	const sha = capture("git rev-parse HEAD");
 	// The updater key signs whatever this release carries; the Apple ones are only wanted when
@@ -1776,6 +1779,17 @@ async function runnerPublishDesktop(version: string, tag: string): Promise<void>
 		}
 	}
 
+	// Every updater artifact goes into the public Sigsum log before anything is public: an installed
+	// app refuses an update that is not there (docs/update-transparency.md). A dry run signs the
+	// requests and logs nothing.
+	const updaterArtifacts = [...archives, ...images, ...windows];
+	let proofs: string[];
+	try {
+		proofs = logToSigsum(updaterArtifacts, dryRun);
+	} catch (e) {
+		fail(`logging to Sigsum failed (${(e as Error).message}); nothing was published`);
+	}
+
 	if (dryRun) {
 		console.log(
 			`\ndry run: ${version} built for ${["macos", "linux"].filter((p) => !skip.has(p)).join(" and ")},` +
@@ -1786,6 +1800,7 @@ async function runnerPublishDesktop(version: string, tag: string): Promise<void>
 	}
 
 	const { assets, sums, expectedDmg } = collectDesktopAssets(version, true, bundle, skip);
+	assets.push(...proofs);
 	const stage = mkdtempSync(join(tmpdir(), "bramble-release-"));
 	const sumsAsset = join(stage, "SHA256SUMS");
 	writeFileSync(sumsAsset, [...sums].map(([name, hash]) => `${hash}  ${name}\n`).join(""));
@@ -1801,7 +1816,9 @@ async function runnerPublishDesktop(version: string, tag: string): Promise<void>
 	// Only now: the manifest IS the update channel, so it goes live after the artifacts it names
 	// exist. Committed onto main as it is NOW, an hour after the build started: these two files
 	// are the release's alone, and nothing else on main has to have stood still for them.
-	run(`node scripts/release-desktop.mjs --resume --quiet${skipArg ? ` ${skipArg}` : ""}`);
+	run(
+		`node scripts/release-desktop.mjs --resume --quiet --require-proofs${skipArg ? ` ${skipArg}` : ""}`,
+	);
 	// The cask names the .dmg, so it moves only with a release that has one.
 	const channels = [DESKTOP_MANIFEST];
 	if (!skip.has("macos")) {
@@ -2173,6 +2190,8 @@ async function releaseDesktop(version: string, universal: boolean, resume = fals
 	// A desktop release ships Linux too, built in a container so one machine can cut the whole
 	// thing. Checked here rather than an hour later, after the gate and a notarized macOS build.
 	if (!resume && process.platform === "darwin") requireBins(["docker"], "docs/desktop-port.md");
+	// A resume logs too: it is the step before the tag.
+	requireBins(["sigsum-submit"], "docs/update-transparency.md");
 	if (!resume && !existsSync(ASC_KEY_AGE) && !process.env.APPLE_API_KEY && !process.env.APPLE_ID)
 		fail(
 			"no notarization credentials; a released build must be notarized or Gatekeeper blocks it. See docs/release-signing.md.",
@@ -2278,6 +2297,13 @@ async function releaseDesktop(version: string, universal: boolean, resume = fals
 
 	const { assets, sums, dmgs, expectedDmg } = collectDesktopAssets(version, universal, BUNDLE);
 	console.warn("warning: a local release ships its .rpm files unsigned; see docs/apt-releases.md");
+	// Before the tag, as on the GitHub route: an installed app refuses an update that is not in the
+	// public log (docs/update-transparency.md).
+	try {
+		assets.push(...logToSigsum(assets.filter(isUpdaterArtifact), false));
+	} catch (e) {
+		fail(`logging to Sigsum failed (${(e as Error).message}); nothing was tagged or published`);
+	}
 	const stage = mkdtempSync(join(tmpdir(), "bramble-release-"));
 	const sumsAsset = join(stage, "SHA256SUMS");
 	writeFileSync(sumsAsset, [...sums].map(([name, hash]) => `${hash}  ${name}\n`).join(""));
@@ -2297,7 +2323,9 @@ async function releaseDesktop(version: string, universal: boolean, resume = fals
 	// Only now. The manifest IS the update channel, so it goes live after the artifacts it names
 	// exist — the other way round, every app checking in between reads a manifest whose download
 	// 404s, and a failed update is indistinguishable from a broken updater.
-	run(`node scripts/release-desktop.mjs --resume --quiet${universal ? "" : " --aarch64"}`);
+	run(
+		`node scripts/release-desktop.mjs --resume --quiet --require-proofs${universal ? "" : " --aarch64"}`,
+	);
 	// The cask rides in that same commit, for the same reason: it names a .dmg by version, so it
 	// points at a release that exists rather than one that is about to. Skipped on --aarch64,
 	// which builds no universal disk image for it to point at, and the cask says universal.
@@ -2687,6 +2715,11 @@ function requireBins(bins: string[], doc: string) {
 		"wasm-pack": {
 			darwin: "cargo install wasm-pack --locked --version 0.13.1",
 			linux: "cargo install wasm-pack --locked --version 0.13.1",
+		},
+		// Logs desktop updater artifacts before a release (scripts/sigsum-log.ts).
+		"sigsum-submit": {
+			darwin: "go install sigsum.org/sigsum-go/cmd/sigsum-submit@v0.14.1",
+			linux: "go install sigsum.org/sigsum-go/cmd/sigsum-submit@v0.14.1",
 		},
 		"cargo-ndk": {
 			darwin: "cargo install cargo-ndk --locked",

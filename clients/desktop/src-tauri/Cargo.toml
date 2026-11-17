@@ -77,6 +77,9 @@ sys-locale = "0.3"
 # target does not try to build an updater that has no meaning there.
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2.14.1"
+# Checking an update is in the public Sigsum log before installing it; offline, no network stack
+# of its own. See src/update_log.rs.
+sigsum = "0.4.0"
 # Only for relaunching after an update lands.
 tauri-plugin-process = "2.3.1"
 

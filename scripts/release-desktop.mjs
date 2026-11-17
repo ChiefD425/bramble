@@ -27,6 +27,7 @@
 // has to belong to the exact bytes being published.
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -161,6 +162,8 @@ if (!skipLocal && archives.length === 0) {
 }
 
 const platforms = {};
+/** Each updater artifact on disk, for its Sigsum proof. */
+const sources = [];
 for (const archive of archives) {
   const sig = `${archive}.sig`;
   if (!files.includes(sig)) {
@@ -169,6 +172,7 @@ for (const archive of archives) {
     console.error(`${archive} has no ${sig}. Was the signing key set for this build?`);
     process.exit(1);
   }
+  sources.push(join(updaterDir, archive));
   for (const key of platformKeys(archive))
     platforms[key] = {
       signature: readFileSync(join(updaterDir, sig), "utf8").trim(),
@@ -202,6 +206,7 @@ if (MAC) {
       const key = image.includes("aarch64") || image.includes("arm64")
         ? "linux-aarch64"
         : "linux-x86_64";
+      sources.push(join(linuxDir, image));
       platforms[key] = {
         signature: readFileSync(join(linuxDir, sig), "utf8").trim(),
         url: `https://github.com/bramble-sh/bramble/releases/download/${version}-desktop/${image}`,
@@ -235,12 +240,28 @@ if (MAC) {
         process.exit(1);
       }
       const key = triple.startsWith("aarch64") ? "windows-aarch64" : "windows-x86_64";
+      sources.push(join(dir, installer));
       platforms[key] = {
         signature: readFileSync(join(dir, sig), "utf8").trim(),
         url: `https://github.com/bramble-sh/bramble/releases/download/${version}-desktop/${installer}`,
       };
     }
   }
+}
+
+// Each artifact's Sigsum proof, keyed by its SHA-256 (sigsum-log.ts made them): an installed app
+// refuses an update without one (docs/update-transparency.md). A release passes --require-proofs;
+// a packaging run on its own has none, and its manifest is not one to publish.
+const sigsumProofs = {};
+for (const file of sources) {
+  const proof = `${file}.proof`;
+  if (!existsSync(proof)) {
+    if (!args.includes("--require-proofs")) continue;
+    console.error(`${file} has no Sigsum proof at ${proof}; every installed app would refuse it.`);
+    process.exit(1);
+  }
+  const sha256 = createHash("sha256").update(readFileSync(file)).digest("hex");
+  sigsumProofs[sha256] = readFileSync(proof, "utf8");
 }
 
 const manifest = {
@@ -251,6 +272,7 @@ const manifest = {
   notes: updaterNotes(version),
   pub_date: new Date().toISOString(),
   platforms,
+  ...(Object.keys(sigsumProofs).length ? { sigsum_proofs: sigsumProofs } : {}),
 };
 
 /**
