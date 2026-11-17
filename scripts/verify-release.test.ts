@@ -2,19 +2,24 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { deflateRawSync } from "node:zlib";
 import {
+	apkSignatureFile,
 	canonicalManifest,
 	compareTrees,
 	crxZip,
 	inReleaseZip,
 	parseTag,
 	storeAdded,
+	tree,
+	zipEntries,
 } from "./verify-release.ts";
 
 describe("parseTag", () => {
 	it("reads the version and target of an extension tag", () => {
 		assert.deepEqual(parseTag("1.37.0-firefox"), { version: "1.37.0", target: "firefox" });
 		assert.deepEqual(parseTag("1.40.0-chromium"), { version: "1.40.0", target: "chromium" });
+		assert.deepEqual(parseTag("0.31.0-android"), { version: "0.31.0", target: "android" });
 	});
 
 	it("refuses tags that are not extension releases", () => {
@@ -58,6 +63,13 @@ describe("what each published copy leaves out or adds", () => {
 		assert.equal(inReleaseZip("package.json"), true);
 	});
 
+	it("sets aside only an APK's v1 signature files", () => {
+		assert.equal(apkSignatureFile("META-INF/CERT.RSA"), true);
+		assert.equal(apkSignatureFile("META-INF/MANIFEST.MF"), true);
+		assert.equal(apkSignatureFile("META-INF/androidx.core_core.version"), false);
+		assert.equal(apkSignatureFile("classes.dex"), false);
+	});
+
 	it("allows only the stores' own signature folders", () => {
 		assert.equal(storeAdded("META-INF/cose.sig"), true);
 		assert.equal(storeAdded("_metadata/verified_contents.json"), true);
@@ -98,5 +110,99 @@ describe("crxZip", () => {
 		v2.write("Cr24", 0, "latin1");
 		v2.writeUInt32LE(2, 4);
 		assert.throws(() => crxZip(v2));
+	});
+});
+
+/** A zip of `entries`, stored or deflated, written by hand so names may differ only in case. */
+function zipOf(entries: [string, string, "store" | "deflate"][]): Buffer {
+	const locals: Buffer[] = [];
+	const central: Buffer[] = [];
+	let offset = 0;
+	for (const [name, text, how] of entries) {
+		const data = Buffer.from(text);
+		const body = how === "deflate" ? deflateRawSync(data) : data;
+		const nameBytes = Buffer.from(name);
+		const local = Buffer.alloc(30);
+		local.writeUInt32LE(0x04034b50, 0);
+		local.writeUInt16LE(how === "deflate" ? 8 : 0, 8);
+		local.writeUInt32LE(body.length, 18);
+		local.writeUInt32LE(data.length, 22);
+		local.writeUInt16LE(nameBytes.length, 26);
+		const dir = Buffer.alloc(46);
+		dir.writeUInt32LE(0x02014b50, 0);
+		dir.writeUInt16LE(how === "deflate" ? 8 : 0, 10);
+		dir.writeUInt32LE(body.length, 20);
+		dir.writeUInt32LE(data.length, 24);
+		dir.writeUInt16LE(nameBytes.length, 28);
+		dir.writeUInt32LE(offset, 42);
+		locals.push(local, nameBytes, body);
+		central.push(dir, nameBytes);
+		offset += 30 + nameBytes.length + body.length;
+	}
+	const centralBytes = Buffer.concat(central);
+	const end = Buffer.alloc(22);
+	end.writeUInt32LE(0x06054b50, 0);
+	end.writeUInt16LE(entries.length, 8);
+	end.writeUInt16LE(entries.length, 10);
+	end.writeUInt32LE(centralBytes.length, 12);
+	end.writeUInt32LE(offset, 16);
+	return Buffer.concat([...locals, centralBytes, end]);
+}
+
+describe("zipEntries", () => {
+	it("reads stored and deflated entries, keeping names that differ only in case apart", () => {
+		const files = zipEntries(
+			zipOf([
+				["res/9n.png", "lower", "store"],
+				["res/9N.png", "upper", "deflate"],
+				["classes.dex", "dex".repeat(100), "deflate"],
+			]),
+		);
+		assert.equal(files.size, 3);
+		assert.equal(files.get("res/9n.png")?.toString(), "lower");
+		assert.equal(files.get("res/9N.png")?.toString(), "upper");
+		assert.equal(files.get("classes.dex")?.toString(), "dex".repeat(100));
+	});
+
+	it("so a change to one of a case-colliding pair is seen", () => {
+		const a = tree(
+			zipEntries(
+				zipOf([
+					["r/a", "1", "store"],
+					["r/A", "2", "store"],
+				]),
+			),
+			() => true,
+		);
+		const b = tree(
+			zipEntries(
+				zipOf([
+					["r/a", "1", "store"],
+					["r/A", "X", "store"],
+				]),
+			),
+			() => true,
+		);
+		assert.deepEqual(compareTrees(a, b), [{ path: "r/A", problem: "differs" }]);
+	});
+
+	it("refuses an archive that names a file twice", () => {
+		assert.throws(
+			() =>
+				zipEntries(
+					zipOf([
+						["x", "1", "store"],
+						["x", "2", "store"],
+					]),
+				),
+			/twice/,
+		);
+	});
+
+	it("refuses what is not a zip", () => {
+		assert.throws(
+			() => zipEntries(Buffer.from("not a zip at all, just some bytes here")),
+			/not a zip/,
+		);
 	});
 });

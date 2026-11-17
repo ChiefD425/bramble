@@ -1,34 +1,43 @@
-// Rebuild a browser-extension release from its tag and check it byte for byte against what was
-// published: the zip on the GitHub release, and the package the store hands to users.
+// Rebuild a release from its tag and check it byte for byte against what was published: the zip
+// or APK on the GitHub release, and for the extensions the package the store hands to users.
 //
 //   node scripts/verify-release.ts 1.37.0-firefox       # a release by its tag
 //   node scripts/verify-release.ts --live chromium      # whatever the store is serving right now
 //   node scripts/verify-release.ts 1.40.0-chromium --no-store
+//   node scripts/verify-release.ts --live android       # the newest Android release
+//   node scripts/verify-release.ts 0.31.0-android --apk app-release-unsigned.apk   # your own build
 //
-// Needs git (a clone with the tag), Docker, and network. The build runs in
-// docker/reproducible-build.Dockerfile as linux/amd64, which is the release runner's platform; see
+// Needs git (a clone with the tag), Docker, and network. The builds run as linux/amd64, the release
+// runner's platform: the extensions in docker/reproducible-build.Dockerfile, Android in its base
+// image with docker/reproducible-android.sh, which keeps the SDK and caches in
+// BRAMBLE_VERIFY_CACHE (default ~/.cache/bramble-verify, about 6 GB). See
 // docs/reproducible-builds.md for why the platform matters and what each store changes.
 
 import { execFileSync, execSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inflateRawSync } from "node:zlib";
 import { CWS_ITEM_ID } from "./cws-ids.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = process.env.GITHUB_REPOSITORY ?? "bramble-sh/bramble";
 const DOCKERFILE = "docker/reproducible-build.Dockerfile";
+const ANDROID_SCRIPT = "docker/reproducible-android.sh";
 const AMO_ID = "firefox@bramble.app";
 const AMO_API = "https://addons.mozilla.org/api/v5/addons/addon";
 const CWS_CRX =
 	"https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999.0" +
 	`&acceptformat=crx3&x=${encodeURIComponent(`id=${CWS_ITEM_ID}&uc`)}`;
 
-export type Target = "firefox" | "chromium";
+export type Target = "firefox" | "chromium" | "android";
 
-/** Path relative to the extension root, mapped to the SHA-256 of its bytes. */
+/** Path inside the package, mapped to its bytes. */
+export type Files = Map<string, Buffer>;
+
+/** Path inside the package, mapped to the SHA-256 of its bytes. */
 export type Tree = Map<string, string>;
 
 export interface Mismatch {
@@ -37,8 +46,8 @@ export interface Mismatch {
 }
 
 export function parseTag(tag: string): { version: string; target: Target } {
-	const m = /^(\d+\.\d+\.\d+)-(firefox|chromium)$/.exec(tag);
-	if (!m) throw new Error(`${tag} is not an extension release tag (like 1.37.0-firefox)`);
+	const m = /^(\d+\.\d+\.\d+)-(firefox|chromium|android)$/.exec(tag);
+	if (!m) throw new Error(`${tag} is not a release tag this checks (like 1.37.0-firefox)`);
 	return { version: m[1], target: m[2] as Target };
 }
 
@@ -54,6 +63,11 @@ export function inReleaseZip(path: string): boolean {
 		name === ".gitignore" ||
 		name === ".DS_Store"
 	);
+}
+
+/** An APK's v1 signature files, the only entries signing adds. Releases sign v2+v3 only. */
+export function apkSignatureFile(path: string): boolean {
+	return path.startsWith("META-INF/") && /\.(SF|RSA|EC|DSA|MF)$/.test(path);
 }
 
 /**
@@ -106,28 +120,74 @@ export function crxZip(crx: Buffer): Buffer {
 
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
-/** Every file under `dir`, filtered, with manifest.json hashed in its canonical form. */
-function readTree(dir: string, keep: (path: string) => boolean, canonical = false): Tree {
-	const tree: Tree = new Map();
+/** Every file under `dir`. */
+function dirFiles(dir: string): Files {
+	const files: Files = new Map();
 	const walk = (at: string) => {
 		for (const entry of readdirSync(at, { withFileTypes: true })) {
 			const full = join(at, entry.name);
 			if (entry.isDirectory()) walk(full);
-			else {
-				const path = relative(dir, full).split("\\").join("/");
-				if (!keep(path)) continue;
-				const bytes = readFileSync(full);
-				tree.set(
-					path,
-					canonical && path === "manifest.json"
-						? sha256(Buffer.from(canonicalManifest(bytes)))
-						: sha256(bytes),
-				);
-			}
+			else files.set(relative(dir, full).split("\\").join("/"), readFileSync(full));
 		}
 	};
 	walk(dir);
-	return tree;
+	return files;
+}
+
+/**
+ * Every file in a zip, read from the archive rather than unpacked to disk: a case-insensitive file
+ * system (macOS, Windows) merges `res/9n.png` and `res/9N.png`, and an APK's shrunk resource names
+ * collide like that, so unpacking would compare fewer files than there are.
+ */
+export function zipEntries(zip: Buffer): Files {
+	let eocd = -1;
+	for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65_557); i--)
+		if (zip.readUInt32LE(i) === 0x06054b50) {
+			eocd = i;
+			break;
+		}
+	if (eocd < 0) throw new Error("not a zip archive");
+	const count = zip.readUInt16LE(eocd + 10);
+	let at = zip.readUInt32LE(eocd + 16);
+	if (count === 0xffff || at === 0xffffffff) throw new Error("zip64 archives are not supported");
+	const files: Files = new Map();
+	for (let n = 0; n < count; n++) {
+		if (zip.readUInt32LE(at) !== 0x02014b50) throw new Error("malformed zip central directory");
+		const method = zip.readUInt16LE(at + 10);
+		const compressed = zip.readUInt32LE(at + 20);
+		const size = zip.readUInt32LE(at + 24);
+		const nameLength = zip.readUInt16LE(at + 28);
+		const local = zip.readUInt32LE(at + 42);
+		const name = zip.subarray(at + 46, at + 46 + nameLength).toString("utf8");
+		at += 46 + nameLength + zip.readUInt16LE(at + 30) + zip.readUInt16LE(at + 32);
+		if (name.endsWith("/")) continue;
+		if (zip.readUInt32LE(local) !== 0x04034b50) throw new Error(`malformed zip entry ${name}`);
+		const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+		const raw = zip.subarray(start, start + compressed);
+		let data: Buffer;
+		if (method === 0) data = Buffer.from(raw);
+		else if (method === 8) data = inflateRawSync(raw);
+		else throw new Error(`${name} uses zip compression method ${method}`);
+		if (data.length !== size) throw new Error(`${name} is not the size the archive says`);
+		if (files.has(name)) throw new Error(`${name} is in the archive twice`);
+		files.set(name, data);
+	}
+	return files;
+}
+
+/** The files `keep` lets through, hashed, manifest.json in its canonical form when asked. */
+export function tree(files: Files, keep: (path: string) => boolean, canonical = false): Tree {
+	const out: Tree = new Map();
+	for (const [path, bytes] of files) {
+		if (!keep(path)) continue;
+		out.set(
+			path,
+			canonical && path === "manifest.json"
+				? sha256(Buffer.from(canonicalManifest(bytes)))
+				: sha256(bytes),
+		);
+	}
+	return out;
 }
 
 async function download(url: string): Promise<Buffer> {
@@ -136,27 +196,29 @@ async function download(url: string): Promise<Buffer> {
 	return Buffer.from(await res.arrayBuffer());
 }
 
-function unzip(zip: Buffer, into: string): void {
-	mkdirSync(into, { recursive: true });
-	const file = `${into}.zip`;
-	writeFileSync(file, zip);
-	execFileSync("unzip", ["-q", "-o", file, "-d", into]);
-}
-
 /** The version the store serves to a fresh install right now. */
-async function liveVersion(target: Target, scratch: string): Promise<string> {
+async function liveVersion(target: Target): Promise<string> {
+	if (target === "android") {
+		// Not in a store: the GitHub release is where the APK ships.
+		const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`);
+		if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+		const releases = (await res.json()) as { tag_name: string; draft: boolean }[];
+		const latest = releases.find((r) => !r.draft && r.tag_name.endsWith("-android"));
+		if (!latest) throw new Error("no Android release found");
+		return latest.tag_name.replace(/-android$/, "");
+	}
 	if (target === "firefox") {
 		const res = await fetch(`${AMO_API}/${encodeURIComponent(AMO_ID)}/`);
 		if (!res.ok) throw new Error(`AMO answered ${res.status}`);
 		return (await res.json()).current_version.version;
 	}
-	const dir = join(scratch, "live-crx");
-	unzip(crxZip(await download(CWS_CRX)), dir);
-	return JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")).version;
+	const manifest = zipEntries(crxZip(await download(CWS_CRX))).get("manifest.json");
+	if (!manifest) throw new Error("the Chrome Web Store package has no manifest.json");
+	return JSON.parse(manifest.toString("utf8")).version;
 }
 
-/** The store's copy of `version`, unpacked, or null when the store no longer serves it. */
-async function storePackage(target: Target, version: string, into: string): Promise<string | null> {
+/** The store's copy of `version`, or null when the store no longer serves it. */
+async function storePackage(target: Target, version: string): Promise<Files | null> {
 	if (target === "firefox") {
 		const res = await fetch(`${AMO_API}/${encodeURIComponent(AMO_ID)}/versions/${version}/`);
 		if (!res.ok) throw new Error(`AMO has no ${version} (${res.status})`);
@@ -164,29 +226,27 @@ async function storePackage(target: Target, version: string, into: string): Prom
 		const xpi = await download(file.url);
 		if (`sha256:${sha256(xpi)}` !== file.hash)
 			throw new Error(`the AMO download does not match AMO's own hash for ${version}`);
-		unzip(xpi, into);
-		return into;
+		return zipEntries(xpi);
 	}
 	// The Chrome Web Store only ever serves its current version.
-	unzip(crxZip(await download(CWS_CRX)), into);
-	const served = JSON.parse(readFileSync(join(into, "manifest.json"), "utf8")).version;
-	return served === version ? into : null;
+	const files = zipEntries(crxZip(await download(CWS_CRX)));
+	const served = JSON.parse(files.get("manifest.json")?.toString("utf8") ?? "{}").version;
+	return served === version ? files : null;
 }
 
-/** The GitHub release's zip, checked against its own SHA256SUMS, unpacked. */
-async function releaseZip(tag: string, target: Target, version: string, into: string) {
+/** The GitHub release's zip or APK, checked against its own SHA256SUMS. */
+async function releaseZip(tag: string, target: Target, version: string): Promise<Files> {
 	const base = `https://github.com/${REPO}/releases/download/${tag}`;
-	const name = `bramble_${target}_${version}.zip`;
+	const name = `bramble_${target}_${version}.${target === "android" ? "apk" : "zip"}`;
 	const zip = await download(`${base}/${name}`);
 	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
 	const listed = sums.split("\n").find((l) => l.trim().endsWith(` ${name}`));
 	if (!listed?.startsWith(sha256(zip)))
 		throw new Error(`${name} does not match the release's SHA256SUMS`);
-	unzip(zip, into);
-	return into;
+	return zipEntries(zip);
 }
 
-function rebuild(tag: string, target: Target, scratch: string): string {
+function rebuild(tag: string, target: Target, scratch: string): Files {
 	const src = join(scratch, "src");
 	const out = join(scratch, "out");
 	mkdirSync(src, { recursive: true });
@@ -197,6 +257,7 @@ function rebuild(tag: string, target: Target, scratch: string): string {
 		throw new Error(`no tag ${tag} here; run git fetch --tags`);
 	}
 	execSync(`git -C "${ROOT}" archive --format=tar "${tag}" | tar -x -C "${src}"`);
+	if (target === "android") return rebuildAndroid(src, out);
 
 	const dockerfile = readFileSync(join(ROOT, DOCKERFILE));
 	const image = `bramble-reproducible:${sha256(dockerfile).slice(0, 12)}`;
@@ -242,7 +303,42 @@ function rebuild(tag: string, target: Target, scratch: string): string {
 		],
 		{ stdio: "inherit" },
 	);
-	return join(out, "dist");
+	return dirFiles(join(out, "dist"));
+}
+
+/** Builds in the extension image's own base, pinned by the same digest, with the SDK in a cache. */
+function rebuildAndroid(src: string, out: string): Files {
+	const base = /^FROM (\S+)/m.exec(readFileSync(join(ROOT, DOCKERFILE), "utf8"))?.[1];
+	if (!base) throw new Error(`no FROM line in ${DOCKERFILE}`);
+	const cache = process.env.BRAMBLE_VERIFY_CACHE ?? join(homedir(), ".cache/bramble-verify");
+	const work = join(cache, "work");
+	rmSync(work, { recursive: true, force: true });
+	mkdirSync(work, { recursive: true });
+	execFileSync(
+		"docker",
+		[
+			"run",
+			"--rm",
+			"--platform",
+			"linux/amd64",
+			"-v",
+			`${src}:/src:ro`,
+			"-v",
+			`${cache}:/cache`,
+			"-v",
+			`${work}:/work`,
+			"-v",
+			`${out}:/out`,
+			"-v",
+			`${join(ROOT, ANDROID_SCRIPT)}:/verify/build.sh:ro`,
+			base,
+			"bash",
+			"/verify/build.sh",
+		],
+		{ stdio: "inherit" },
+	);
+	rmSync(work, { recursive: true, force: true });
+	return zipEntries(readFileSync(join(out, "app-release-unsigned.apk")));
 }
 
 function report(label: string, mismatches: Mismatch[], count: number): boolean {
@@ -258,41 +354,63 @@ function report(label: string, mismatches: Mismatch[], count: number): boolean {
 async function main(argv: string[]): Promise<number> {
 	const scratch = mkdtempSync(join(tmpdir(), "bramble-verify-"));
 	try {
-		let tag = argv.find((a) => !a.startsWith("--"));
+		let tag = argv.find((a, i) => !a.startsWith("--") && argv[i - 1] !== "--apk");
 		const live = argv.indexOf("--live");
 		if (live !== -1) {
 			const target = argv[live + 1] as Target;
-			if (target !== "firefox" && target !== "chromium")
-				throw new Error("--live takes firefox or chromium");
-			tag = `${await liveVersion(target, scratch)}-${target}`;
-			console.log(`the store is serving ${tag}`);
+			if (target !== "firefox" && target !== "chromium" && target !== "android")
+				throw new Error("--live takes firefox, chromium or android");
+			tag = `${await liveVersion(target)}-${target}`;
+			console.log(
+				`${target === "android" ? "the newest release is" : "the store is serving"} ${tag}`,
+			);
 		}
-		if (!tag) throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium>");
+		if (!tag) throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium|android>");
 		const { version, target } = parseTag(tag);
 
-		const dist = rebuild(tag, target, scratch);
-		const wasm = readFileSync(join(dist, "wasm/vault_crypto_bg.wasm"));
+		const apkAt = argv.indexOf("--apk");
+		let built: Files;
+		if (apkAt !== -1) {
+			if (target !== "android") throw new Error("--apk is for Android tags");
+			built = zipEntries(readFileSync(resolve(argv[apkAt + 1] ?? "")));
+		} else {
+			built = rebuild(tag, target, scratch);
+		}
+		if (target === "android") {
+			const fromRelease = await releaseZip(tag, target, version);
+			const keep = (p: string) => !apkSignatureFile(p);
+			const ours = tree(built, keep);
+			const ok = report(
+				"GitHub release APK (signature aside)",
+				compareTrees(ours, tree(fromRelease, keep)),
+				ours.size,
+			);
+			console.log(ok ? "\nreproducible" : "\nNOT reproducible");
+			return ok ? 0 : 1;
+		}
+		const wasm = built.get("wasm/vault_crypto_bg.wasm");
+		if (!wasm) throw new Error("the build has no wasm/vault_crypto_bg.wasm");
 		console.log(`\nrebuilt ${tag}; vault_crypto_bg.wasm sha256 ${sha256(wasm)}`);
 
-		const fromRelease = await releaseZip(tag, target, version, join(scratch, "release"));
-		const zipTree = readTree(dist, inReleaseZip);
+		const fromRelease = await releaseZip(tag, target, version);
+		const zipTree = tree(built, inReleaseZip);
 		let ok = report(
 			"GitHub release zip",
 			compareTrees(
 				zipTree,
-				readTree(fromRelease, () => true),
+				tree(fromRelease, () => true),
 			),
 			zipTree.size,
 		);
 
 		if (!argv.includes("--no-store")) {
 			const store = target === "firefox" ? "addons.mozilla.org" : "the Chrome Web Store";
-			const fromStore = await storePackage(target, version, join(scratch, "store"));
+			const fromStore = await storePackage(target, version);
 			if (fromStore) {
 				const notDot = (p: string) => !(p.split("/").pop() ?? p).startsWith(".");
-				const built = readTree(dist, notDot, true);
-				const served = readTree(fromStore, (p) => notDot(p) && !storeAdded(p), true);
-				ok = report(store, compareTrees(built, served), built.size) && ok;
+				const ours = tree(built, notDot, true);
+				const served = tree(fromStore, (p) => notDot(p) && !storeAdded(p), true);
+				ok = report(store, compareTrees(ours, served), ours.size) && ok;
 			} else {
 				console.log(`  ${store}: no longer serves ${version}; --live checks what it serves now`);
 			}

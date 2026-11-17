@@ -1,8 +1,8 @@
 # Checks, every day, that what users get is what the source says (docs/reproducible-builds.md,
 # docs/update-transparency.md):
 #
-# - Rebuilds the extension each store is serving right now from its tag and compares it file by
-#   file with the store's package and the GitHub release.
+# - Rebuilds the extension each store is serving right now, and the newest Android release, from
+#   their tags and compares them file by file with the store's package and the GitHub release.
 # - Reads the Sigsum logs for anything signed with Bramble's desktop release keys that is not a
 #   published release.
 #
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "An extension release to rebuild instead of what the stores serve (e.g. 1.37.0-firefox)"
+        description: "A release to rebuild instead of what is current (e.g. 1.37.0-firefox, 0.31.0-android)"
         required: false
         type: string
 
@@ -52,11 +52,31 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: node scripts/verify-release.ts --live "$TARGET"
 
+  android:
+    name: Rebuild android
+    if: ${{ !inputs.tag }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Rebuild the newest release and compare
+        run: node scripts/verify-release.ts --live android
+
   tag:
     name: Rebuild ${{ inputs.tag }}
     if: ${{ inputs.tag }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

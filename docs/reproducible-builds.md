@@ -8,7 +8,7 @@ does not show, and a build that does not match is evidence that something was ad
 |--------|--------------|---------|
 | Firefox extension | Yes, every file | Daily in CI: what addons.mozilla.org serves, and the GitHub zip |
 | Chrome extension | Yes, every file | Daily in CI: what the Chrome Web Store serves, and the GitHub zip |
-| Android APK | Not yet checked; the Rust part was made host-independent for F-Droid in July 2026 | No |
+| Android APK | Yes, every file but the signature | Daily in CI: the newest GitHub release |
 | Desktop app | Not yet | No; its updates are transparency-logged instead ([update-transparency.md](update-transparency.md)) |
 | iOS app | Cannot be checked: the App Store re-encrypts every binary | No |
 
@@ -20,6 +20,7 @@ You need git, Node 24 and Docker. From a clone with its tags:
 node scripts/verify-release.ts 1.37.0-firefox      # one release, by its tag
 node scripts/verify-release.ts --live chromium     # whatever the store is serving right now
 node scripts/verify-release.ts 1.40.0-chromium --no-store
+node scripts/verify-release.ts --live android      # the newest Android release
 ```
 
 It builds the tag in `docker/reproducible-build.Dockerfile` and compares every file with:
@@ -29,8 +30,25 @@ It builds the tag in `docker/reproducible-build.Dockerfile` and compares every f
   hash, or the `.crx` the Chrome Web Store hands to Chrome. The Chrome Web Store only serves its
   current version, so an older Chrome release is compared with GitHub alone.
 
-`.github/workflows/verify-releases.yml` runs `--live` for both stores every day, so a store serving
-something other than what the source builds would turn up within a day.
+`.github/workflows/verify-releases.yml` runs `--live` for both stores and Android every day, so a
+store serving something other than what the source builds would turn up within a day.
+
+**Android** builds in the same base image with `docker/reproducible-android.sh`, which installs what
+the release runner has: Temurin 21, the Android SDK platform 36 and NDK 27.3.13750724, cargo-ndk
+4.1.2, Node and wasm-pack, each pinned. The SDK is large, so it and the package caches live in
+`BRAMBLE_VERIFY_CACHE` (default `~/.cache/bramble-verify`, about 6 GB) rather than in an image. The
+APK is compared entry by entry with the one on the GitHub release, after checking that against
+`SHA256SUMS`. Releases are signed v2 and v3 only, and those signatures live in a block outside the
+zip entries, so nothing is set aside: every entry must match, the four Rust libraries and the WASM
+included. 0.31.0 did, all 542 entries (2026-11-17). Every package is read from the archive itself
+rather than unpacked to disk: an APK's shrunk resource names differ only by case (`res/9n.9.png`
+and `res/9N.9.png`), and a case-insensitive file system would merge them and compare fewer files
+than there are. `--apk <file>` compares an APK you built some other way, natively on x86_64 Linux
+for instance, without Docker.
+
+Under emulation on Apple silicon, Gradle's aapt2 daemons sometimes hung at startup when many ran at
+once, so the script runs Gradle with two workers and the Kotlin compiler in-process. Neither changes
+the output; on an x86_64 machine it only makes the build slower.
 
 ## What the stores change
 
@@ -81,16 +99,14 @@ silicon Docker emulates it, which costs a few minutes.
   themselves are not byte-identical (zip stores file times), which is why the check compares their
   contents rather than the archive's hash.
 
-## Android and desktop, next
+## Desktop, next
 
-**Android.** The APK carries the same web bundle and a Rust `.so` per ABI. In July 2026 F-Droid
-rebuilt 0.9.x and matched everything but the Rust libraries, which differed only by embedded paths;
-`rustflags-reproducible.sh` fixed that. The F-Droid build container was dropped in August, and
-nothing has compared a release since. What is needed: an Android SDK and NDK image pinned like the
-one here, and a comparison that ignores the APK signing block (`apksigcopier` does this).
-
-**Desktop.** Three platforms, each with its own signature: Apple's code signature and notarization
-ticket, Authenticode, and the AppImage's own squashfs. Linux first, since it has no platform
-signature inside the binary: the AppImage needs fixed file times (`SOURCE_DATE_EPOCH`) and a pinned
+Three platforms, each with its own signature: Apple's code signature and notarization ticket,
+Authenticode, and the AppImage's own squashfs. Linux first, since it has no platform signature
+inside the binary: the AppImage needs fixed file times (`SOURCE_DATE_EPOCH`) and a pinned
 `mksquashfs`. Until then, desktop updates are covered by the transparency log, which shows that
 every user got the same build even though nobody has yet shown that build matches the source.
+
+Android's Rust libraries matched only because of the July 2026 work for F-Droid, which made the Rust
+output independent of where the repository is checked out (`scripts/rustflags-reproducible.sh`) and
+committed `Cargo.lock`. The desktop app links the same crate, so it starts from there.
