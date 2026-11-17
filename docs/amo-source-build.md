@@ -9,11 +9,13 @@ this file is the human-readable build recipe, and it ships inside that archive.
 
 ## Toolchain
 
-- **Node.js 22 LTS**
-- **pnpm 10.33.0** — pinned by `packageManager` in the root `package.json`; `corepack enable` selects it.
-- **Rust 1.95.0** with the `wasm32-unknown-unknown` target — pinned by `rust-toolchain.toml`, so
+- **Node.js 24**
+- **pnpm 10.33.0**, pinned by `packageManager` in the root `package.json`; `corepack enable` selects it.
+- **Rust 1.95.0** with the `wasm32-unknown-unknown` target, pinned by `rust-toolchain.toml`, so
   `rustup` picks the exact toolchain automatically inside the repo.
-- **wasm-pack** — used by `pnpm run wasm:build` to compile the crate.
+- **wasm-pack 0.13.1**, used by `pnpm run wasm:build` to compile the crate.
+
+`docker/reproducible-build.Dockerfile` is all of the above in one image.
 
 ## Build
 
@@ -38,7 +40,17 @@ zips `dist-firefox/`; the GitHub release attaches that `.zip`.)
 ## Notes for the reviewer
 
 - No code is obfuscated; it is only minified/bundled by Vite. All original source is in this archive.
-- The pinned Rust toolchain (`rust-toolchain.toml`) and the JS lockfile make the JavaScript output
-  reproducible. WebAssembly binaries are not guaranteed byte-identical across machines (rustc and
-  wasm-pack embed build metadata), but they are functionally identical and built only from
-  `packages/core-rust/`, which is included here in full.
+- The build is reproducible: every file, the WebAssembly included, comes out byte-identical to the
+  uploaded package when built on x86_64 Linux. On another platform the JavaScript still matches
+  but the `.wasm` does not, because its layout depends on the build host. To rebuild on any
+  machine with Docker, from the root of this archive:
+
+  ```sh
+  docker build --platform linux/amd64 -t bramble-build -f docker/reproducible-build.Dockerfile docker
+  docker run --rm --platform linux/amd64 -v "$PWD":/src:ro -v "$PWD/out":/out bramble-build bash -c \
+    'cp -a /src /build && cd /build && pnpm install --frozen-lockfile && pnpm run wasm:build &&
+     pnpm --filter @vault/platform-extension run bundle:firefox && cp -a clients/extension/dist-firefox /out/'
+  ```
+
+  `out/dist-firefox/` then matches the uploaded package file for file. See
+  docs/reproducible-builds.md, which `scripts/verify-release.ts` automates.

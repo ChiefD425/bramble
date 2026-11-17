@@ -35,6 +35,7 @@
 		"wasm:build": "export RUSTFLAGS=\"$(bash scripts/rustflags-reproducible.sh)\"; cd packages/core-rust && wasm-pack build --target web --out-dir ../../clients/extension/public/wasm -- --locked",
 		"wasm:build:mobile": "export RUSTFLAGS=\"$(bash scripts/rustflags-reproducible.sh)\"; cd packages/core-rust && wasm-pack build --target web --out-dir ../../clients/mobile/public/wasm -- --locked",
 		"wasm:verify": "node packages/core-rust/verify.ts",
+		"verify:release": "node scripts/verify-release.ts",
 		"mobile:dev": "pnpm --filter @vault/platform-mobile run dev",
 		"core:build": "pnpm run wasm:build:mobile && pnpm --filter @vault/platform-mobile run build",
 		"wasm:test": "cd packages/core-rust && cargo test",
