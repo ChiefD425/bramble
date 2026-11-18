@@ -114,6 +114,36 @@ describe("the e2e bridge endpoint", () => {
 	});
 });
 
+describe("the e2e dialog stand-in", () => {
+	const DIALOG = "@tauri-apps/plugin-dialog";
+	const STAND_IN = resolve(import.meta.dirname, "e2e-dialog.ts");
+	const SHELL = resolve(import.meta.dirname, "adapters/shell.ts");
+
+	function resolved(token: string | undefined, source: string, importer: string) {
+		const previous = process.env.BRAMBLE_E2E_TOKEN;
+		if (token === undefined) delete process.env.BRAMBLE_E2E_TOKEN;
+		else process.env.BRAMBLE_E2E_TOKEN = token;
+		try {
+			const hook = e2eBridge().resolveId as (source: string, importer: string) => unknown;
+			return hook(source, importer) ?? null;
+		} finally {
+			if (previous === undefined) delete process.env.BRAMBLE_E2E_TOKEN;
+			else process.env.BRAMBLE_E2E_TOKEN = previous;
+		}
+	}
+
+	it("takes the dialog plugin's place only with a run token", () => {
+		expect(resolved(undefined, DIALOG, SHELL)).toBeNull();
+		expect(resolved("short", DIALOG, SHELL)).toBeNull();
+		expect(resolved(TOKEN, DIALOG, SHELL)).toBe(STAND_IN);
+	});
+
+	it("leaves its own import of the real plugin, and every other import, alone", () => {
+		expect(resolved(TOKEN, DIALOG, STAND_IN)).toBeNull();
+		expect(resolved(TOKEN, "@tauri-apps/api/core", SHELL)).toBeNull();
+	});
+});
+
 describe("a release build", () => {
 	it("carries none of the bridge, even with its switches set", () => {
 		const out = mkdtempSync(join(tmpdir(), "bramble-release-"));

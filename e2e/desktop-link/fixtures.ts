@@ -34,7 +34,7 @@ const BRIDGE = "http://localhost:1420/__bramble_e2e";
 
 /** The local relay the config starts. The desktop is pointed at it before its first invite, and
  * the invite carries it to the browser, so nothing here reaches the hosted one. */
-export const RELAY_URL = "ws://localhost:7400";
+export const RELAY_URL = `ws://localhost:${process.env.BRAMBLE_E2E_RELAY_PORT ?? "7400"}`;
 export const DESKTOP_PW = "Desk-9Kq2-Lm7x-Vb3n";
 export const BROWSER_PW = "Ext-7Hq9-Pz2m-Wd4k";
 /** Already in the desktop's vault when each test starts. */
@@ -433,8 +433,11 @@ export function browserFiles(
 
 export const test = base.extend<
 	{ ext: Browser; ext2: Browser; borrowsPipe: boolean },
-	{ desktop: Desktop }
+	{ desktop: Desktop; ownApp: boolean }
 >({
+	/** A spec that leaves the app in a state the others don't expect (more vaults, each on the
+	 * relay) sets this. A different worker option means a worker, and so an app, of its own. */
+	ownApp: [false, { scope: "worker", option: true }],
 	/** A second browser profile beside `ext`, for a desktop vault paired with more than one. */
 	ext2: async ({ desktop, borrowsPipe }, use) => {
 		const { browser, close } = await launchBrowser(desktop.home, { borrowsPipe });

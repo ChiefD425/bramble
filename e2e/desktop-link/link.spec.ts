@@ -73,7 +73,7 @@ test("first run: links by emoji and takes the desktop's vault over the link", as
 	// nothing it did left this machine.
 	const arrived = ext.watch.first("log", /vault received/);
 	expect(arrived, "the joiner never reported the vault").toBeTruthy();
-	const relay = ext.watch.first("net", /localhost:7400/);
+	const relay = ext.watch.first("net", new RegExp(new URL(RELAY_URL).host));
 	if (relay && arrived) expect(relay.t).toBeGreaterThanOrEqual(arrived.t);
 	const away = ext.watch.seen.filter((s) => s.kind === "net" && !isLocal(s.text));
 	expect(away.map((s) => s.text)).toEqual([]);

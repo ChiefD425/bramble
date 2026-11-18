@@ -213,15 +213,17 @@ copy step leaving nothing on either side, a browser removed on the desktop dropp
 two profiles pairing with one desktop vault; an empty desktop vault taking a named browser vault's
 entries and file, all still there when the popup reopens; a window lending the worker a pipe, so
 the link is back the moment it opens; and a worker from before the permission grant bringing the
-link back by itself once the page that lent its pipe has closed. Each test is a flow that once
-failed when run this way.
+link back by itself once the page that lent its pipe has closed. One needs no browser: Export
+selection in the desktop app writing a .bramble that another of its vaults opens, passkeys included.
+Each test is a flow that once failed when run this way.
 
 ```sh
 pnpm test:e2e:desktop-link
 ```
 
 The script builds the extension and the desktop app (`cargo build`, a few minutes from clean), and
-the config starts the local relay (port 7400) and the desktop's Vite dev server on port 1420. Neither
+the config starts the local relay (port 7400, or `BRAMBLE_E2E_RELAY_PORT`) and the desktop's Vite
+dev server on port 1420. Neither
 is reused if something already holds the port: the debug build loads its window from 1420, so a dev
 server already there is someone else's. macOS only; the tests skip elsewhere.
 
@@ -236,8 +238,10 @@ the extension touches the relay at all.
 
 **How it drives the desktop.** Through the dev-only bridge
 (`clients/desktop/scripts/vite-e2e-bridge.mjs`): the config mints a per-run token, Vite mounts
-`/__bramble_e2e` only when given it, and the window runs what is posted there. None of it reaches a
-release build (`clients/desktop/src/e2e-bridge.test.ts`).
+`/__bramble_e2e` only when given it, and the window runs what is posted there. With the token it
+also swaps the Tauri dialog plugin for `clients/desktop/src/e2e-dialog.ts`, since a native save
+panel can't be answered from the window: a test queues the path with `saveTo(path)` first. None of
+it reaches a release build (`clients/desktop/src/e2e-bridge.test.ts`).
 
 **What bit while building it,** each handled in `fixtures.ts`:
 
@@ -262,6 +266,10 @@ release build (`clients/desktop/src/e2e-bridge.test.ts`).
 - Playwright cannot see the offscreen document, where sync runs. A raw CDP connection watches the
   extension's contexts instead; a failing test gets its lines as `extension.log`, beside the
   desktop's `desktop-sync.log`.
+- The app starts only for a test that asks for `desktop` (or `ext`, which needs it). One that
+  drives the app through `desk` alone and asks for neither gets no app, and every call answers 504.
+- Every spec in a worker shares one app. A spec that leaves it with more vaults on the relay sets
+  `test.use({ ownApp: true })` and gets an app of its own, as `bramble-file.spec.ts` does.
 
 **Not covered:** Firefox, Windows and Linux, and an older build on either side. To try main's
 extension against this app, build it in a worktree and load its `dist-chromium` by hand.

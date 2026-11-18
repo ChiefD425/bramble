@@ -10,6 +10,8 @@ import { defineConfig } from "@playwright/test";
 // One secret per run for the desktop's dev-only bridge. Set here, before the servers start, so the
 // dev server and the test workers (which inherit this environment) hold the same one.
 process.env.BRAMBLE_E2E_TOKEN ??= randomBytes(32).toString("hex");
+// The relay's port, for when another suite's relay holds 7400. The fixtures read it too.
+process.env.BRAMBLE_E2E_RELAY_PORT ??= "7400";
 
 const mac = process.platform === "darwin";
 
@@ -29,7 +31,8 @@ export default defineConfig({
 				{
 					// The relay the desktop is pointed at, so nothing reaches the hosted one.
 					command: "node services/nostr-relay/node/relay.mjs",
-					port: 7400,
+					env: { PORT: process.env.BRAMBLE_E2E_RELAY_PORT },
+					port: Number(process.env.BRAMBLE_E2E_RELAY_PORT),
 					reuseExistingServer: false,
 					stdout: "ignore",
 				},

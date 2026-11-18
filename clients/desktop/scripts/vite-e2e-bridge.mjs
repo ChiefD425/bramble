@@ -6,11 +6,22 @@
 // BRAMBLE_E2E_TOKEN holds a long per-run secret, and answers only requests that carry that secret
 // and no Origin header (so no web page can reach it). src/e2e-bridge.test.ts proves none of it
 // reaches a release build.
+//
+// While armed it also puts src/e2e-dialog.ts in place of the Tauri dialog plugin, so the harness
+// can answer a save panel by queuing a path.
 
 import { randomUUID, timingSafeEqual } from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 const MIN_TOKEN = 32;
 const ANSWER_MS = 30_000;
+const DIALOG = "@tauri-apps/plugin-dialog";
+const DIALOG_STAND_IN = fileURLToPath(new URL("../src/e2e-dialog.ts", import.meta.url));
+
+function armedToken() {
+	const token = process.env.BRAMBLE_E2E_TOKEN;
+	return token && token.length >= MIN_TOKEN ? token : null;
+}
 
 function sameToken(given, expected) {
 	if (typeof given !== "string" || given.length !== expected.length) return false;
@@ -21,9 +32,15 @@ export function e2eBridge() {
 	return {
 		name: "bramble-e2e-bridge",
 		apply: "serve",
+		// Ahead of Vite's own resolver, which would otherwise hand back the pre-bundled plugin.
+		enforce: "pre",
+		resolveId(source, importer) {
+			if (source !== DIALOG || importer === DIALOG_STAND_IN || !armedToken()) return null;
+			return DIALOG_STAND_IN;
+		},
 		configureServer(server) {
-			const token = process.env.BRAMBLE_E2E_TOKEN;
-			if (!token || token.length < MIN_TOKEN) return;
+			const token = armedToken();
+			if (!token) return;
 			const waiting = new Map();
 			server.ws.on("bramble:e2e-result", (data) => {
 				waiting.get(data?.id)?.(data);
