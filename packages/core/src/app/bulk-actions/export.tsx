@@ -95,8 +95,7 @@ export const exportAction: BulkAction = {
 	},
 	icon: FileDown,
 	// Needs somewhere to write the file. Every platform's core can seal one, so the crypto
-	// is not part of the gate: buildCryptoAdapter always defines sealPortableVault and
-	// throws inside it if the binding layer is stale, which is the honest backstop.
+	// is not part of the gate. Desktop's hand-written adapter is held to that by a test.
 	isAvailable: (platform) => Boolean(platform.shell.exportBytes),
 	Dialog: ExportDialog,
 };

@@ -10,12 +10,14 @@ import type {
 	EncryptedPayload,
 	KdbxRawEntry,
 	OpenKdbxInput,
+	OpenPortableVaultInput,
 	PasskeyAssertion,
 	PasskeyImportResult,
 	PasskeyPrfOutput,
 	PasskeyRegistration,
 	PasswordSlotBlob,
 	SaveKdbxInput,
+	SealPortableVaultInput,
 	UnwrapPasswordSlotInput,
 	UnwrapWebauthnSlotInput,
 	VekEncrypted,
@@ -25,6 +27,7 @@ import type {
 	WrapWebauthnSlotInput,
 } from "@core/adapters/crypto";
 import { bytesToBase64 } from "@core/util/bytes";
+import type { PortableVaultBlob } from "@core/wasm";
 import { invoke } from "@tauri-apps/api/core";
 import { rawBytes } from "./files";
 import { markLocked, markUnlocked, onExternalChange, onExternalLock } from "./vault-session";
@@ -148,6 +151,21 @@ export const desktopCrypto: CryptoAdapter = {
 		invoke<string>("crypto_mailbox_seal", { groupKeyB64, aad, plaintext }),
 	mailboxOpen: (groupKeyB64, aad, sealedB64) =>
 		invoke<string>("crypto_mailbox_open", { groupKeyB64, aad, sealedB64 }),
+
+	// A .bramble file, under a key made for that file alone, never the vault's VEK.
+	sealPortableVault: (input: SealPortableVaultInput) =>
+		invoke<PortableVaultBlob>("crypto_seal_portable_vault", {
+			entriesJson: input.entriesJson,
+			password: input.password,
+			magicVersion: bytes(input.magicVersion),
+		}),
+	// null is a wrong password, not an error.
+	openPortableVault: (input: OpenPortableVaultInput) =>
+		invoke<string | null>("crypto_open_portable_vault", {
+			password: input.password,
+			file: input.file,
+			magicVersion: bytes(input.magicVersion),
+		}),
 
 	// Passkey PROVIDER (mint/assert for other sites) stays unwired, and not just for effort:
 	// a Tauri webview has no WebAuthn surface to intercept and no OS registration, so there is

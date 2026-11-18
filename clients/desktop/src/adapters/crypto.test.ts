@@ -1,3 +1,4 @@
+import { buildCryptoAdapter } from "@core/adapters/crypto-wasm";
 import { fileRecord } from "@core/test/vault-fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -79,6 +80,61 @@ describe("desktop KeePass export", () => {
 			cmd: "files_discard_kdbx",
 			args: { dir: "/cache/open/kdbx-1" },
 		});
+	});
+});
+
+describe("desktop portable vault (.bramble)", () => {
+	const blob = {
+		slotId: "S",
+		salt: "SA",
+		verifier: "V",
+		wrapIv: "WI",
+		wrappedVek: "WV",
+		entriesIv: "EI",
+		entriesCiphertext: "EC",
+	};
+
+	it("seals and opens through the shell, magicVersion as a number array", async () => {
+		h.replies.crypto_seal_portable_vault = blob;
+		h.replies.crypto_open_portable_vault = "[]";
+		const magicVersion = new Uint8Array([86, 76, 84, 49, 0, 1]);
+
+		expect(
+			await desktopCrypto.sealPortableVault?.({ entriesJson: "[]", password: "pw", magicVersion }),
+		).toEqual(blob);
+		expect(
+			await desktopCrypto.openPortableVault?.({ password: "pw", file: blob, magicVersion }),
+		).toBe("[]");
+		expect(h.calls).toEqual([
+			{
+				cmd: "crypto_seal_portable_vault",
+				args: { entriesJson: "[]", password: "pw", magicVersion: [86, 76, 84, 49, 0, 1] },
+			},
+			{
+				cmd: "crypto_open_portable_vault",
+				args: { password: "pw", file: blob, magicVersion: [86, 76, 84, 49, 0, 1] },
+			},
+		]);
+	});
+
+	it("answers a wrong password with null", async () => {
+		h.replies.crypto_open_portable_vault = null;
+		expect(
+			await desktopCrypto.openPortableVault?.({
+				password: "nope",
+				file: blob,
+				magicVersion: new Uint8Array([1]),
+			}),
+		).toBeNull();
+	});
+});
+
+// Desktop's adapter is written by hand, so a call added to the shared one can be missed here,
+// and the UI offers the feature anyway (the .bramble export once failed like that).
+describe("desktop crypto coverage", () => {
+	it("implements every call the shared adapter does", () => {
+		const shared = Object.keys(buildCryptoAdapter(async () => ({}) as never));
+		expect(shared.filter((k) => !(k in desktopCrypto))).toEqual([]);
 	});
 });
 

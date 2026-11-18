@@ -12,7 +12,7 @@ use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde::Serialize;
 use vault_crypto::{
     CryptoError, EncryptedPayload, KdbxAttachmentFile, MasterEncrypted, OutEntry,
-    PasskeyImportResult, PasswordSlotBlob,
+    PasskeyImportResult, PasswordSlotBlob, PortableVault,
 };
 
 /// Errors ride to JS as a plain string, which `invoke` rejects with. The core already
@@ -240,6 +240,38 @@ pub fn crypto_mailbox_open(
     ))
 }
 
+// ---- Portable vault (.bramble) ----
+//
+// Sealed under a key made for that file alone, never the session VEK, so an exported file
+// opens nothing else. Async so the password KDF runs off the main thread.
+
+#[tauri::command(async)]
+pub fn crypto_seal_portable_vault(
+    entries_json: String,
+    password: String,
+    magic_version: Vec<u8>,
+) -> CmdResult<PortableVault> {
+    map(vault_crypto::seal_portable_vault(
+        entries_json,
+        password,
+        magic_version,
+    ))
+}
+
+/// The entries JSON, or `None` for a wrong password.
+#[tauri::command(async)]
+pub fn crypto_open_portable_vault(
+    password: String,
+    file: PortableVault,
+    magic_version: Vec<u8>,
+) -> CmdResult<Option<String>> {
+    map(vault_crypto::open_portable_vault(
+        password,
+        file,
+        magic_version,
+    ))
+}
+
 // ---- Foreign-format import ----
 //
 // Both are pure conversions with no VEK involved: the caller encrypts what comes back
@@ -315,6 +347,19 @@ mod tests {
             crypto_mailbox_open(group, "aad".into(), sealed).unwrap(),
             "hello"
         );
+    }
+
+    #[test]
+    fn a_portable_vault_round_trips_and_a_wrong_password_is_none() {
+        let magic = b"VLT1\x00\x01".to_vec();
+        let sealed =
+            crypto_seal_portable_vault("[{\"t\":1}]".into(), "pw".into(), magic.clone()).unwrap();
+        let reopen = |pw: &str| {
+            let file = serde_json::from_value(serde_json::to_value(&sealed).unwrap()).unwrap();
+            crypto_open_portable_vault(pw.into(), file, magic.clone()).unwrap()
+        };
+        assert_eq!(reopen("pw").as_deref(), Some("[{\"t\":1}]"));
+        assert_eq!(reopen("wrong"), None);
     }
 
     #[test]
