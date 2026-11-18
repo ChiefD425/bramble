@@ -11,7 +11,7 @@ does not show, and a build that does not match is evidence that something was ad
 | Android APK | Yes, every file but the signature | Daily in CI: the newest GitHub release |
 | Desktop, Linux | `.deb` and AppImage byte for byte from the release after 0.19.0, every installed file before it; RPM contents only | Daily in CI, amd64 and arm64: the newest GitHub release |
 | Desktop, macOS | The app and proxy binaries, signatures aside, from the release after 0.19.0 | By hand on a Mac (`--macos`); updates are transparency-logged |
-| Desktop, Windows | Not yet | No; updates are transparency-logged |
+| Desktop, Windows | The installer, signature aside, from its first release | By hand (`--windows`); updates are transparency-logged |
 | iOS app | Cannot be checked: the App Store re-encrypts every binary | No |
 
 ## Checking a release yourself
@@ -25,6 +25,7 @@ node scripts/verify-release.ts 1.40.0-chromium --no-store
 node scripts/verify-release.ts --live android      # the newest Android release
 node scripts/verify-release.ts 0.19.0-desktop --arch arm64   # desktop Linux packages
 node scripts/verify-release.ts 0.20.0-desktop --macos        # desktop macOS binaries, on a Mac
+node scripts/verify-release.ts 0.20.0-desktop --windows      # desktop Windows installer
 ```
 
 It builds the tag in `docker/reproducible-build.Dockerfile` and compares every file with:
@@ -162,4 +163,25 @@ the time of writing), since the linker is part of the output. It compares the tw
 hold the code and the web assets; the rest of the bundle (`Info.plist`, icons, the provisioning
 profile) is not yet compared.
 
-**Windows** carries Authenticode inside the installer and the binaries it holds. Not started.
+**Windows.** The installer used to be built natively on a Windows runner, which nobody without
+Windows and MSVC could repeat. It is now cross-compiled with `cargo-xwin` in
+`clients/desktop/docker/windows-build.Dockerfile` (`build-windows.ts --container`), on a Linux arm64
+runner, and only the Authenticode signing still runs on Windows, over that installer as an
+artifact. The image pins Debian 13 by digest and snapshot (for NSIS 3.11, which Tauri's installer
+script needs), clang and lld from it, Node, `cargo-xwin`, and the Microsoft CRT and Windows SDK
+versions it downloads. Three things had to change for two builds to agree:
+
+- **The PE timestamp and the debug directory**, which `lld-link` fills from the clock and a fresh
+  PDB: linked with `/Brepro` and `/DEBUG:NONE` (no PDB ships).
+- **File times in the installer**: NSIS stores each packed file's mtime in its solid stream, so one
+  differing time changes nearly every byte after it, and Tauri rewrites the binary just before
+  packing. The image puts a `makensis` wrapper first on the path that adds `SetDateSave off`, and
+  makensis takes the installer's own time from `SOURCE_DATE_EPOCH`.
+- **`SOURCE_DATE_EPOCH`**, the commit's time, as for Linux.
+
+Two builds, as root and as another user, gave the same installer and the same app and proxy
+binaries. `verify-release.ts <version>-desktop --windows` builds a tag the same way and compares
+with the published installer once `scripts/pe-normalize.ts` has taken the Authenticode signature
+off: the certificate table, the padding before it, the checksum and the security directory entry.
+The installer is the only file signed; the binaries inside it are not, so they are compared as
+part of its bytes. Windows has not shipped yet, so its first release is the first one to check.

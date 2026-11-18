@@ -8,6 +8,7 @@
 //   node scripts/verify-release.ts 0.31.0-android --apk app-release-unsigned.apk   # your own build
 //   node scripts/verify-release.ts --live desktop --arch amd64   # the newest desktop release, Linux
 //   node scripts/verify-release.ts --live desktop --macos         # ... its macOS app, on a Mac
+//   node scripts/verify-release.ts --live desktop --windows       # ... its Windows installer
 //
 // Needs git (a clone with the tag), Docker, and network. The builds run as linux/amd64, the release
 // runner's platform: the extensions in docker/reproducible-build.Dockerfile, Android in its base
@@ -32,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 import { CWS_ITEM_ID } from "./cws-ids.ts";
 import { zeroLinkeditVmsize } from "./macho-normalize.ts";
+import { stripAuthenticode } from "./pe-normalize.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = process.env.GITHUB_REPOSITORY ?? "bramble-sh/bramble";
@@ -604,6 +606,46 @@ async function verifyDesktopMacos(tag: string, scratch: string): Promise<boolean
 	return ok;
 }
 
+/**
+ * Rebuild a desktop release's Windows installer in the tag's own container, as sign-windows.yml
+ * does, and compare it with the published one once the Authenticode signature is off it.
+ */
+async function verifyDesktopWindows(
+	tag: string,
+	version: string,
+	scratch: string,
+): Promise<boolean> {
+	const src = join(scratch, "src");
+	mkdirSync(src, { recursive: true });
+	execSync(`git -C "${ROOT}" archive --format=tar "${tag}" | tar -x -C "${src}"`);
+	if (!existsSync(join(src, "clients/desktop/docker/windows-build.Dockerfile")))
+		throw new Error(`${tag} predates the container build of the Windows installer`);
+	const epoch = execFileSync("git", ["-C", ROOT, "log", "-1", "--format=%ct", tag], {
+		encoding: "utf8",
+	}).trim();
+	const cache = process.env.BRAMBLE_VERIFY_CACHE ?? join(homedir(), ".cache/bramble-verify");
+	const work = join(cache, "work-windows");
+	mkdirSync(work, { recursive: true });
+	execFileSync(process.execPath, ["scripts/build-windows.ts", "--container"], {
+		cwd: src,
+		stdio: "inherit",
+		env: { ...process.env, SOURCE_DATE_EPOCH: epoch, BRAMBLE_WINDOWS_WORK: work },
+	});
+
+	const name = `Bramble_${version}_x64-setup.exe`;
+	const ours = readFileSync(
+		join(src, "clients/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis", name),
+	);
+	const base = `https://github.com/${REPO}/releases/download/${tag}`;
+	const theirs = await download(`${base}/${name}`);
+	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
+	if (!sums.split("\n").some((l) => l.startsWith(sha256(theirs)) && l.trim().endsWith(` ${name}`)))
+		throw new Error(`${name} does not match the release's SHA256SUMS`);
+	const same = sha256(stripAuthenticode(theirs)) === sha256(stripAuthenticode(ours));
+	console.log(`  ${name}: ${same ? "identical" : "DIFFERS"} once the signature is off`);
+	return same;
+}
+
 function report(label: string, mismatches: Mismatch[], count: number): boolean {
 	if (!mismatches.length) {
 		console.log(`  ${label}: all ${count} files identical`);
@@ -630,6 +672,11 @@ async function main(argv: string[]): Promise<number> {
 		if (!tag)
 			throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium|android|desktop>");
 		const { version, target } = parseTag(tag);
+		if (target === "desktop" && argv.includes("--windows")) {
+			const ok = await verifyDesktopWindows(tag, version, scratch);
+			console.log(ok ? "\nreproducible" : "\nNOT reproducible");
+			return ok ? 0 : 1;
+		}
 		if (target === "desktop" && argv.includes("--macos")) {
 			const ok = await verifyDesktopMacos(tag, scratch);
 			console.log(ok ? "\nreproducible" : "\nNOT reproducible");

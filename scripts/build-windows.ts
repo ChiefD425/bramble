@@ -6,6 +6,7 @@
 //   pnpm run build:windows --arm64      the other architecture, cross-compiled
 //   pnpm run build:windows --ci-start   dispatch the GitHub build + signing, do not wait
 //   pnpm run build:windows --ci-collect wait for it, download the signed installer, sign it here
+//   node scripts/build-windows.ts --container   the release build, unsigned, in Docker (sign-windows.yml)
 //
 // Two routes because the release build and the iteration build want opposite things.
 //
@@ -52,9 +53,10 @@ const argv = process.argv.slice(2);
 const unsigned = argv.includes("--unsigned");
 const ciStart = argv.includes("--ci-start");
 const ciCollect = argv.includes("--ci-collect");
+const container = argv.includes("--container");
 const triple = argv.includes("--arm64") ? "aarch64-pc-windows-msvc" : "x86_64-pc-windows-msvc";
 const forwarded = argv.filter(
-	(a) => !["--unsigned", "--arm64", "--ci-start", "--ci-collect"].includes(a),
+	(a) => !["--unsigned", "--arm64", "--ci-start", "--ci-collect", "--container"].includes(a),
 );
 
 /** Where both routes put the installer, so everything downstream reads one path. */
@@ -332,6 +334,54 @@ function crossBuild(): void {
 	);
 }
 
-if (ciStart) ciStartBuild();
+/**
+ * The release build: cross-compiled in clients/desktop/docker/windows-build.Dockerfile, so anyone
+ * with Docker gets the same installer from the same commit (docs/reproducible-builds.md). Unsigned;
+ * sign-windows.yml signs it on a Windows runner. linux/arm64 whatever the host, as the image says.
+ */
+function containerBuild(): void {
+	if (triple !== "x86_64-pc-windows-msvc") fail("build-windows: --container builds x64 only");
+	const image = "bramble-windows-build";
+	const platform = ["--platform", "linux/arm64"];
+	const docker = "clients/desktop/docker";
+	execFileSync(
+		"docker",
+		["build", ...platform, "-t", image, "-f", `${docker}/windows-build.Dockerfile`, docker],
+		{
+			cwd: ROOT,
+			stdio: "inherit",
+		},
+	);
+	const out = join(ROOT, BUNDLE);
+	mkdirSync(out, { recursive: true });
+	// The commit's time, or the caller's (a check of a release, which builds a tree with no .git).
+	const epoch = process.env.SOURCE_DATE_EPOCH ?? capture("git", ["log", "-1", "--format=%ct"]);
+	execFileSync(
+		"docker",
+		[
+			"run",
+			"--rm",
+			...platform,
+			"--user",
+			`${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
+			"-e",
+			`SOURCE_DATE_EPOCH=${epoch}`,
+			"-v",
+			`${ROOT}:/src:ro`,
+			"-v",
+			`${process.env.BRAMBLE_WINDOWS_WORK ?? "bramble-windows-workspace"}:/work`,
+			"-v",
+			`${out}:/out`,
+			image,
+			"bash",
+			"/src/clients/desktop/docker/windows-build.sh",
+		],
+		{ cwd: ROOT, stdio: "inherit" },
+	);
+	console.log(`\nbuild-windows: unsigned installer in ${BUNDLE}`);
+}
+
+if (container) containerBuild();
+else if (ciStart) ciStartBuild();
 else if (ciCollect) ciCollectBuild();
 else crossBuild();

@@ -3,8 +3,9 @@ name: Sign Windows installer
 # Builds the Windows installer on a GitHub runner and Authenticode-signs it, with Azure Artifact
 # Signing or SignPath Foundation: the repository variable WINDOWS_SIGNER picks (`azure`, the default,
 # or `signpath`). Exactly one sign job runs and both hand back `bramble-windows-signed`, so nothing
-# downstream knows which signed. The release installer is built here rather than cross-compiled on a Mac because the
-# signing tool runs only on Windows; see docs/desktop-port.md.
+# downstream knows which signed. The installer is cross-compiled in a container on Linux, the same
+# way anyone can rebuild it (docs/reproducible-builds.md); only the signing runs on Windows, the one
+# platform the signing tool runs on. See docs/desktop-port.md.
 #
 # Build, then sign, like the other release workflows: `build` holds no credential. The Azure job
 # can obtain an Azure token. Nothing is stored for that: `sign` runs in the `windows-signing` environment, which
@@ -45,7 +46,11 @@ permissions: {}
 jobs:
   build:
     name: Build (unsigned)
-    runs-on: windows-latest
+    # Cross-compiled in clients/desktop/docker/windows-build.Dockerfile, not built on Windows, so
+    # anyone with Docker can rebuild this installer from the same commit and get the same bytes
+    # (docs/reproducible-builds.md). On arm64, the image's platform, so it runs natively. Only
+    # signing needs Windows, and it gets the installer as an artifact.
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
     timeout-minutes: 90
@@ -54,30 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
+      # For the build script and the version check. Everything that builds runs in the container,
+      # with no cache from anywhere: the bytes come from this checkout and the pinned image alone.
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          # No cache here either, for the reason spelled out for Rust below: node_modules builds
-          # the frontend that goes into this installer.
           package-manager-cache: false
-
-      # Deliberately NOT cached, unlike ci.yml. A Rust cache restores a compiled target/
-      # directory, so the signed binary could contain objects that did not come from this run's
-      # checkout. ci.yml writes that cache key on every push to main, so restoring it here would
-      # widen the trust boundary of the one artifact signed in CI to every workflow that touches it.
-      # The cost is a cold build, roughly ten minutes.
-      # `cache: false` is what enforces it: the action caches by default.
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v2
-        with:
-          cache: false
-
-      - name: Install JS deps
-        run: pnpm install --frozen-lockfile
 
       # The whole point of the version input. A workflow_dispatch resolves `main` at the moment it
       # is dispatched, so a race against the push of the release commit would silently build the
@@ -93,32 +81,18 @@ jobs:
             exit 1
           fi
 
-      # A throwaway updater key, exactly as the CI build does. The bundler refuses to emit updater
-      # artifacts without one, and the .sig it produces here is discarded: it is over the
-      # PRE-Authenticode bytes and signed with a key no installed app trusts. build-windows.ts
-      # deletes it before writing the real one, and refuses to publish if it is still there.
-      - name: Generate a throwaway signing key
-        shell: bash
-        run: |
-          pnpm --filter @vault/platform-desktop exec tauri signer generate -w /tmp/ci.key -p ""
-          # Throwaway and trusted by nothing, but a private key in plaintext in a public log reads as a leak.
-          echo "::add-mask::$(cat /tmp/ci.key)"
-          echo "TAURI_SIGNING_PRIVATE_KEY=$(cat /tmp/ci.key)" >> "$GITHUB_ENV"
-          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> "$GITHUB_ENV"
-
-      # NSIS only, matching what the cross-compiled build produces, so the artifact a release
-      # ships is the same shape whichever route built it.
+      # The updater .sig the bundler makes in there is over the unsigned bytes with a throwaway key,
+      # and stays behind: build-windows.ts makes the real one over the signed installer.
       - name: Build the installer
-        run: pnpm --filter @vault/platform-desktop exec tauri build --bundles nsis
+        run: node scripts/build-windows.ts --container
 
-      # Isolated so exactly one file is signed and handed back. The throwaway .sig is left behind on
-      # purpose.
+      # Isolated so exactly one file is signed and handed back.
       - name: Stage the unsigned installer
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p unsigned
-          cp clients/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe unsigned/
+          cp clients/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe unsigned/
           ls -la unsigned/
 
       - name: Upload the unsigned installer

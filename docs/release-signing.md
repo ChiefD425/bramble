@@ -808,8 +808,9 @@ picked by the `WINDOWS_SIGNER` repository variable (`azure` or unset, or `signpa
 Developer ID plays above: without it, Windows warns every person who downloads the installer. The
 certificate is issued to the identity Microsoft validated, so that is the publisher Windows shows.
 
-The signtool plugin runs only on Windows, so the release installer is built and signed on a
-`windows-latest` runner by `.github/workflows/sign-windows.yml`, not cross-compiled here. Two jobs,
+The signtool plugin runs only on Windows, so `.github/workflows/sign-windows.yml` signs on a
+`windows-latest` runner. It builds the installer first in the pinned cross-compile container on a
+Linux runner, so anyone can rebuild it ([reproducible-builds.md](reproducible-builds.md)). Two jobs,
 as the other release workflows are: **build**, which holds nothing, and **sign**, which never
 checks out the repository and so runs none of its code. Sign runs in the `windows-signing`
 environment, which only `main` may deploy to, and logs in to Azure with a GitHub OIDC token: Azure
@@ -894,7 +895,7 @@ What SignPath demands in exchange is **provenance**. Their terms require every j
 the signing request to have run on a GitHub-hosted agent, with the repository, branch and build
 agent attested by GitHub itself, so a cross-compiled installer from a maintainer's machine cannot
 be signed at all. Windows is therefore the one artifact Bramble ships that is not built locally:
-`.github/workflows/sign-windows.yml` builds it on a `windows-latest` runner and submits the single
+`.github/workflows/sign-windows.yml` builds it on a GitHub-hosted Linux runner and submits the single
 `*-setup.exe` to SignPath, a maintainer approves the request in the SignPath UI (manual by
 design), and the signed installer comes back as the `bramble-windows-signed` artifact.
 
