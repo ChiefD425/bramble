@@ -9,7 +9,7 @@ does not show, and a build that does not match is evidence that something was ad
 | Firefox extension | Yes, every file | Daily in CI: what addons.mozilla.org serves, and the GitHub zip |
 | Chrome extension | Yes, every file | Daily in CI: what the Chrome Web Store serves, and the GitHub zip |
 | Android APK | Yes, every file but the signature | Daily in CI: the newest GitHub release |
-| Desktop, Linux | `.deb` and AppImage byte for byte from the release after 0.19.0; RPM contents only | Not yet; updates are transparency-logged ([update-transparency.md](update-transparency.md)) |
+| Desktop, Linux | `.deb` and AppImage byte for byte from the release after 0.19.0, every installed file before it; RPM contents only | Daily in CI, amd64 and arm64: the newest GitHub release |
 | Desktop, macOS and Windows | Not yet | No; updates are transparency-logged |
 | iOS app | Cannot be checked: the App Store re-encrypts every binary | No |
 
@@ -22,6 +22,7 @@ node scripts/verify-release.ts 1.37.0-firefox      # one release, by its tag
 node scripts/verify-release.ts --live chromium     # whatever the store is serving right now
 node scripts/verify-release.ts 1.40.0-chromium --no-store
 node scripts/verify-release.ts --live android      # the newest Android release
+node scripts/verify-release.ts 0.19.0-desktop --arch arm64   # desktop Linux packages
 ```
 
 It builds the tag in `docker/reproducible-build.Dockerfile` and compares every file with:
@@ -122,6 +123,12 @@ that is now pinned:
 
 Two builds of 0.19.0 with these changes, one on APFS as uid 501 and one in a Docker volume as uid
 1001, gave the same `.deb` and AppImage to the byte.
+
+`verify-release.ts <version>-desktop --arch amd64|arm64` builds the tag in the tag's own image with
+`docker/reproducible-desktop.sh` and compares the `.deb`, AppImage and RPM with the release's. It
+lists the files inside each package on both sides too, so a mismatch names the files that differ
+and a release from before `deb-reproducible.ts` is held to what it installs. The default
+architecture is the host's: the other one runs under emulation, which is slow.
 
 **The RPM** still records its build time and the files' mtimes, because Tauri's bundler takes
 neither from `SOURCE_DATE_EPOCH`; its files match, and CI adds a GPG signature to its header

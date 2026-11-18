@@ -5,10 +5,12 @@ import { describe, it } from "node:test";
 import { deflateRawSync } from "node:zlib";
 import {
 	apkSignatureFile,
+	appImageOffset,
 	canonicalManifest,
 	compareTrees,
 	crxZip,
 	inReleaseZip,
+	manifestDiff,
 	parseTag,
 	storeAdded,
 	tree,
@@ -20,10 +22,11 @@ describe("parseTag", () => {
 		assert.deepEqual(parseTag("1.37.0-firefox"), { version: "1.37.0", target: "firefox" });
 		assert.deepEqual(parseTag("1.40.0-chromium"), { version: "1.40.0", target: "chromium" });
 		assert.deepEqual(parseTag("0.31.0-android"), { version: "0.31.0", target: "android" });
+		assert.deepEqual(parseTag("0.19.0-desktop"), { version: "0.19.0", target: "desktop" });
 	});
 
-	it("refuses tags that are not extension releases", () => {
-		assert.throws(() => parseTag("0.19.0-desktop"));
+	it("refuses tags it cannot check", () => {
+		assert.throws(() => parseTag("1.26.0-build216864987-ios"));
 		assert.throws(() => parseTag("1.37.0-firefox-rc"));
 	});
 });
@@ -204,5 +207,41 @@ describe("zipEntries", () => {
 			() => zipEntries(Buffer.from("not a zip at all, just some bytes here")),
 			/not a zip/,
 		);
+	});
+});
+
+describe("appImageOffset", () => {
+	it("is the end of the runtime's section headers, for 64-bit and 32-bit ELF", () => {
+		const elf64 = Buffer.alloc(64);
+		elf64.writeUInt32BE(0x7f454c46, 0);
+		elf64[4] = 2;
+		elf64.writeBigUInt64LE(935_176n, 0x28);
+		elf64.writeUInt16LE(64, 0x3a);
+		elf64.writeUInt16LE(20, 0x3c);
+		assert.equal(appImageOffset(elf64), 935_176 + 64 * 20);
+		const elf32 = Buffer.alloc(52);
+		elf32.writeUInt32BE(0x7f454c46, 0);
+		elf32[4] = 1;
+		elf32.writeUInt32LE(1000, 0x20);
+		elf32.writeUInt16LE(40, 0x2e);
+		elf32.writeUInt16LE(5, 0x30);
+		assert.equal(appImageOffset(elf32), 1200);
+	});
+
+	it("refuses what is not an ELF file", () => {
+		assert.throws(() => appImageOffset(Buffer.alloc(64)));
+	});
+});
+
+describe("manifestDiff", () => {
+	it("names paths whose hash, mode or link differ, or that one side lacks", () => {
+		const theirs =
+			"aa 755 usr/bin/bramble\nbb 644 usr/share/x\nlink:a 777 usr/lib/l\ncc 644 gone\n";
+		const ours = "aa 755 usr/bin/bramble\nbb 600 usr/share/x\nlink:b 777 usr/lib/l\ndd 644 new\n";
+		assert.deepEqual(manifestDiff(theirs, ours), ["gone", "new", "usr/lib/l", "usr/share/x"]);
+	});
+
+	it("keeps paths with spaces whole", () => {
+		assert.deepEqual(manifestDiff("aa 644 a b/c d\n", "aa 644 a b/c d\n"), []);
 	});
 });

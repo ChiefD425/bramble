@@ -6,6 +6,7 @@
 //   node scripts/verify-release.ts 1.40.0-chromium --no-store
 //   node scripts/verify-release.ts --live android       # the newest Android release
 //   node scripts/verify-release.ts 0.31.0-android --apk app-release-unsigned.apk   # your own build
+//   node scripts/verify-release.ts --live desktop --arch amd64   # the newest desktop release, Linux
 //
 // Needs git (a clone with the tag), Docker, and network. The builds run as linux/amd64, the release
 // runner's platform: the extensions in docker/reproducible-build.Dockerfile, Android in its base
@@ -15,8 +16,16 @@
 
 import { execFileSync, execSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { homedir, arch as hostArch, tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
@@ -26,13 +35,15 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = process.env.GITHUB_REPOSITORY ?? "bramble-sh/bramble";
 const DOCKERFILE = "docker/reproducible-build.Dockerfile";
 const ANDROID_SCRIPT = "docker/reproducible-android.sh";
+const DESKTOP_SCRIPT = "docker/reproducible-desktop.sh";
+const DESKTOP_DOCKERFILE = "clients/desktop/docker/linux-build.Dockerfile";
 const AMO_ID = "firefox@bramble.app";
 const AMO_API = "https://addons.mozilla.org/api/v5/addons/addon";
 const CWS_CRX =
 	"https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999.0" +
 	`&acceptformat=crx3&x=${encodeURIComponent(`id=${CWS_ITEM_ID}&uc`)}`;
 
-export type Target = "firefox" | "chromium" | "android";
+export type Target = "firefox" | "chromium" | "android" | "desktop";
 
 /** Path inside the package, mapped to its bytes. */
 export type Files = Map<string, Buffer>;
@@ -46,7 +57,7 @@ export interface Mismatch {
 }
 
 export function parseTag(tag: string): { version: string; target: Target } {
-	const m = /^(\d+\.\d+\.\d+)-(firefox|chromium|android)$/.exec(tag);
+	const m = /^(\d+\.\d+\.\d+)-(firefox|chromium|android|desktop)$/.exec(tag);
 	if (!m) throw new Error(`${tag} is not a release tag this checks (like 1.37.0-firefox)`);
 	return { version: m[1], target: m[2] as Target };
 }
@@ -198,14 +209,19 @@ async function download(url: string): Promise<Buffer> {
 
 /** The version the store serves to a fresh install right now. */
 async function liveVersion(target: Target): Promise<string> {
-	if (target === "android") {
-		// Not in a store: the GitHub release is where the APK ships.
-		const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`);
+	if (target === "android" || target === "desktop") {
+		// Not in a store: the GitHub release is where these ship.
+		// With a token where there is one: GitHub limits anonymous calls per IP, and a CI runner
+		// shares its IP with everyone else's.
+		const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+		const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`, {
+			headers: token ? { authorization: `Bearer ${token}` } : {},
+		});
 		if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
 		const releases = (await res.json()) as { tag_name: string; draft: boolean }[];
-		const latest = releases.find((r) => !r.draft && r.tag_name.endsWith("-android"));
-		if (!latest) throw new Error("no Android release found");
-		return latest.tag_name.replace(/-android$/, "");
+		const latest = releases.find((r) => !r.draft && r.tag_name.endsWith(`-${target}`));
+		if (!latest) throw new Error(`no ${target} release found`);
+		return latest.tag_name.replace(`-${target}`, "");
 	}
 	if (target === "firefox") {
 		const res = await fetch(`${AMO_API}/${encodeURIComponent(AMO_ID)}/`);
@@ -341,6 +357,177 @@ function rebuildAndroid(src: string, out: string): Files {
 	return zipEntries(readFileSync(join(out, "app-release-unsigned.apk")));
 }
 
+/** Where a type-2 AppImage's squashfs starts: the end of its ELF runtime's section headers. */
+export function appImageOffset(image: Buffer): number {
+	if (image.readUInt32BE(0) !== 0x7f454c46) throw new Error("not an ELF file");
+	if (image[4] === 2)
+		return (
+			Number(image.readBigUInt64LE(0x28)) + image.readUInt16LE(0x3a) * image.readUInt16LE(0x3c)
+		);
+	return image.readUInt32LE(0x20) + image.readUInt16LE(0x2e) * image.readUInt16LE(0x30);
+}
+
+/** The paths of lines in one manifest and not the other: a line is hash (or link), mode, path. */
+export function manifestDiff(a: string, b: string): string[] {
+	const lines = (text: string) => new Set(text.split("\n").filter(Boolean));
+	const left = lines(a);
+	const right = lines(b);
+	const path = (l: string) => l.slice(l.indexOf(" ", l.indexOf(" ") + 1) + 1);
+	const differ = [...left]
+		.filter((l) => !right.has(l))
+		.concat([...right].filter((l) => !left.has(l)));
+	return [...new Set(differ.map(path))].sort();
+}
+
+type DesktopArch = "amd64" | "arm64";
+const DESKTOP_NAMES = {
+	amd64: { deb: "amd64", appimage: "amd64", rpm: "x86_64" },
+	arm64: { deb: "arm64", appimage: "aarch64", rpm: "aarch64" },
+} as const;
+
+/**
+ * Rebuild a desktop release's Linux packages for `arch` in the tag's own build image and compare
+ * them with the release's. The .deb and AppImage must match to the byte once the tag carries
+ * deb-reproducible.ts; before it, and for the RPM always, what they install must match.
+ */
+async function verifyDesktop(
+	tag: string,
+	version: string,
+	arch: DesktopArch,
+	scratch: string,
+): Promise<boolean> {
+	const src = join(scratch, "src");
+	const out = join(scratch, "out");
+	const published = join(scratch, "published");
+	const manifests = join(scratch, "manifests");
+	for (const d of [src, out, published, manifests]) mkdirSync(d, { recursive: true });
+	try {
+		execFileSync("git", ["-C", ROOT, "rev-parse", "--verify", "--quiet", `${tag}^{commit}`]);
+	} catch {
+		throw new Error(`no tag ${tag} here; run git fetch --tags`);
+	}
+	execSync(`git -C "${ROOT}" archive --format=tar "${tag}" | tar -x -C "${src}"`);
+	const epoch = execFileSync("git", ["-C", ROOT, "log", "-1", "--format=%ct", tag], {
+		encoding: "utf8",
+	}).trim();
+	const strict = existsSync(join(src, "scripts/deb-reproducible.ts"));
+
+	const platform = ["--platform", `linux/${arch}`];
+	const image = `bramble-verify-desktop:${version}-${arch}`;
+	execFileSync(
+		"docker",
+		[
+			"build",
+			...platform,
+			"-t",
+			image,
+			"-f",
+			join(src, DESKTOP_DOCKERFILE),
+			dirname(join(src, DESKTOP_DOCKERFILE)),
+		],
+		{ stdio: "inherit" },
+	);
+	const cache = process.env.BRAMBLE_VERIFY_CACHE ?? join(homedir(), ".cache/bramble-verify");
+	const work = join(cache, `work-desktop-${arch}`);
+	mkdirSync(work, { recursive: true });
+	const script = ["-v", `${join(ROOT, DESKTOP_SCRIPT)}:/verify.sh:ro`];
+	execFileSync(
+		"docker",
+		[
+			"run",
+			"--rm",
+			...platform,
+			"--user",
+			`${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
+			"-e",
+			`SOURCE_DATE_EPOCH=${epoch}`,
+			"-v",
+			`${src}:/src:ro`,
+			"-v",
+			`${work}:/work`,
+			"-v",
+			`${out}:/out`,
+			...script,
+			image,
+			"bash",
+			"/verify.sh",
+			"build",
+		],
+		{ stdio: "inherit" },
+	);
+
+	const names = DESKTOP_NAMES[arch];
+	const assets = {
+		deb: `Bramble_${version}_${names.deb}.deb`,
+		appimage: `Bramble_${version}_${names.appimage}.AppImage`,
+		rpm: `Bramble-${version}-1.${names.rpm}.rpm`,
+	};
+	const base = `https://github.com/${REPO}/releases/download/${tag}`;
+	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
+	const specs: string[] = [];
+	const bytesEqual: Record<string, boolean> = {};
+	for (const [kind, name] of Object.entries(assets)) {
+		const theirs = await download(`${base}/${name}`);
+		if (
+			!sums.split("\n").some((l) => l.startsWith(sha256(theirs)) && l.trim().endsWith(` ${name}`))
+		)
+			throw new Error(`${name} does not match the release's SHA256SUMS`);
+		writeFileSync(join(published, name), theirs);
+		const ours = join(out, "bundle", kind, name);
+		if (!existsSync(ours)) throw new Error(`the rebuild made no ${kind}/${name}`);
+		bytesEqual[kind] = sha256(readFileSync(ours)) === sha256(theirs);
+		const offset = (file: string) =>
+			kind === "appimage" ? `:${appImageOffset(readFileSync(file))}` : "";
+		specs.push(`theirs-${kind}=${kind}:/s/published/${name}${offset(join(published, name))}`);
+		specs.push(`ours-${kind}=${kind}:/s/out/bundle/${kind}/${name}${offset(ours)}`);
+	}
+	execFileSync(
+		"docker",
+		[
+			"run",
+			"--rm",
+			...platform,
+			"--user",
+			"0:0",
+			"-v",
+			`${scratch}:/s`,
+			...script,
+			image,
+			"bash",
+			"/verify.sh",
+			"manifest",
+			"/s/manifests",
+			...specs,
+		],
+		{ stdio: ["ignore", "ignore", "inherit"] },
+	);
+
+	let ok = true;
+	for (const [kind, name] of Object.entries(assets)) {
+		const differ = manifestDiff(
+			readFileSync(join(manifests, `theirs-${kind}.txt`), "utf8"),
+			readFileSync(join(manifests, `ours-${kind}.txt`), "utf8"),
+		);
+		const files = readFileSync(join(manifests, `ours-${kind}.txt`), "utf8")
+			.split("\n")
+			.filter(Boolean).length;
+		const mustBeBytes = strict && kind !== "rpm";
+		if (bytesEqual[kind]) console.log(`  ${name}: byte-identical`);
+		else if (!differ.length)
+			console.log(`  ${name}: all ${files} files identical; the packaging around them differs`);
+		else {
+			console.log(`  ${name}: ${differ.length} of ${files} files differ`);
+			for (const path of differ.slice(0, 40)) console.log(`    ${path}`);
+		}
+		if (differ.length || (mustBeBytes && !bytesEqual[kind])) ok = false;
+	}
+	if (!strict)
+		console.log(
+			`  (${tag} predates deb-reproducible.ts, so its packages are compared by contents)`,
+		);
+	return ok;
+}
+
 function report(label: string, mismatches: Mismatch[], count: number): boolean {
 	if (!mismatches.length) {
 		console.log(`  ${label}: all ${count} files identical`);
@@ -358,15 +545,23 @@ async function main(argv: string[]): Promise<number> {
 		const live = argv.indexOf("--live");
 		if (live !== -1) {
 			const target = argv[live + 1] as Target;
-			if (target !== "firefox" && target !== "chromium" && target !== "android")
-				throw new Error("--live takes firefox, chromium or android");
+			if (!["firefox", "chromium", "android", "desktop"].includes(target))
+				throw new Error("--live takes firefox, chromium, android or desktop");
 			tag = `${await liveVersion(target)}-${target}`;
-			console.log(
-				`${target === "android" ? "the newest release is" : "the store is serving"} ${tag}`,
-			);
+			const store = target === "firefox" || target === "chromium";
+			console.log(`${store ? "the store is serving" : "the newest release is"} ${tag}`);
 		}
-		if (!tag) throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium|android>");
+		if (!tag)
+			throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium|android|desktop>");
 		const { version, target } = parseTag(tag);
+		if (target === "desktop") {
+			const archAt = argv.indexOf("--arch");
+			const arch = archAt === -1 ? (hostArch() === "arm64" ? "arm64" : "amd64") : argv[archAt + 1];
+			if (arch !== "amd64" && arch !== "arm64") throw new Error("--arch takes amd64 or arm64");
+			const ok = await verifyDesktop(tag, version, arch, scratch);
+			console.log(ok ? "\nreproducible" : "\nNOT reproducible");
+			return ok ? 0 : 1;
+		}
 
 		const apkAt = argv.indexOf("--apk");
 		let built: Files;
