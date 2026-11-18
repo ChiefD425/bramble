@@ -1,0 +1,113 @@
+---
+title: Check that Bramble is built from its source
+description: Every Bramble app can be rebuilt from its public source and compared byte for byte with the one you install, and desktop updates have to be in a public log before they install. Here's what that means, and how to check it yourself.
+section: privacy
+kind: guide
+order: 2
+keywords:
+  - reproducible builds
+  - reproducible
+  - verifiable builds
+  - verify
+  - verification
+  - build from source
+  - compile
+  - binary
+  - checksum
+  - SHA256SUMS
+  - supply chain
+  - tampered
+  - backdoor
+  - malicious update
+  - transparency log
+  - update transparency
+  - binary transparency
+  - Sigsum
+  - witness
+  - proof
+  - Merkle tree
+  - signature
+  - code signing
+  - Docker
+  - Chrome Web Store
+  - addons.mozilla.org
+  - APK
+  - is this the real Bramble
+updatedDate: 2026-11-17
+---
+
+Bramble's code is open source, but you don't install the code: you install an app built from it. Two things let you check that the app is what the code says, without having to trust Bramble.
+
+- **Reproducible builds.** Anyone can rebuild a Bramble release from its public source and get the same bytes that were published.
+- **Logged desktop updates.** The desktop app only installs an update that's in a public log, so every update anyone receives is one everyone can see.
+
+## Reproducible builds
+
+A release is reproducible when building it again from the same source gives exactly the same files. Then the published app can't hold anything the source doesn't show, and anyone can confirm it.
+
+| App | What matches | Checked |
+| --- | --- | --- |
+| Chrome extension | Every file, in the copy the Chrome Web Store serves and on GitHub | Every day |
+| Firefox extension | Every file, in the copy addons.mozilla.org serves and on GitHub | Every day |
+| Android | Every file in the APK, apart from its signature | Every day |
+| Desktop on Linux | The `.deb` and AppImage byte for byte from 0.20.0; every file in the RPM | Every day, on both Intel and ARM |
+| Desktop on macOS | The app's binaries, apart from Apple's code signature, from 0.20.0 | When you run the check |
+| Desktop on Windows | The installer, apart from its signature, from its first release | When you run the check |
+| iPhone | Can't be checked: the App Store re-encrypts every app it delivers | |
+
+The daily checks run in Bramble's public [GitHub Actions](https://github.com/bramble-sh/bramble/actions/workflows/verify-releases.yml), so their results are visible to anyone.
+
+What's allowed to differ is only what's added after the build: each store's own signature, Apple's and Microsoft's code signatures, and an update address the Chrome Web Store writes into the extension's manifest. Everything else has to match exactly.
+
+### Check a release yourself
+
+You need git, Node.js 24 and Docker. The builds run in containers that pin every tool by version and checksum, so the result doesn't depend on your machine.
+
+```sh
+git clone https://github.com/bramble-sh/bramble && cd bramble
+node scripts/verify-release.ts --live chromium      # what the Chrome Web Store serves now
+node scripts/verify-release.ts --live firefox       # what addons.mozilla.org serves now
+node scripts/verify-release.ts --live android       # the newest Android release
+node scripts/verify-release.ts --live desktop       # the newest desktop release, for Linux
+node scripts/verify-release.ts --live desktop --windows
+node scripts/verify-release.ts --live desktop --macos   # on a Mac, with the same Xcode as the release
+```
+
+Each one ends with `reproducible`, or lists the files that differ. For an older release, name its tag instead of `--live`, for example `node scripts/verify-release.ts 1.37.0-firefox`.
+
+## Desktop updates are logged in public
+
+A signature on an update proves Bramble released it. It doesn't prove that everyone received the same update. So, from version 0.20.0, the desktop app also requires each update to be in a public, append-only log run by independent organisations, using [Sigsum](https://www.sigsum.org).
+
+1. When a desktop release is built, a fingerprint of each update is added to a Sigsum log.
+2. Independent witnesses (Glasklar Teknik, Mullvad and Tillitis) countersign the log, but only if it still holds everything it held before. Two of the three must agree.
+3. The release carries a proof that its update is in the log.
+4. Before installing an update, the app checks that proof: the fingerprint matches the download, it's in the log, and two witnesses vouch for the log. If any part fails, the update isn't installed.
+
+The app checks the proof by itself, with no network request, so no log or witness learns that you updated.
+
+Every day, a monitor reads the whole log and checks that every entry made with Bramble's keys matches a published desktop release. Anyone can run the same check:
+
+```sh
+node scripts/sigsum-monitor.ts
+```
+
+### Check a download by hand
+
+Each desktop release on GitHub has a `.proof` file next to each update file. Check one with Sigsum's own tool, using Bramble's public key:
+
+```sh
+go install sigsum.org/sigsum-go/cmd/sigsum-verify@v0.14.1
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHnRCsovjRcE3dOcyddWNmrtcrNC5VK4quxfiAV4lnf+ bramble" > bramble.pub
+sigsum-verify -k bramble.pub -P sigsum-generic-2025-1 Bramble.app.tar.gz.proof < Bramble.app.tar.gz
+```
+
+Bramble's second, offline backup key is `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBodQKtbHMO//gayErv0KqwpXOZf6pXs2d3uj/baNpEL`. Both are also in [`sigsum-keys.txt`](https://github.com/bramble-sh/bramble/blob/main/clients/desktop/src-tauri/sigsum-keys.txt).
+
+## What these checks don't cover
+
+- **The iPhone app.** The App Store re-encrypts apps for each device, so there's nothing to compare against.
+- **Your first download of the desktop app.** The log check protects updates. For the first download, check the file against the release's `SHA256SUMS`, or check its proof as above if it's an update file.
+- **The log makes a bad update visible. It doesn't make it impossible.** An update the monitor can't match to a release is a public warning sign, so it can't be done quietly.
+
+The full technical details are in [reproducible-builds.md](https://github.com/bramble-sh/bramble/blob/main/docs/reproducible-builds.md) and [update-transparency.md](https://github.com/bramble-sh/bramble/blob/main/docs/update-transparency.md).

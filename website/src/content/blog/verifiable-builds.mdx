@@ -1,0 +1,75 @@
+---
+title: "You don't have to take our word for it"
+description: "Every Bramble app can now be rebuilt from its source and compared byte for byte with the one you install, and the desktop app only installs updates that are in a public log. Here's what that means and how to check it yourself."
+pubDate: 2026-11-17
+---
+
+Bramble is open source, so anyone can read the code. But nobody installs code. You install an app
+that was built from it, by a build server you can't see, and handed to you by a store or a download
+link. Reading the source tells you what the app should be. It doesn't tell you what you got.
+
+As of today, you can check that too.
+
+## Every app rebuilds to the same bytes
+
+A build is *reproducible* when building the same source again gives exactly the same files. Then
+the published app can't contain anything the source doesn't, and anyone can confirm it by
+rebuilding it themselves.
+
+Bramble's builds now are, and the check runs every day in public:
+
+- **The Chrome and Firefox extensions** rebuild to the same files as the copies the Chrome Web
+  Store and addons.mozilla.org actually serve. Not just the zip on GitHub: the package the store
+  hands your browser.
+- **The Android app** rebuilds to the same APK, every one of its 542 files, Rust crypto library and
+  all. Only the signature differs.
+- **The desktop app on Linux** rebuilds to the same `.deb` and AppImage, byte for byte, on both
+  Intel and ARM.
+- **The desktop app on macOS and Windows** rebuilds to the same binaries once Apple's and
+  Microsoft's code signatures are set aside, starting with the next desktop release.
+
+Getting there meant chasing down every way a build quietly picks up something from the machine it
+runs on: a timestamp, a temporary file name, the folder the code happened to be in. The WebAssembly
+in the extensions, for one, came out differently on a Mac than on Linux, and the macOS app depended
+on where its source was checked out. Each build now runs in a pinned environment where none of that
+leaks in.
+
+The one exception is the iPhone app. The App Store re-encrypts every app for the device it's going
+to, so there's nothing anyone can compare against.
+
+## Desktop updates go through a public log
+
+A signature on an update proves Bramble released it. It can't prove that everybody got the same
+update: whoever holds the signing key could, in principle, give one person a different build from
+everyone else, and the signature would check out.
+
+So from version 0.20.0, the desktop app only installs an update that's in a public, append-only
+log run by independent organisations, using [Sigsum](https://www.sigsum.org). When a release is
+built, a fingerprint of each update goes into the log, and independent witnesses (Glasklar Teknik,
+Mullvad and Tillitis) countersign it. Before the app installs an update, it checks a proof that
+the update is in that log and that two of the three witnesses vouch for it. If the check fails, the
+update doesn't install.
+
+The check happens on your computer, with no network request, so nobody learns that you updated.
+And every day, a monitor reads the whole log and confirms that every entry made with Bramble's keys
+matches a release everyone can download. A build made for one person would have to be published to
+the world to install, and the monitor would flag it.
+
+## Check it yourself
+
+You don't need to trust the daily checks either. With git, Node.js and Docker:
+
+```sh
+git clone https://github.com/bramble-sh/bramble && cd bramble
+node scripts/verify-release.ts --live chromium
+```
+
+That rebuilds whatever the Chrome Web Store is serving right now and compares it file by file.
+The same works for `firefox`, `android` and `desktop`, and `node scripts/sigsum-monitor.ts` reads
+the log for you.
+
+The [help article](/docs/verify-bramble) covers every app and how to check a desktop update by
+hand. The technical details are in
+[reproducible-builds.md](https://github.com/bramble-sh/bramble/blob/main/docs/reproducible-builds.md)
+and
+[update-transparency.md](https://github.com/bramble-sh/bramble/blob/main/docs/update-transparency.md).
