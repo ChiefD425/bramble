@@ -610,6 +610,30 @@ credentials, untouched) and the planned entry-editor "offer the link" feature
 (docs/autofill.md, a website suggested for an app URI at edit time): this records where a
 confirmed fill just happened.
 
+### "New login" from the picker (Android + iOS)
+
+The searchable list leads with **New login** whenever the form has a password field (not on a
+one-time-code request), so a sign-up form can be filled without leaving the browser (#241). The
+form takes a name (the caller's host or app label), a username and a password that starts as a
+20-character generated one with every class (the app generator's defaults, re-implemented in
+`PasswordGenerator`; the provider can't reach the user's generator settings).
+
+Save queues a VEK-encrypted **PendingLogin** (name, URL, username, password) in its own handoff
+(`autofill_pending_logins.json` on Android, `pending-logins.json` in the App Group on iOS) and
+only then fills; if the queue write fails nothing is filled, since a password on the site and
+saved nowhere locks the user out of the new account. The URL is the same identifier "fill and
+save" would record (`https://<host>` or `androidapp://<package>`), empty when there is none.
+
+Unlike the other handoffs the app never takes this queue: `peekPendingLogins` reads it, each login
+is added through the ordinary `add` mutation, and only then is its record removed by iv
+(`removePendingLogins`). A failed add stays queued for the next drain, and one already in the vault
+(same username and password, e.g. a drain stopped between add and remove) is removed without a
+second add. Until the app saves it, both providers merge the queue into their list (decrypting
+with the loaded VEK, skipping other vaults' records, and dropping any the vault now holds), so
+signing in right after signing up works before the app has run. Pending logins are not offered a
+"fill and save" association (there is no entry to add it to yet), and deleting a vault does not
+clear the queue: other vaults' records in it are the only copy of a password already in use.
+
 ### Passkey hosting is a deferred future feature
 
 Two passkey concerns are easy to conflate, and **both are out of v1 scope**:

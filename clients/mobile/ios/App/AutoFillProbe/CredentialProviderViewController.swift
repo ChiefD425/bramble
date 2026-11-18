@@ -208,6 +208,8 @@ private struct CredentialListView: View {
 	let all: [Cred]
 	let requestedHost: String?
 	let onSelect: (Cred) -> Void
+	/// Nil where a new login has nothing to fill (a one-time-code field).
+	let onNew: (() -> Void)?
 	let onCancel: () -> Void
 	@State private var showAll = false
 	@State private var query = ""
@@ -216,12 +218,13 @@ private struct CredentialListView: View {
 
 	init(
 		matches: [Cred], all: [Cred], requestedHost: String?, onSelect: @escaping (Cred) -> Void,
-		onCancel: @escaping () -> Void
+		onNew: (() -> Void)?, onCancel: @escaping () -> Void
 	) {
 		self.matches = matches
 		self.all = all
 		self.requestedHost = requestedHost
 		self.onSelect = onSelect
+		self.onNew = onNew
 		self.onCancel = onCancel
 		haystacks = all.map { "\($0.name) \($0.username) \($0.services.joined(separator: " "))".lowercased() }
 		// iOS 15's List is a UITableView with an opaque background; iOS 16+ uses scrollContentBackground.
@@ -234,14 +237,21 @@ private struct CredentialListView: View {
 		case label(String)
 		case login(Cred)
 		case showAll(Int)
+		case newLogin
 
 		var id: String {
 			switch self {
 			case .label(let text): return "label:\(text)"
 			case .login(let cred): return "login:\(cred.recordId)"
 			case .showAll: return "showAll"
+			case .newLogin: return "newLogin"
 			}
 		}
+	}
+
+	// "New login" leads, ahead of the page's matches: on a sign-up form it is the row wanted.
+	private var items: [Item] {
+		(onNew == nil ? [] : [.newLogin]) + listItems
 	}
 
 	// A search collapses the sections: the point of typing is that the thing you want is not
@@ -250,7 +260,8 @@ private struct CredentialListView: View {
 	// Android's) rather than testing the raw string: "acme staging" found nothing, because no
 	// one field contains that string. The haystack is joined, not searched per field, so the
 	// tokens may land in different ones - which is what makes a name plus a domain work.
-	private var items: [Item] {
+	private var listItems: [Item] {
+		if all.isEmpty { return [] }
 		let tokens = query.lowercased().split(whereSeparator: { $0.isWhitespace })
 		if !tokens.isEmpty {
 			let found = zip(all, haystacks).filter { _, hay in tokens.allSatisfy { hay.contains($0) } }.map(\.0)
@@ -285,13 +296,13 @@ private struct CredentialListView: View {
 			.padding(.bottom, 12)
 			Rectangle().fill(Theme.border).frame(height: 1).opacity(0.6)
 
-			if all.isEmpty {
+			if all.isEmpty && onNew == nil {
 				Spacer()
 				Text("No logins saved yet.\nAdd one in Bramble.")
 					.font(.footnote).foregroundColor(Theme.muted).multilineTextAlignment(.center).padding(24)
 				Spacer()
 			} else {
-				searchField
+				if !all.isEmpty { searchField }
 				List {
 					ForEach(items) { item in
 						itemView(item)
@@ -317,6 +328,23 @@ private struct CredentialListView: View {
 			sectionLabel(text)
 		case .login(let cred):
 			Button { onSelect(cred) } label: { RowView(cred: cred) }.buttonStyle(.plain)
+		case .newLogin:
+			Button { onNew?() } label: {
+				HStack(spacing: 12) {
+					Image(systemName: "plus").font(.system(size: 17, weight: .semibold))
+						.foregroundColor(Theme.foreground)
+						.frame(width: 40, height: 40).background(Theme.chip)
+						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+						.accessibilityHidden(true)
+					Text("New login").font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.foreground)
+					Spacer(minLength: 0)
+				}
+				.padding(12).background(Theme.card)
+				.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+				.overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.border, lineWidth: 1))
+				.padding(.top, 12)
+			}
+			.buttonStyle(.plain)
 		case .showAll(let count):
 			Button { showAll = true } label: {
 				Text("Show all items (\(count) more)")
@@ -365,6 +393,103 @@ private struct CredentialListView: View {
 private struct ClearListBackground: ViewModifier {
 	func body(content: Content) -> some View {
 		if #available(iOS 16.0, *) { content.scrollContentBackground(.hidden) } else { content }
+	}
+}
+
+// --- new login (a sign-up form: make the login here, fill it, and leave it for the app to save) ---
+
+// The password a new login starts with. The extension can't reach the app's generator, so this
+// mirrors its defaults: 20 characters from every class, one of each guaranteed. randomElement and
+// shuffled draw from SystemRandomNumberGenerator, the OS CSPRNG, without modulo bias.
+private enum PasswordGenerator {
+	static func generate() -> String {
+		let classes = [
+			"abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*()_+-=[]{}|;:,.<>?",
+		]
+		let pool = classes.joined()
+		var out = classes.compactMap { $0.randomElement() }
+		while out.count < 20, let c = pool.randomElement() { out.append(c) }
+		return String(out.shuffled())
+	}
+}
+
+private struct NewLoginView: View {
+	@State var name: String
+	/// Queue the login for the app and fill it; false when it couldn't be queued.
+	let onSave: (_ name: String, _ username: String, _ password: String) -> Bool
+	let onCancel: () -> Void
+	@State private var username = ""
+	@State private var password = PasswordGenerator.generate()
+	@State private var failed = false
+	@FocusState private var usernameFocused: Bool
+
+	var body: some View {
+		VStack(spacing: 0) {
+			HStack(spacing: 10) {
+				Glyph(size: 26)
+				Text("New login").font(.system(size: 20, weight: .semibold)).foregroundColor(Theme.foreground)
+				Spacer()
+				Button("Cancel", action: onCancel).foregroundColor(Theme.muted)
+			}
+			.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 12)
+			Rectangle().fill(Theme.border).frame(height: 1).opacity(0.6)
+			ScrollView {
+				VStack(alignment: .leading, spacing: 16) {
+					field("Name") { TextField("", text: $name).accessibilityLabel(Text("Name")) }
+					field("Username or email") {
+						TextField("", text: $username).keyboardType(.emailAddress).focused($usernameFocused)
+							.accessibilityLabel(Text("Username or email"))
+					}
+					field("Password") {
+						HStack(spacing: 8) {
+							TextField("", text: $password).font(.system(size: 15, design: .monospaced))
+								.accessibilityLabel(Text("Password"))
+							Button { password = PasswordGenerator.generate() } label: {
+								Image(systemName: "arrow.clockwise").font(.system(size: 15)).foregroundColor(Theme.muted)
+							}
+							.buttonStyle(.plain)
+							.accessibilityLabel(Text("Generate new"))
+						}
+					}
+					if failed {
+						Text("Couldn't save this login.").font(.footnote).foregroundColor(Theme.destructive)
+					}
+					Button {
+						failed = !onSave(
+							name.trimmingCharacters(in: .whitespacesAndNewlines),
+							username.trimmingCharacters(in: .whitespacesAndNewlines), password)
+					} label: {
+						Text("Save and fill").font(.system(size: 15, weight: .semibold))
+							.frame(maxWidth: .infinity).padding(.vertical, 12)
+							.foregroundColor(.black).background(Theme.foreground)
+							.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+					}
+					.buttonStyle(.plain)
+					.disabled(password.isEmpty)
+					.opacity(password.isEmpty ? 0.5 : 1)
+				}
+				.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24)
+			}
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.background(Theme.background.ignoresSafeArea())
+		.onAppear { usernameFocused = true }
+	}
+
+	private func field(_ label: LocalizedStringKey, @ViewBuilder input: () -> some View) -> some View {
+		VStack(alignment: .leading, spacing: 6) {
+			// The field carries the same label for VoiceOver.
+			Text(label).font(.system(size: 13, weight: .medium)).foregroundColor(Theme.muted)
+				.accessibilityHidden(true)
+			input()
+				.autocorrectionDisabled()
+				.textInputAutocapitalization(.never)
+				.foregroundColor(Theme.foreground)
+				.padding(10)
+				.background(Theme.input)
+				.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+				.overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.border, lineWidth: 1))
+		}
 	}
 }
 
@@ -1172,12 +1297,16 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
 			return
 		}
 		guard let bundle = loadBundle() else {
-			showList(matches: [], all: [], requestedHost: pendingHosts.first)
+			let pending = pendingOneTimeCode ? [] : loadPendingLogins()
+			showList(
+				matches: closestFirst(pending.filter { matchesRequested($0) }), all: pending,
+				requestedHost: pendingHosts.first)
 			return
 		}
 		do {
 			let json = try decryptWithVek(ivB64: bundle.iv, ciphertextB64: bundle.ct)
-			var creds = (try? JSONDecoder().decode([Cred].self, from: Data(json.utf8))) ?? []
+			let saved = (try? JSONDecoder().decode([Cred].self, from: Data(json.utf8))) ?? []
+			var creds = Self.withPending(saved, loadPendingLogins())
 			// A code request can only be satisfied by a login whose key actually generates one,
 			// so don't offer the rest (a password-only entry would just dead-end).
 			if pendingOneTimeCode { creds = creds.filter { Totp.generate($0.totp) != nil } }
@@ -1203,7 +1332,69 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
 			CredentialListView(
 				matches: matches, all: all, requestedHost: requestedHost,
 				onSelect: { [weak self] in self?.select($0) },
+				onNew: pendingOneTimeCode
+					? nil
+					: { [weak self] in self?.showNewLogin(matches: matches, all: all, requestedHost: requestedHost) },
 				onCancel: { [weak self] in self?.cancel(.userCanceled) }))
+	}
+
+	// --- new login ---
+
+	private func showNewLogin(matches: [Cred], all: [Cred], requestedHost: String?) {
+		host(
+			NewLoginView(
+				name: requestedHost ?? "",
+				onSave: { [weak self] name, username, password in
+					self?.saveNewLogin(name: name, username: username, password: password) ?? false
+				},
+				onCancel: { [weak self] in self?.showList(matches: matches, all: all, requestedHost: requestedHost) }))
+	}
+
+	// Queue it for the app before filling: a password on the site but saved nowhere would lock the
+	// user out of the account they are making. Checked back from the queue, since append can't fail loudly.
+	private func saveNewLogin(name: String, username: String, password: String) -> Bool {
+		let url = associationHost().map { "https://\($0)" } ?? ""
+		guard
+			let json = try? JSONSerialization.data(withJSONObject: [
+				"name": name, "url": url, "username": username, "password": password,
+			]),
+			let plaintext = String(data: json, encoding: .utf8),
+			let enc = try? encryptWithVek(plaintext: plaintext)
+		else { return false }
+		AppGroupHandoff.append(["iv": enc.iv, "ciphertext": enc.ciphertext], to: .logins)
+		guard AppGroupHandoff.peek(.logins).contains(where: { $0["iv"] == enc.iv }) else { return false }
+		complete(
+			Cred(
+				recordId: "", name: name, username: username, password: password, services: [], totp: nil,
+				subdomainMatch: nil))
+		return true
+	}
+
+	// Logins made with "New login" that the app hasn't saved yet, so signing in right after signing
+	// up finds them. Another vault's don't decrypt and are skipped.
+	private func loadPendingLogins() -> [Cred] {
+		AppGroupHandoff.peek(.logins).compactMap { record in
+			guard let iv = record["iv"], let ct = record["ciphertext"],
+				let json = try? decryptWithVek(ivB64: iv, ciphertextB64: ct),
+				let d = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: String],
+				let password = d["password"], !password.isEmpty
+			else { return nil }
+			let username = d["username"] ?? ""
+			let url = d["url"] ?? ""
+			return Cred(
+				recordId: "pending:\(iv)", name: (d["name"] ?? "").isEmpty ? username : d["name"]!,
+				username: username, password: password, services: url.isEmpty ? [] : [url], totp: nil,
+				subdomainMatch: nil)
+		}
+	}
+
+	// The saved logins plus the pending ones, minus any the app has saved since.
+	private static func withPending(_ saved: [Cred], _ pending: [Cred]) -> [Cred] {
+		var out = saved
+		for p in pending where !out.contains(where: { $0.password == p.password && $0.username == p.username }) {
+			out.append(p)
+		}
+		return out
 	}
 
 	/// Finish with whatever this request asked of the chosen login: its password, or a freshly
@@ -1211,7 +1402,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
 	private func select(_ cred: Cred) {
 		if pendingOneTimeCode {
 			if #available(iOS 18.0, *) { completeOneTimeCode(cred) } else { cancel(.failed) }
-		} else if let site = associationHost(), !matchesRequested(cred) {
+		} else if let site = associationHost(), !matchesRequested(cred), !cred.recordId.hasPrefix("pending:") {
+			// (Not one the app hasn't saved yet: there is no entry to add the site to.)
 			promptToAssociate(cred, site: site)
 		} else {
 			complete(cred)

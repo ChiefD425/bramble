@@ -19,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.BaseAdapter
 import android.widget.LinearLayout
 import android.widget.ListView
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 
@@ -166,18 +167,20 @@ class AutofillUnlockActivity : BrambleUnlockActivity() {
 
         fun show(query: String) {
             this.query = query
-            rows = pickerRows(logins, matches, showAll, label.isNotEmpty(), searchTokens(query))
+            // Only a form with a password field has somewhere to put a new login's password.
+            rows = pickerRows(logins, matches, showAll, label.isNotEmpty(), searchTokens(query), canCreate = passwordIds.isNotEmpty())
             notifyDataSetChanged()
         }
 
         override fun getCount() = rows.size
         override fun getItem(position: Int) = rows[position]
         override fun getItemId(position: Int) = position.toLong()
-        override fun getViewTypeCount() = 3
+        override fun getViewTypeCount() = 4
         override fun getItemViewType(position: Int) = when (rows[position]) {
             is PickerRow.Section -> 0
             is PickerRow.Login -> 1
             is PickerRow.Empty -> 2
+            PickerRow.NewLogin -> 3
         }
         // Rows take their own taps; the list itself has nothing to select.
         override fun areAllItemsEnabled() = false
@@ -191,6 +194,7 @@ class AutofillUnlockActivity : BrambleUnlockActivity() {
                     else getString(R.string.af_empty_no_match, query)
                 }
                 is PickerRow.Login -> (convertView ?: row()).also { bindRow(it, r.login) }
+                PickerRow.NewLogin -> convertView ?: newLoginRow()
             }
     }
 
@@ -249,9 +253,117 @@ class AutofillUnlockActivity : BrambleUnlockActivity() {
         v.row.setOnClickListener { complete(login) }
     }
 
+    private fun newLoginRow(): View {
+        val rowView = row()
+        val v = rowView.tag as RowViews
+        v.chip.text = "+"
+        v.chip.textSize = 20f
+        v.chip.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        v.title.text = getString(R.string.af_new_login)
+        v.username.visibility = View.GONE
+        v.row.setOnClickListener { showNewLogin() }
+        return rowView
+    }
+
+    // --- new login ---
+
+    // A sign-up form: make the login here, fill it, and leave it for the app to save. The password
+    // starts generated; the name and site come from the page (or the app) asking.
+    private fun showNewLogin() {
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(24))
+        }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(12))
+        }
+        header.addView(TextView(this).apply {
+            text = getString(R.string.af_new_login)
+            setTextColor(color(R.color.bramble_af_foreground))
+            textSize = 19f
+            setTypeface(typeface, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        header.addView(textButton(getString(R.string.af_cancel)) { showList("") })
+        col.addView(header)
+
+        val name = field(assocLabel ?: label, InputType.TYPE_CLASS_TEXT)
+        val username = field("", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        val password = field(
+            PasswordGenerator.generate(),
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+        ).apply { typeface = Typeface.MONOSPACE }
+        col.addView(labelled(R.string.af_new_name, name))
+        col.addView(labelled(R.string.af_new_username, username))
+        col.addView(labelled(R.string.af_new_password, password))
+        col.addView(textButton(getString(R.string.af_new_generate)) {
+            password.setText(PasswordGenerator.generate())
+        }.apply { layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply { gravity = Gravity.END } })
+
+        val error = TextView(this).apply {
+            setTextColor(color(R.color.bramble_af_destructive))
+            textSize = 13f
+            setPadding(0, 0, 0, dp(10))
+            visibility = View.GONE
+        }
+        col.addView(error)
+        col.addView(filledButton(getString(R.string.af_new_save)) {
+            val pw = password.text.toString()
+            if (pw.isEmpty()) {
+                error.text = getString(R.string.af_err_new_password)
+                error.visibility = View.VISIBLE
+                return@filledButton
+            }
+            saveNewLogin(name.text.toString().trim(), username.text.toString().trim(), pw) {
+                error.text = getString(R.string.af_err_new_save)
+                error.visibility = View.VISIBLE
+            }
+        })
+        setContent(ScrollView(this).apply { addView(col) })
+        username.requestFocus()
+    }
+
+    // Queue it for the app first: a password filled into the site but saved nowhere would lock the
+    // user out of the account they are making. Only then fill.
+    private fun saveNewLogin(name: String, username: String, password: String, onError: () -> Unit) {
+        try {
+            PendingLogin.write(this, name, assocUri ?: "", username, password)
+        } catch (e: Exception) {
+            onError()
+            return
+        }
+        finishWithDataset(AutofillLogin("pending:new", name, username, password, null, emptyList()))
+    }
+
+    private fun field(value: String, type: Int) = EditText(this).apply {
+        setTextColor(color(R.color.bramble_af_foreground))
+        inputType = type
+        background = roundedFill(color(R.color.bramble_af_input), color(R.color.bramble_af_border))
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        setText(value)
+    }
+
+    private fun labelled(labelRes: Int, input: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, 0, 0, dp(12))
+        input.id = View.generateViewId()
+        addView(TextView(this@AutofillUnlockActivity).apply {
+            labelFor = input.id // TalkBack names the field by this label
+            text = getString(labelRes)
+            setTextColor(color(R.color.bramble_af_muted))
+            textSize = 13f
+            setPadding(0, 0, 0, dp(6))
+        })
+        addView(input)
+    }
+
     private fun complete(login: AutofillLogin) {
         val uri = assocUri
-        if (uri != null && VaultReader.offersAssociation(login, hosts, matchPackage, callerCerts)) {
+        // Not one the app hasn't saved yet: there is no entry to add the site to.
+        val saved = !login.id.startsWith("pending:")
+        if (uri != null && saved && VaultReader.offersAssociation(login, hosts, matchPackage, callerCerts)) {
             showAssociationPrompt(login, uri, assocLabel ?: uri)
         } else {
             finishWithDataset(login)
@@ -348,6 +460,7 @@ internal sealed class PickerRow {
     data class Section(val kind: SectionKind) : PickerRow()
     class Login(val login: AutofillLogin) : PickerRow()
     data class Empty(val kind: EmptyKind) : PickerRow()
+    object NewLogin : PickerRow()
 }
 
 internal enum class SectionKind { MATCHES, OTHER_LOGINS, NO_MATCHES, ALL_LOGINS }
@@ -357,9 +470,24 @@ internal enum class EmptyKind { NO_LOGINS, NO_RESULTS }
 /**
  * The picker's rows: a search is one flat list over the whole vault; otherwise the page's
  * matches first and every other login after them, or the whole vault when nothing matches
- * (or the caller asked for all of it).
+ * (or the caller asked for all of it). With [canCreate], "New login" leads, ahead of everything.
  */
 internal fun pickerRows(
+    logins: List<AutofillLogin>,
+    matches: List<AutofillLogin>,
+    showAll: Boolean,
+    hasLabel: Boolean,
+    tokens: List<String>,
+    canCreate: Boolean = false,
+): List<PickerRow> {
+    val rows = listRows(logins, matches, showAll, hasLabel, tokens)
+    if (!canCreate) return rows
+    // An empty vault has nothing to list, and "New login" is the way to add one.
+    val rest = if (rows == listOf(PickerRow.Empty(EmptyKind.NO_LOGINS))) emptyList() else rows
+    return listOf(PickerRow.NewLogin) + rest
+}
+
+private fun listRows(
     logins: List<AutofillLogin>,
     matches: List<AutofillLogin>,
     showAll: Boolean,

@@ -1,6 +1,6 @@
 import Foundation
 
-// The extension -> app handoffs (minted passkeys, fill-and-save associations): a JSON array of
+// The extension -> app handoffs (minted passkeys, fill-and-save associations, new logins): a JSON array of
 // VEK-encrypted {iv, ciphertext} records per queue, in a file in the App Group container. The
 // extension appends and the app drains, each under an exclusive flock on the shared container, so
 // an append racing a drain is never lost. A file rather than UserDefaults: each process caches its
@@ -11,12 +11,16 @@ enum AppGroupHandoff {
 	enum Queue: String {
 		case passkeys = "pending-passkeys.json"
 		case associations = "pending-associations.json"
+		// Logins made with "New login" in the picker. Peeked and removed one by one, never taken:
+		// the picker already filled the password into a sign-up form.
+		case logins = "pending-logins.json"
 
 		// Where builds before the file queue kept it; drained once, with the file.
-		var legacyKey: String {
+		var legacyKey: String? {
 			switch self {
 			case .passkeys: return BrambleVault.pendingPasskeysKey
 			case .associations: return BrambleVault.pendingAssociationsKey
+			case .logins: return nil
 			}
 		}
 	}
@@ -29,13 +33,26 @@ enum AppGroupHandoff {
 	static func take(_ queue: Queue) -> [Record] {
 		var taken: [Record] = []
 		update(queue) { current in
-			let defaults = UserDefaults(suiteName: BrambleVault.appGroup)
-			let legacy = (defaults?.array(forKey: queue.legacyKey) as? [Record]) ?? []
-			defaults?.removeObject(forKey: queue.legacyKey)
+			var legacy: [Record] = []
+			if let key = queue.legacyKey, let defaults = UserDefaults(suiteName: BrambleVault.appGroup) {
+				legacy = (defaults.array(forKey: key) as? [Record]) ?? []
+				defaults.removeObject(forKey: key)
+			}
 			taken = legacy + current
 			return []
 		}
 		return taken
+	}
+
+	/// Every pending record, left in place. A plain read: writes land atomically, never half a file.
+	static func peek(_ queue: Queue) -> [Record] {
+		fileURL(queue).map(read) ?? []
+	}
+
+	/// Drop the records with these ivs, keeping the rest.
+	static func remove(ivs: Set<String>, from queue: Queue) {
+		guard !ivs.isEmpty else { return }
+		update(queue) { $0.filter { !ivs.contains($0["iv"] ?? "") } }
 	}
 
 	/// Put back records the app couldn't decrypt (another vault's), ahead of any appended since.
@@ -44,10 +61,13 @@ enum AppGroupHandoff {
 		update(queue) { keep + $0 }
 	}
 
+	// Not the new logins: this runs when one vault is deleted, and a login another vault's picker
+	// made is that vault's only copy of a password already in use. The deleted vault's own records
+	// are sealed under a key that is gone with it.
 	static func removeAll() {
 		for queue in [Queue.passkeys, .associations] {
 			update(queue) { _ in [] }
-			UserDefaults(suiteName: BrambleVault.appGroup)?.removeObject(forKey: queue.legacyKey)
+			if let key = queue.legacyKey { UserDefaults(suiteName: BrambleVault.appGroup)?.removeObject(forKey: key) }
 		}
 	}
 
@@ -61,17 +81,19 @@ enum AppGroupHandoff {
 		return body()
 	}
 
+	private static func fileURL(_ queue: Queue) -> URL? {
+		FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: BrambleVault.appGroup)?
+			.appendingPathComponent(queue.rawValue)
+	}
+
+	private static func read(_ url: URL) -> [Record] {
+		(try? Data(contentsOf: url)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [Record] } ?? []
+	}
+
 	private static func update(_ queue: Queue, _ change: ([Record]) -> [Record]) {
-		guard
-			let url = FileManager.default.containerURL(
-				forSecurityApplicationGroupIdentifier: BrambleVault.appGroup)?
-				.appendingPathComponent(queue.rawValue)
-		else { return }
+		guard let url = fileURL(queue) else { return }
 		locked {
-			let current =
-				(try? Data(contentsOf: url)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [Record] }
-				?? []
-			let next = change(current)
+			let next = change(read(url))
 			if next.isEmpty {
 				try? FileManager.default.removeItem(at: url)
 			} else if let data = try? JSONSerialization.data(withJSONObject: next) {

@@ -7,6 +7,7 @@ import { bytesToBase64 } from "@core/util/bytes";
 import { requestStoreReview } from "../app-review";
 import { armFilePickGrace } from "../auto-lock";
 import { consumePendingAssociations as drainPendingAssociations } from "../autofill-pending-assoc";
+import { peekPendingLogins, removePendingLogins } from "../autofill-pending-logins";
 import { consumePendingPasskeys as drainPendingPasskeys } from "../autofill-pending-passkeys";
 import { pendingNativeCalls } from "../native-calls";
 import { scanQr } from "../qr-scanner";
@@ -79,6 +80,8 @@ export const mobileShell: ShellAdapter = {
 	// them here on launch. drainPendingPasskeys reads the right per-platform source.
 	consumePendingPasskeys: drainPendingPasskeys,
 	consumePendingAssociations: drainPendingAssociations,
+	peekPendingLogins,
+	removePendingLogins,
 	// On mobile this is a camera scan (the "active tab" concept doesn't apply): used for
 	// sync pairing codes and TOTP otpauth:// QRs. ../qr-scanner picks the per-platform
 	// scanner and holds the auto-lock guard the permission prompt needs.

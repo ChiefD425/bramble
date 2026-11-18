@@ -24,6 +24,8 @@ public class AutofillBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 		CAPPluginMethod(name: "restorePendingPasskeys", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "consumePendingAssociations", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "restorePendingAssociations", returnType: CAPPluginReturnPromise),
+		CAPPluginMethod(name: "peekPendingLogins", returnType: CAPPluginReturnPromise),
+		CAPPluginMethod(name: "removePendingLogins", returnType: CAPPluginReturnPromise),
 	]
 
 	// Shared identifiers (App Group, Keychain group, keys) live in BrambleVault, compiled
@@ -149,6 +151,17 @@ public class AutofillBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 	// Passkey handoff counterpart of the above.
 	@objc func restorePendingPasskeys(_ call: CAPPluginCall) {
 		AppGroupHandoff.restore((call.getArray("keep") as? [[String: String]]) ?? [], to: .passkeys)
+		call.resolve()
+	}
+
+	// Logins made with "New login" in the picker. Read without clearing, and removed only once the
+	// app has saved each one: the password is already on the site.
+	@objc func peekPendingLogins(_ call: CAPPluginCall) {
+		call.resolve(["pending": AppGroupHandoff.peek(.logins)])
+	}
+
+	@objc func removePendingLogins(_ call: CAPPluginCall) {
+		AppGroupHandoff.remove(ivs: Set((call.getArray("ivs") as? [String]) ?? []), from: .logins)
 		call.resolve()
 	}
 

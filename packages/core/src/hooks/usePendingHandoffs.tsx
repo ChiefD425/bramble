@@ -1,15 +1,16 @@
 import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
-import { KeyRound, Link2 } from "lucide-react";
+import { Check, KeyRound, Link2 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { useToast } from "../app/components/ui/toast";
 import { usePlatform } from "../context/PlatformContext";
 import { planAssociationUpdates } from "../vault/association";
 import { planPasskeyPlacement, withPasskey } from "../vault/passkey";
+import { planPendingLogins } from "../vault/pending-login";
 import { useVault } from "./useVault";
 import { useVaultRegistry } from "./useVaultRegistry";
 
-// Both provider handoffs, one serial drain: mutations snapshot and persist the whole
+// Every provider handoff, one serial drain: mutations snapshot and persist the whole
 // entry list, so two concurrent drains would race and the second write would wipe the
 // first.
 export function usePendingHandoffs(): void {
@@ -74,6 +75,29 @@ export function usePendingHandoffs(): void {
 						// One failed update drops just its association.
 					}
 				}
+			}
+
+			const peekLogins = shell.peekPendingLogins;
+			const removeLogins = shell.removePendingLogins;
+			if (peekLogins && removeLogins) {
+				const plan = planPendingLogins(latest.current.readEntries(), await peekLogins());
+				for (const { key, data } of plan.add) {
+					const { addEntry, show } = latest.current;
+					try {
+						await addEntry(data);
+					} catch {
+						// Left queued for the next drain: its password is already on a sign-up form.
+						continue;
+					}
+					// A failed remove is harmless: the next drain finds it saved and only removes it.
+					await removeLogins([key]).catch(() => {});
+					show({
+						message: i18n._(msg`Login saved for ${data.name}`),
+						variant: "success",
+						icon: Check,
+					});
+				}
+				if (plan.done.length > 0) await removeLogins(plan.done).catch(() => {});
 			}
 		} finally {
 			draining.current = false;

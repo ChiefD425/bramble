@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">Ajouter %1$s à «%2$s» pour que Bramble le propose ici automatiquement ?</string>
     <string name="af_assoc_save">Préremplir et enregistrer</string>
     <string name="af_assoc_just">Préremplir uniquement</string>
+    <string name="af_new_login">Nouvel identifiant</string>
+    <string name="af_new_name">Nom</string>
+    <string name="af_new_username">Nom d’utilisateur ou e-mail</string>
+    <string name="af_new_password">Mot de passe</string>
+    <string name="af_new_generate">En générer un autre</string>
+    <string name="af_new_save">Enregistrer et préremplir</string>
+    <string name="af_err_new_password">Entrez un mot de passe.</string>
+    <string name="af_err_new_save">Impossible d’enregistrer cet identifiant.</string>
     <string name="transfer_channel_name">Envois</string>
     <string name="transfer_notification_title">Finalisation d’un envoi</string>
     <string name="transfer_notification_text">Bramble continue en arrière-plan jusqu’à la fin.</string>

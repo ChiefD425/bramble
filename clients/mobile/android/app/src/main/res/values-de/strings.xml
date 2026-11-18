@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">%1$s zu „%2$s” hinzufügen, damit Bramble es hier automatisch anbietet?</string>
     <string name="af_assoc_save">Ausfüllen und speichern</string>
     <string name="af_assoc_just">Nur ausfüllen</string>
+    <string name="af_new_login">Neues Login</string>
+    <string name="af_new_name">Name</string>
+    <string name="af_new_username">Benutzername oder E-Mail</string>
+    <string name="af_new_password">Passwort</string>
+    <string name="af_new_generate">Neu generieren</string>
+    <string name="af_new_save">Speichern und ausfüllen</string>
+    <string name="af_err_new_password">Geben Sie ein Passwort ein.</string>
+    <string name="af_err_new_save">Dieses Login konnte nicht gespeichert werden.</string>
     <string name="transfer_channel_name">Uploads</string>
     <string name="transfer_notification_title">Upload wird abgeschlossen</string>
     <string name="transfer_notification_text">Bramble läuft im Hintergrund weiter, bis alles fertig ist.</string>

@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">Bramble이 여기에서 자동으로 제공하도록 %1$s 항목을 “%2$s”에 추가하시겠습니까?</string>
     <string name="af_assoc_save">자동 완성 및 저장</string>
     <string name="af_assoc_just">자동 완성만</string>
+    <string name="af_new_login">새 로그인 항목</string>
+    <string name="af_new_name">이름</string>
+    <string name="af_new_username">사용자 이름 또는 이메일</string>
+    <string name="af_new_password">비밀번호</string>
+    <string name="af_new_generate">새로 생성</string>
+    <string name="af_new_save">저장 및 자동 완성</string>
+    <string name="af_err_new_password">비밀번호를 입력하세요.</string>
+    <string name="af_err_new_save">이 로그인 항목을 저장하지 못했습니다.</string>
     <string name="transfer_channel_name">업로드</string>
     <string name="transfer_notification_title">업로드 완료 중</string>
     <string name="transfer_notification_text">Bramble은 완료될 때까지 백그라운드에서 계속 실행됩니다.</string>

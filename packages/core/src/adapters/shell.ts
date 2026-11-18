@@ -20,6 +20,17 @@ export interface PendingAssociation {
 	vaultId: string;
 }
 
+/** A login created in the native autofill picker, waiting for the app to save it. */
+export interface PendingNewLogin {
+	/** Opaque handle for `removePendingLogins`. */
+	key: string;
+	name: string;
+	/** `https://<host>` for a web form, `androidapp://<package>` for an app; empty when unknown. */
+	url: string;
+	username: string;
+	password: string;
+}
+
 /** State carried from the originating popup into a freshly-opened detached window so the pop-out lands on the same route. */
 export interface PopOutHandoff {
 	/** Router href to restore, e.g. "/vault/new/card". */
@@ -187,6 +198,13 @@ export interface ShellAdapter {
 	consumePendingPasskeys?(): Promise<PasskeyCredential[]>;
 	/** Mobile only: drain the confirmed "fill and save" associations (cleared on read). */
 	consumePendingAssociations?(): Promise<PendingAssociation[]>;
+	/**
+	 * Mobile only: logins created in the autofill picker. Not cleared on read: the picker already
+	 * filled the password into a sign-up form, so each stays queued until `removePendingLogins`
+	 * confirms it is in the vault.
+	 */
+	peekPendingLogins?(): Promise<PendingNewLogin[]>;
+	removePendingLogins?(keys: string[]): Promise<void>;
 	/**
 	 * Capture the active page and decode a single QR code, returning the decoded text (typically `otpauth://`) or null.
 	 * Used to import a TOTP key off a site's 2FA setup page.

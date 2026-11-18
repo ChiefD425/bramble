@@ -46,6 +46,16 @@
     <string name="af_assoc_save">Fill and save</string>
     <string name="af_assoc_just">Just fill</string>
 
+    <!-- "New login" in the autofill picker: make a login for a sign-up form and fill it. -->
+    <string name="af_new_login">New login</string>
+    <string name="af_new_name">Name</string>
+    <string name="af_new_username">Username or email</string>
+    <string name="af_new_password">Password</string>
+    <string name="af_new_generate">Generate new</string>
+    <string name="af_new_save">Save and fill</string>
+    <string name="af_err_new_password">Enter a password.</string>
+    <string name="af_err_new_save">Couldn\'t save this login.</string>
+
     <!-- Foreground-service notification while a request finishes (TransferService) -->
     <string name="transfer_channel_name">Uploads</string>
     <string name="transfer_notification_title">Finishing an upload</string>

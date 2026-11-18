@@ -62,6 +62,7 @@ class AutofillLogicTest {
             is PickerRow.Section -> "#${it.kind}"
             is PickerRow.Login -> it.login.name
             is PickerRow.Empty -> "!${it.kind}"
+            PickerRow.NewLogin -> "+NEW"
         }
     }
 
@@ -104,6 +105,65 @@ class AutofillLogicTest {
             listOf("!NO_LOGINS"),
             describe(pickerRows(emptyList(), emptyList(), showAll = false, hasLabel = false, tokens = emptyList())),
         )
+    }
+
+    @Test
+    fun `a form with a password field offers a new login first`() {
+        assertEquals(
+            listOf("+NEW", "#MATCHES", "GitHub", "#OTHER_LOGINS", "GitLab", "Netflix"),
+            describe(pickerRows(vault, listOf(github), showAll = false, hasLabel = true, tokens = emptyList(), canCreate = true)),
+        )
+        assertEquals(
+            listOf("+NEW", "#NO_MATCHES", "GitHub", "GitLab", "Netflix"),
+            describe(pickerRows(vault, emptyList(), showAll = false, hasLabel = true, tokens = emptyList(), canCreate = true)),
+        )
+        assertEquals(
+            listOf("+NEW", "!NO_RESULTS"),
+            describe(pickerRows(vault, emptyList(), showAll = false, hasLabel = true, tokens = searchTokens("zzz"), canCreate = true)),
+        )
+    }
+
+    @Test
+    fun `an empty vault can still make its first login`() {
+        assertEquals(
+            listOf("+NEW"),
+            describe(pickerRows(emptyList(), emptyList(), showAll = false, hasLabel = true, tokens = emptyList(), canCreate = true)),
+        )
+    }
+
+    // --- logins made in the picker, before the app saves them ---
+
+    @Test
+    fun `a login made in the picker is offered until the app saves it`() {
+        val made = AutofillLogin("pending:1", "example.com", "me", "fresh-password", null, listOf("example.com"))
+        assertEquals(listOf("GitHub", "GitLab", "Netflix", "example.com"), withPending(vault, listOf(made)).map { it.name })
+    }
+
+    @Test
+    fun `once the app saves it the vault's copy is the only one`() {
+        val saved = AutofillLogin("id-saved", "Example", "me", "s3cret", null, listOf("example.com"))
+        val made = AutofillLogin("pending:1", "example.com", "me", "s3cret", null, listOf("example.com"))
+        assertEquals(listOf("id-saved"), withPending(listOf(saved), listOf(made)).map { it.id })
+    }
+
+    // --- password generator ---
+
+    @Test
+    fun `a generated password is 20 characters with every class in it`() {
+        repeat(200) {
+            val pw = PasswordGenerator.generate()
+            assertEquals(20, pw.length)
+            assertTrue(pw.any { it in PasswordGenerator.LOWERCASE })
+            assertTrue(pw.any { it in PasswordGenerator.UPPERCASE })
+            assertTrue(pw.any { it in PasswordGenerator.DIGITS })
+            assertTrue(pw.any { it in PasswordGenerator.SYMBOLS })
+            assertTrue(pw.all { it in PasswordGenerator.LOWERCASE + PasswordGenerator.UPPERCASE + PasswordGenerator.DIGITS + PasswordGenerator.SYMBOLS })
+        }
+    }
+
+    @Test
+    fun `generated passwords differ`() {
+        assertEquals(50, (1..50).map { PasswordGenerator.generate() }.toSet().size)
     }
 
     // --- app-URI projection + native-app matching ("fill and save") ---

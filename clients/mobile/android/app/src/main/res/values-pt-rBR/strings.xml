@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">Adicionar %1$s a “%2$s” para o Bramble oferecer aqui automaticamente?</string>
     <string name="af_assoc_save">Preencher e salvar</string>
     <string name="af_assoc_just">Apenas preencher</string>
+    <string name="af_new_login">Novo login</string>
+    <string name="af_new_name">Nome</string>
+    <string name="af_new_username">Usuário ou e-mail</string>
+    <string name="af_new_password">Senha</string>
+    <string name="af_new_generate">Gerar outra</string>
+    <string name="af_new_save">Salvar e preencher</string>
+    <string name="af_err_new_password">Insira uma senha.</string>
+    <string name="af_err_new_save">Não foi possível salvar este login.</string>
     <string name="transfer_channel_name">Envios</string>
     <string name="transfer_notification_title">Concluindo um envio</string>
     <string name="transfer_notification_text">O Bramble continua em segundo plano até terminar.</string>

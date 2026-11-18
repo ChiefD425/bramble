@@ -93,6 +93,10 @@ object VaultReader {
         return decodeVaultBlob(f.readBytes())
     }
 
+    /** Every live login with a password, plus the picker's new ones the app hasn't saved yet. VEK must be loaded. */
+    fun readLogins(context: Context): List<AutofillLogin> =
+        withPending(readVaultLogins(context), readPendingLogins(context))
+
     /**
      * Decrypt every live login. The caller MUST have loaded the VEK into the core first
      * (unlockWithVek or unwrapVekPassword). Returns logins in vault order.
@@ -101,7 +105,7 @@ object VaultReader {
      * file itself rather than the index core builds, so it repeats the rule that
      * `core/vault/autofill-index.ts` applies for every other surface.
      */
-    fun readLogins(context: Context): List<AutofillLogin> {
+    private fun readVaultLogins(context: Context): List<AutofillLogin> {
         val blob = decode(context)
         if (blob.entriesCiphertext.isEmpty()) return emptyList()
         val outerJson = decryptWithVek(b64(blob.entriesIv), b64(blob.entriesCiphertext))
@@ -214,6 +218,37 @@ object VaultReader {
                 storedPasskey(JSONObject(decryptWithVek(iv, ct)), "")?.let { out.add(it) }
             } catch (e: Exception) {
                 // Skip an entry we can't decrypt/parse.
+            }
+        }
+        return out
+    }
+
+    // Logins made with "New login" that the app hasn't saved yet (PendingLogin). One another vault
+    // sealed doesn't decrypt and is skipped.
+    private fun readPendingLogins(context: Context): List<AutofillLogin> {
+        val arr = EncryptedHandoff.peek(context, PendingLogin.FILE)
+        val out = ArrayList<AutofillLogin>(arr.length())
+        for (i in 0 until arr.length()) {
+            val record = arr.optJSONObject(i) ?: continue
+            val iv = record.optString("iv")
+            try {
+                val data = JSONObject(decryptWithVek(iv, record.optString("ciphertext")))
+                val password = data.optString("password", "")
+                if (password.isEmpty()) continue
+                val urls = listOf(data.optString("url", "")).filter { it.isNotEmpty() }
+                out.add(
+                    AutofillLogin(
+                        id = "pending:$iv",
+                        name = data.optString("name", ""),
+                        username = data.optString("username", ""),
+                        password = password,
+                        totp = null,
+                        hostnames = hostnamesOf(urls),
+                        apps = appIdsOf(urls),
+                    )
+                )
+            } catch (e: Exception) {
+                // Another vault's, or unreadable.
             }
         }
         return out

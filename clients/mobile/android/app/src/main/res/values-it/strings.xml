@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">Aggiungere %1$s a “%2$s” così Bramble lo propone qui automaticamente?</string>
     <string name="af_assoc_save">Compila e salva</string>
     <string name="af_assoc_just">Compila soltanto</string>
+    <string name="af_new_login">Nuova credenziale</string>
+    <string name="af_new_name">Nome</string>
+    <string name="af_new_username">Nome utente o email</string>
+    <string name="af_new_password">Password</string>
+    <string name="af_new_generate">Genera nuova</string>
+    <string name="af_new_save">Salva e compila</string>
+    <string name="af_err_new_password">Inserisci una password.</string>
+    <string name="af_err_new_save">Impossibile salvare questa credenziale.</string>
     <string name="transfer_channel_name">Caricamenti</string>
     <string name="transfer_notification_title">Completamento di un caricamento</string>
     <string name="transfer_notification_text">Bramble resta attivo in background fino al termine.</string>

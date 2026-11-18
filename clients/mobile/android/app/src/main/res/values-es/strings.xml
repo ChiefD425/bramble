@@ -33,6 +33,14 @@
     <string name="af_assoc_message_web">¿Añadir %1$s a “%2$s” para que Bramble lo ofrezca aquí automáticamente?</string>
     <string name="af_assoc_save">Autocompletar y guardar</string>
     <string name="af_assoc_just">Solo autocompletar</string>
+    <string name="af_new_login">Nueva credencial</string>
+    <string name="af_new_name">Nombre</string>
+    <string name="af_new_username">Usuario o correo electrónico</string>
+    <string name="af_new_password">Contraseña</string>
+    <string name="af_new_generate">Generar otra</string>
+    <string name="af_new_save">Guardar y autocompletar</string>
+    <string name="af_err_new_password">Introduzca una contraseña.</string>
+    <string name="af_err_new_save">No se pudo guardar esta credencial.</string>
     <string name="transfer_channel_name">Subidas</string>
     <string name="transfer_notification_title">Terminando una subida</string>
     <string name="transfer_notification_text">Bramble sigue funcionando en segundo plano hasta terminar.</string>
