@@ -28,6 +28,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
 	copyFileSync,
+	cpSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -36,12 +37,13 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeAppImagePortable, sourceDateEpoch } from "./appimage-portability.ts";
 import { ensureTools } from "./appimage-tools.ts";
 import { type AscApiKey, ascApiKey } from "./asc-api-key.ts";
+import { CANONICAL_MACOS } from "./canonical-path.ts";
 import { normalizeDebs } from "./deb-reproducible.ts";
 import { KEY_AGE, signingKey } from "./desktop-signing-key.ts";
 import { SMOKE_SIGSUM_KEY, sshEd25519Hex } from "./smoke-sigsum.ts";
@@ -339,7 +341,43 @@ const bundleOnly = passed.includes("--bundle-only");
 if (compileOnly && bundleOnly)
 	fail("--compile-only and --bundle-only are the two halves; pass neither for both");
 const hostOnly = passed.includes("--aarch64");
-const forwarded = passed.filter((a) => a !== "--aarch64" && !PHASES.includes(a));
+const forwarded = passed.filter(
+	(a) => a !== "--aarch64" && a !== "--canonical" && !PHASES.includes(a),
+);
+
+const CANONICAL = CANONICAL_MACOS;
+
+if (passed.includes("--canonical") && ROOT !== CANONICAL) {
+	if (!compileOnly) fail("--canonical is for --compile-only; bundle afterwards with --bundle-only");
+	// Sources and node_modules only: no secret is needed to compile, and none should sit in /tmp.
+	execFileSync(
+		"rsync",
+		[
+			"-a",
+			"--delete",
+			...[".git", ".claude", "dist-linux", ".env*", "*.age", "*.p8", "*.p12", "*.provisionprofile"]
+				.concat(["fastlane", "clients/desktop/src-tauri/target", "packages/core-rust/target"])
+				.flatMap((p) => ["--exclude", p]),
+			`${ROOT}/`,
+			`${CANONICAL}/`,
+		],
+		{ stdio: "inherit" },
+	);
+	console.log(`compiling at ${CANONICAL}, so the binaries do not depend on where this checkout is`);
+	execFileSync(process.execPath, [join(CANONICAL, "scripts/build-macos.ts"), ...passed], {
+		cwd: CANONICAL,
+		stdio: "inherit",
+	});
+	const crate = "clients/desktop/src-tauri";
+	const release = `target/${hostOnly ? "" : "universal-apple-darwin/"}release`;
+	for (const file of [`${release}/bramble-desktop`, `${release}/bramble-proxy`, "binaries"]) {
+		const from = join(CANONICAL, crate, file);
+		if (!existsSync(from)) continue;
+		mkdirSync(dirname(join(ROOT, crate, file)), { recursive: true });
+		cpSync(from, join(ROOT, crate, file), { recursive: true, preserveTimestamps: true });
+	}
+	process.exit(0);
+}
 const universal =
 	process.platform === "darwin" && !hostOnly && !forwarded.some((a) => a.startsWith("--target"));
 
@@ -417,8 +455,31 @@ const SIGNING_ENV = [
 	"ASC_KEY_CONTENT",
 ];
 
+/**
+ * Paths the compiler would bake into the binaries, mapped to fixed placeholders, so the bytes do not
+ * depend on where the repository or the cargo registry is (docs/reproducible-builds.md). Rust by
+ * scripts/rustflags-reproducible.sh, as the WASM and Android builds do; C by -ffile-prefix-map,
+ * for the dependencies that compile some.
+ */
+function reproduciblePaths(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	const rust = execFileSync("bash", [join(ROOT, "scripts/rustflags-reproducible.sh")], {
+		cwd: ROOT,
+		encoding: "utf8",
+		env,
+	}).trim();
+	const cargoHome = env.CARGO_HOME ?? join(homedir(), ".cargo");
+	const c = `-ffile-prefix-map=${ROOT}=/bramble -ffile-prefix-map=${cargoHome}=/cargo`;
+	const join2 = (a: string | undefined, b: string) => (a ? `${a} ${b}` : b);
+	return {
+		...env,
+		RUSTFLAGS: join2(env.RUSTFLAGS, rust),
+		CFLAGS: join2(env.CFLAGS, c),
+		CXXFLAGS: join2(env.CXXFLAGS, c),
+	};
+}
+
 if (!bundleOnly) {
-	const env = envNow();
+	const env = reproduciblePaths(envNow());
 	for (const name of SIGNING_ENV) delete env[name];
 	tauri("build", ["--no-bundle"], env);
 }
@@ -437,7 +498,8 @@ if (!compileOnly) {
 			);
 		}
 		const env = {
-			...envNow(),
+			// The same as the compile's, so nothing the bundler rebuilds comes out different.
+			...reproduciblePaths(envNow()),
 			TAURI_SIGNING_PRIVATE_KEY: key,
 			TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? "",
 		};

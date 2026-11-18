@@ -1680,7 +1680,8 @@ function macosHandoff(): { root: string; tarball: string; files: string[] } {
 function runnerCompileMacos(version: string): void {
 	if (!process.env.GITHUB_ACTIONS) fail("--runner-compile runs in desktop-release.yml");
 	runnerPrepareDesktop(version);
-	run("node scripts/build-macos.ts --compile-only");
+	// At the canonical path, so anyone can rebuild these bytes (build-macos.ts, CANONICAL).
+	run("node scripts/build-macos.ts --compile-only --canonical");
 	const { root, tarball, files } = macosHandoff();
 	mkdirSync(dirname(tarball), { recursive: true });
 	execFileSync("tar", ["-cf", tarball, "-C", root, ...files], { stdio: "inherit" });
@@ -2283,7 +2284,10 @@ async function releaseDesktop(version: string, universal: boolean, resume = fals
 	if (!resume)
 		try {
 			// Prompts for the YubiKey PIN and a touch, then notarizes (an upload to Apple and a wait).
-			run(`pnpm run build:macos${universal ? "" : " -- --aarch64"}`);
+			// Compiled at the canonical path like the GitHub route, then bundled and signed here.
+			const arch = universal ? "" : " --aarch64";
+			run(`pnpm run build:macos -- --compile-only --canonical${arch}`);
+			run(`pnpm run build:macos -- --bundle-only${arch}`);
 		} catch {
 			fail(`build failed; run \`git checkout ${DESKTOP_CONF}\` to undo the bump`);
 		}

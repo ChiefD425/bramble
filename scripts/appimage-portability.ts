@@ -17,6 +17,7 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import { packerMatchesPin, packerPath } from "./appimage-tools.ts";
+import { assertBundleType } from "./bundle-type.ts";
 
 /** Bundled copies that break the app on hosts newer or older than the builder. */
 const DROP = [
@@ -90,6 +91,7 @@ export function makeAppImagePortable(bundleDir: string, env: NodeJS.ProcessEnv):
 		throw new Error(`expected one AppDir and one AppImage in ${dir}, found: ${entries.join(", ")}`);
 	}
 	const appDir = join(dir, appDirs[0] as string);
+	assertBundleType(join(appDir, "usr/bin/bramble-desktop"), "APP");
 	const image = join(dir, images[0] as string);
 
 	// A set, because linuxdeploy keeps a GTK module under the architecture directory and symlinks

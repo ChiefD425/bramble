@@ -10,7 +10,8 @@ does not show, and a build that does not match is evidence that something was ad
 | Chrome extension | Yes, every file | Daily in CI: what the Chrome Web Store serves, and the GitHub zip |
 | Android APK | Yes, every file but the signature | Daily in CI: the newest GitHub release |
 | Desktop, Linux | `.deb` and AppImage byte for byte from the release after 0.19.0, every installed file before it; RPM contents only | Daily in CI, amd64 and arm64: the newest GitHub release |
-| Desktop, macOS and Windows | Not yet | No; updates are transparency-logged |
+| Desktop, macOS | The app and proxy binaries, signatures aside, from the release after 0.19.0 | By hand on a Mac (`--macos`); updates are transparency-logged |
+| Desktop, Windows | Not yet | No; updates are transparency-logged |
 | iOS app | Cannot be checked: the App Store re-encrypts every binary | No |
 
 ## Checking a release yourself
@@ -23,6 +24,7 @@ node scripts/verify-release.ts --live chromium     # whatever the store is servi
 node scripts/verify-release.ts 1.40.0-chromium --no-store
 node scripts/verify-release.ts --live android      # the newest Android release
 node scripts/verify-release.ts 0.19.0-desktop --arch arm64   # desktop Linux packages
+node scripts/verify-release.ts 0.20.0-desktop --macos        # desktop macOS binaries, on a Mac
 ```
 
 It builds the tag in `docker/reproducible-build.Dockerfile` and compares every file with:
@@ -140,5 +142,24 @@ on a base pinned by digest, rather than from the live mirrors, whose packages ch
 tag. Bumping the date is how a release takes Debian's updates, WebKit's security fixes in
 particular, so bump it before a desktop release and commit the bump on its own.
 
-**macOS and Windows** carry platform signatures inside the binaries (Apple's code signature and
-notarization ticket, Authenticode), so the comparison there has to strip them first. Not started.
+**macOS.** Rebuilt twice from scratch at one path, the universal binaries come out the same to
+the byte; from two paths they did not, even with every path remapped. The desktop crate reaches
+`packages/core-rust` by a path outside its own workspace, and Cargo hashes such a dependency by its
+absolute path, which reaches symbol names and code layout. So a release compiles at one fixed path,
+`/private/tmp/bramble` (`scripts/canonical-path.ts`): `build-macos.ts --compile-only --canonical`
+mirrors the tree there (sources and `node_modules`, no secrets), compiles, and copies the binaries
+back for bundling and signing. Both release routes do that, and the desktop build now remaps the
+compiler's paths (`rustflags-reproducible.sh`, `-ffile-prefix-map`) on every platform, so the
+registry's location does not show either. 0.19.0 and earlier carry the CI runner's own paths, 1,761
+of them, and cannot be rebuilt anywhere else.
+
+The released app is signed with Developer ID and notarized; a rebuild carries only the linker's ad
+hoc signature. `verify-release.ts <version>-desktop --macos` removes the signature from both and
+compares what is left, with one field set aside: `codesign` grows `__LINKEDIT`'s `vmsize` to fit a
+signature and leaves it grown when the signature is removed, so `scripts/macho-normalize.ts` zeroes
+it on both sides. It needs the Xcode the release used (`xcode` in `desktop-release.yml`, 26.4 at
+the time of writing), since the linker is part of the output. It compares the two binaries, which
+hold the code and the web assets; the rest of the bundle (`Info.plist`, icons, the provisioning
+profile) is not yet compared.
+
+**Windows** carries Authenticode inside the installer and the binaries it holds. Not started.

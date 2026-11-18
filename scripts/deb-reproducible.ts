@@ -19,6 +19,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { assertBundleType } from "./bundle-type.ts";
 
 export interface Entry {
 	kind: "file" | "dir" | "link";
@@ -72,6 +73,7 @@ export function normalizeDebs(bundleDir: string, epoch: number): void {
 			const root = join(scratch, "root");
 			execFileSync("dpkg-deb", ["--raw-extract", deb, root]);
 			const meta = join(root, "DEBIAN");
+			assertBundleType(join(root, "usr/bin/bramble-desktop"), "DEB");
 			const entries = walk(root, meta);
 			const control = join(meta, "control");
 			writeFileSync(

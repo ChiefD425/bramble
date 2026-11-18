@@ -7,6 +7,7 @@
 //   node scripts/verify-release.ts --live android       # the newest Android release
 //   node scripts/verify-release.ts 0.31.0-android --apk app-release-unsigned.apk   # your own build
 //   node scripts/verify-release.ts --live desktop --arch amd64   # the newest desktop release, Linux
+//   node scripts/verify-release.ts --live desktop --macos         # ... its macOS app, on a Mac
 //
 // Needs git (a clone with the tag), Docker, and network. The builds run as linux/amd64, the release
 // runner's platform: the extensions in docker/reproducible-build.Dockerfile, Android in its base
@@ -30,6 +31,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 import { CWS_ITEM_ID } from "./cws-ids.ts";
+import { zeroLinkeditVmsize } from "./macho-normalize.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = process.env.GITHUB_REPOSITORY ?? "bramble-sh/bramble";
@@ -530,6 +532,78 @@ async function verifyDesktop(
 	return ok;
 }
 
+/**
+ * Rebuild a desktop release's macOS binaries at the canonical path, as the release did, and compare
+ * them with the ones in the published Bramble.app once the code signatures are off both: the
+ * release carries Developer ID's, a rebuild only the linker's.
+ */
+async function verifyDesktopMacos(tag: string, scratch: string): Promise<boolean> {
+	if (process.platform !== "darwin") throw new Error("--macos rebuilds on a Mac");
+	const src = join(scratch, "src");
+	mkdirSync(src, { recursive: true });
+	execSync(`git -C "${ROOT}" archive --format=tar "${tag}" | tar -x -C "${src}"`);
+	if (!existsSync(join(src, "scripts/canonical-path.ts")))
+		throw new Error(
+			`${tag} predates the canonical build path: its binaries carry the CI runner's own paths and cannot be rebuilt anywhere else`,
+		);
+	const workflow = readFileSync(join(src, ".github/workflows/desktop-release.yml"), "utf8");
+	const xcode = /xcode:[\s\S]*?default: "([^"]+)"/.exec(workflow)?.[1];
+	const ours = /Xcode (\S+)/.exec(
+		execFileSync("xcodebuild", ["-version"], { encoding: "utf8" }),
+	)?.[1];
+	if (xcode && ours !== xcode)
+		throw new Error(
+			`${tag} was built with Xcode ${xcode}; this Mac has ${ours}. The linker shapes the bytes.`,
+		);
+
+	execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: src, stdio: "inherit" });
+	execFileSync(process.execPath, ["scripts/build-macos.ts", "--compile-only", "--canonical"], {
+		cwd: src,
+		stdio: "inherit",
+	});
+
+	const published = join(scratch, "published");
+	mkdirSync(published, { recursive: true });
+	const base = `https://github.com/${REPO}/releases/download/${tag}`;
+	const archive = await download(`${base}/Bramble.app.tar.gz`);
+	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
+	if (
+		!sums
+			.split("\n")
+			.some((l) => l.startsWith(sha256(archive)) && l.trim().endsWith(" Bramble.app.tar.gz"))
+	)
+		throw new Error("Bramble.app.tar.gz does not match the release's SHA256SUMS");
+	writeFileSync(join(published, "app.tar.gz"), archive);
+	execFileSync("tar", ["-xzf", join(published, "app.tar.gz"), "-C", published]);
+
+	const release = join(src, "clients/desktop/src-tauri/target/universal-apple-darwin/release");
+	const pairs = [
+		[
+			"bramble-desktop",
+			join(published, "Bramble.app/Contents/MacOS/bramble-desktop"),
+			join(release, "bramble-desktop"),
+		],
+		[
+			"bramble-proxy",
+			join(published, "Bramble.app/Contents/Helpers/bramble-proxy"),
+			join(release, "bramble-proxy"),
+		],
+	];
+	let ok = true;
+	for (const [name, theirs, mine] of pairs) {
+		const unsigned = (file: string, as: string) => {
+			const copy = join(scratch, as);
+			writeFileSync(copy, readFileSync(file));
+			execFileSync("codesign", ["--remove-signature", copy]);
+			return sha256(zeroLinkeditVmsize(readFileSync(copy)));
+		};
+		const same = unsigned(theirs, `${name}.theirs`) === unsigned(mine, `${name}.ours`);
+		console.log(`  ${name}: ${same ? "identical" : "DIFFERS"} once both are unsigned`);
+		ok &&= same;
+	}
+	return ok;
+}
+
 function report(label: string, mismatches: Mismatch[], count: number): boolean {
 	if (!mismatches.length) {
 		console.log(`  ${label}: all ${count} files identical`);
@@ -556,6 +630,11 @@ async function main(argv: string[]): Promise<number> {
 		if (!tag)
 			throw new Error("usage: verify-release.ts <tag> | --live <firefox|chromium|android|desktop>");
 		const { version, target } = parseTag(tag);
+		if (target === "desktop" && argv.includes("--macos")) {
+			const ok = await verifyDesktopMacos(tag, scratch);
+			console.log(ok ? "\nreproducible" : "\nNOT reproducible");
+			return ok ? 0 : 1;
+		}
 		if (target === "desktop") {
 			const archAt = argv.indexOf("--arch");
 			const arch = archAt === -1 ? (hostArch() === "arm64" ? "arm64" : "amd64") : argv[archAt + 1];
