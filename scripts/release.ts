@@ -1469,23 +1469,25 @@ async function runnerPublishChrome(version: string, tag: string): Promise<void> 
 // ----- desktop: the CI route -----
 //
 /**
- * The Linux build installs from a dated Debian snapshot (docs/reproducible-builds.md), so the
- * AppImage's WebKit is as old as that date. Said, not refused: a release that has to go out now
- * should not wait on a bump.
+ * The Linux and Windows builds install from dated Debian snapshots (docs/reproducible-builds.md):
+ * the AppImage's WebKit, and the compiler and NSIS behind the installer, are as old as those dates.
+ * Said, not refused: a release that has to go out now should not wait on a bump.
  */
-function warnStaleDebianSnapshot(): void {
-	const dockerfile = readFileSync("clients/desktop/docker/linux-build.Dockerfile", "utf8");
-	const stamp = /^ARG DEBIAN_SNAPSHOT=(\d{4})(\d{2})(\d{2})T/m.exec(dockerfile);
-	if (!stamp) fail("no DEBIAN_SNAPSHOT in clients/desktop/docker/linux-build.Dockerfile");
-	const days = Math.floor(
-		(Date.now() - Date.UTC(+stamp[1], +stamp[2] - 1, +stamp[3])) / 86_400_000,
-	);
-	if (days > 30)
-		console.warn(
-			`warning: the Linux build's Debian snapshot is ${days} days old, and the AppImage bundles its\n` +
-				"WebKit. Bump DEBIAN_SNAPSHOT in clients/desktop/docker/linux-build.Dockerfile first, in a\n" +
-				"commit of its own (docs/reproducible-builds.md).",
+function warnStaleDebianSnapshot(images: string[]): void {
+	for (const image of images) {
+		const file = `clients/desktop/docker/${image}.Dockerfile`;
+		const stamp = /^ARG DEBIAN_SNAPSHOT=(\d{4})(\d{2})(\d{2})T/m.exec(readFileSync(file, "utf8"));
+		if (!stamp) fail(`no DEBIAN_SNAPSHOT in ${file}`);
+		const days = Math.floor(
+			(Date.now() - Date.UTC(+stamp[1], +stamp[2] - 1, +stamp[3])) / 86_400_000,
 		);
+		if (days > 30)
+			console.warn(
+				`warning: ${file}'s Debian snapshot is ${days} days old; the packages built from it carry\n` +
+					"its libraries and tools. Bump DEBIAN_SNAPSHOT first, in a commit of its own\n" +
+					"(docs/reproducible-builds.md).",
+			);
+	}
 }
 
 // One release across three operating systems, so desktop-release.yml has more moving parts than the
@@ -1506,7 +1508,11 @@ function windowsRunFile(): string {
  * has already shipped will do to the people using it.
  */
 async function dispatchDesktop(version: string, tag: string): Promise<void> {
-	if (!skip.has("linux")) warnStaleDebianSnapshot();
+	warnStaleDebianSnapshot(
+		[!skip.has("linux") && "linux-build", !skip.has("windows") && "windows-build"].filter(
+			(i): i is string => Boolean(i),
+		),
+	);
 	if (!skip.has("windows")) {
 		// What sign-windows.yml reads. Names only: their values are not ours to read, just to check.
 		// Inside the function, not beside it: the dispatch at the top of this file calls in here
