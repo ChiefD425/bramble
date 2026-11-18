@@ -137,6 +137,26 @@ describe("parseOnePassword tags", () => {
 	});
 });
 
+describe("parseOnePassword archive", () => {
+	it("keeps an archived item archived, dated by its last change", () => {
+		const res = parseOnePassword(
+			pux(
+				items(
+					{ categoryUuid: "003", state: "archived", updatedAt: 1_700_000_000, overview: {} },
+					{ categoryUuid: "003", state: "active", updatedAt: 1_700_000_000, overview: {} },
+				),
+			),
+		);
+		expect(res.imported.map((e) => e.archivedAt)).toEqual([1_700_000_000_000, undefined]);
+	});
+
+	it("dates it by the import when the item carries no date", () => {
+		const before = Date.now();
+		const res = parseOnePassword(pux(items({ categoryUuid: "003", state: "archived" })));
+		expect(res.imported[0]?.archivedAt).toBeGreaterThanOrEqual(before);
+	});
+});
+
 describe("parseOnePassword files", () => {
 	// files/ holds every file, named by the documentId export.data refers to it by.
 	const fileField = (documentId: string, fileName: string) => ({

@@ -40,6 +40,10 @@ const fieldSchema = z.object({
 });
 const itemSchema = z.object({
 	categoryUuid: z.string().nullish(),
+	// "active" or "archived".
+	state: z.string().nullish(),
+	// Unix seconds.
+	updatedAt: z.number().nullish(),
 	overview: z
 		.object({
 			title: z.string().nullish(),
@@ -275,6 +279,7 @@ export function parseOnePassword(raw: string | Uint8Array): ImportResult {
 	});
 
 	const stored = filesById(files);
+	const importedAt = Date.now();
 	const imported: EntryData[] = [];
 	const attachments: ImportAttachment[] = [];
 	let missing = 0;
@@ -302,8 +307,12 @@ export function parseOnePassword(raw: string | Uint8Array): ImportResult {
 					default:
 						entry = mapNote(item, name, notes);
 				}
-				const tagged = tags ? { ...entry, tags } : entry;
-				imported.push(tagged);
+				if (tags) entry = { ...entry, tags };
+				// 1Password records no archive date, so the last change stands in for it.
+				if (item.state === "archived") {
+					entry = { ...entry, archivedAt: item.updatedAt ? item.updatedAt * 1000 : importedAt };
+				}
+				imported.push(entry);
 				for (const { documentId, name } of fileRefs(item)) {
 					const bytes = stored.get(documentId);
 					if (!bytes) {
@@ -311,7 +320,7 @@ export function parseOnePassword(raw: string | Uint8Array): ImportResult {
 						continue;
 					}
 					attachments.push({
-						entry: tagged,
+						entry,
 						name,
 						mime: mimeFor(name),
 						source: { kind: "blob", blob: new Blob([bytes as BlobPart]) },
