@@ -24,9 +24,23 @@
 # it lives on a YubiKey, and Docker Desktop on macOS cannot pass a USB device through. Signing and
 # publishing stay on the host. See docs/release-signing.md.
 
-FROM debian:12
+FROM debian:12@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Packages from a dated Debian snapshot rather than the live mirrors, so a release can be rebuilt
+# later with the same libraries the AppImage bundled (docs/reproducible-builds.md). Bump the date
+# to take Debian's updates, WebKit's security fixes above all: a release should not ship a WebKit
+# much older than the date it is cut. Plain http, as on the live mirrors: apt checks Debian's
+# signatures, and https would need ca-certificates before there is anything to install it from.
+ARG DEBIAN_SNAPSHOT=20261117T120000Z
+RUN sed -i \
+      -e "s|^URIs: http://deb.debian.org/debian-security\$|URIs: http://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}|" \
+      -e "s|^URIs: http://deb.debian.org/debian\$|URIs: http://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}|" \
+      /etc/apt/sources.list.d/debian.sources \
+    && grep -q snapshot.debian.org/archive/debian/ /etc/apt/sources.list.d/debian.sources \
+    && grep -q snapshot.debian.org/archive/debian-security/ /etc/apt/sources.list.d/debian.sources \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99snapshot
 
 # Tauri's Linux prerequisites, plus libdbus (the Secret Service backend of the credential store),
 # libxdo (tray and global shortcut), rsync (see the workspace copy in build-linux.ts), and

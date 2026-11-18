@@ -39,9 +39,10 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { makeAppImagePortable } from "./appimage-portability.ts";
+import { makeAppImagePortable, sourceDateEpoch } from "./appimage-portability.ts";
 import { ensureTools } from "./appimage-tools.ts";
 import { type AscApiKey, ascApiKey } from "./asc-api-key.ts";
+import { normalizeDebs } from "./deb-reproducible.ts";
 import { KEY_AGE, signingKey } from "./desktop-signing-key.ts";
 import { SMOKE_SIGSUM_KEY, sshEd25519Hex } from "./smoke-sigsum.ts";
 
@@ -449,7 +450,10 @@ if (!compileOnly) {
 		if (notarization.expected) assertNotarized();
 
 		if (process.platform === "linux") {
-			makeAppImagePortable(join(ROOT, "clients/desktop/src-tauri/target/release/bundle"), env);
+			const bundle = join(ROOT, "clients/desktop/src-tauri/target/release/bundle");
+			makeAppImagePortable(bundle, env);
+			const epoch = sourceDateEpoch();
+			if (epoch !== undefined) normalizeDebs(bundle, epoch);
 		}
 	} finally {
 		// Whatever the bundler did, the decrypted key must not outlive it.

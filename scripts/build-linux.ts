@@ -237,6 +237,8 @@ for (const arch of arches) {
 			"TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
 			"-e",
 			"BRAMBLE_BASE_IMAGE",
+			"-e",
+			"SOURCE_DATE_EPOCH",
 			`${IMAGE}:${arch}`,
 			"bash",
 			"-c",
@@ -245,6 +247,11 @@ for (const arch of arches) {
 		{
 			...process.env,
 			BRAMBLE_BASE_IMAGE: createHash("sha256").update(layers).digest("hex"),
+			// The commit's time, which every timestamp in the packages is pinned to, so the same
+			// source gives the same bytes (docs/reproducible-builds.md). The container has no .git.
+			SOURCE_DATE_EPOCH:
+				process.env.SOURCE_DATE_EPOCH ??
+				execFileSync("git", ["log", "-1", "--format=%ct"], { cwd: ROOT, encoding: "utf8" }).trim(),
 			TAURI_SIGNING_PRIVATE_KEY: key.trim(),
 			TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? "",
 		},

@@ -9,7 +9,8 @@ does not show, and a build that does not match is evidence that something was ad
 | Firefox extension | Yes, every file | Daily in CI: what addons.mozilla.org serves, and the GitHub zip |
 | Chrome extension | Yes, every file | Daily in CI: what the Chrome Web Store serves, and the GitHub zip |
 | Android APK | Yes, every file but the signature | Daily in CI: the newest GitHub release |
-| Desktop app | Not yet | No; its updates are transparency-logged instead ([update-transparency.md](update-transparency.md)) |
+| Desktop, Linux | `.deb` and AppImage byte for byte from the release after 0.19.0; RPM contents only | Not yet; updates are transparency-logged ([update-transparency.md](update-transparency.md)) |
+| Desktop, macOS and Windows | Not yet | No; updates are transparency-logged |
 | iOS app | Cannot be checked: the App Store re-encrypts every binary | No |
 
 ## Checking a release yourself
@@ -99,14 +100,38 @@ silicon Docker emulates it, which costs a few minutes.
   themselves are not byte-identical (zip stores file times), which is why the check compares their
   contents rather than the archive's hash.
 
-## Desktop, next
+## Desktop
 
-Three platforms, each with its own signature: Apple's code signature and notarization ticket,
-Authenticode, and the AppImage's own squashfs. Linux first, since it has no platform signature
-inside the binary: the AppImage needs fixed file times (`SOURCE_DATE_EPOCH`) and a pinned
-`mksquashfs`. Until then, desktop updates are covered by the transparency log, which shows that
-every user got the same build even though nobody has yet shown that build matches the source.
+**Linux.** Rebuilding 0.19.0 for arm64 in the release's own container (2026-11-17) gave the same
+files as the published packages: both binaries and everything else in the `.deb`, and all 455
+files in the AppImage, the bundled WebKit included. The Rust output needed none of the remapping
+the WASM and Android builds use, because the container always builds at the same paths
+(`/work/repo`, `/opt/cargo`, `/opt/rustup`). What differed was the packaging around the files, and
+that is now pinned:
 
-Android's Rust libraries matched only because of the July 2026 work for F-Droid, which made the Rust
-output independent of where the repository is checked out (`scripts/rustflags-reproducible.sh`) and
-committed `Cargo.lock`. The desktop app links the same crate, so it starts from there.
+- **The `.deb`** stored the build time and the builder's uid in its archive headers, listed its
+  checksums in the file system's directory order, and counted directory sizes into
+  `Installed-Size`, which differ between file systems. `scripts/deb-reproducible.ts` rebuilds it
+  with `dpkg-deb` under `SOURCE_DATE_EPOCH`, root ownership, sorted `md5sums`, and
+  `Installed-Size` from file sizes alone.
+- **The AppImage** carried each file's build-time mtime, and the image's creation time; the 16
+  bytes of MD5 the runtime header holds over the image followed from those. The repack in
+  `appimage-portability.ts` now sets every time in the AppDir to `SOURCE_DATE_EPOCH` first and
+  hands the packer the same.
+- **`SOURCE_DATE_EPOCH`** is the commit's time, which `build-linux.ts` passes into the container.
+
+Two builds of 0.19.0 with these changes, one on APFS as uid 501 and one in a Docker volume as uid
+1001, gave the same `.deb` and AppImage to the byte.
+
+**The RPM** still records its build time and the files' mtimes, because Tauri's bundler takes
+neither from `SOURCE_DATE_EPOCH`; its files match, and CI adds a GPG signature to its header
+anyway. So an RPM is checked by contents, not bytes, until the bundler can pin those times.
+
+**The libraries the AppImage bundles** come from Debian, so the build image installs from a dated
+`snapshot.debian.org` archive (`DEBIAN_SNAPSHOT` in `clients/desktop/docker/linux-build.Dockerfile`)
+on a base pinned by digest, rather than from the live mirrors, whose packages change under an old
+tag. Bumping the date is how a release takes Debian's updates, WebKit's security fixes in
+particular, so bump it before a desktop release and commit the bump on its own.
+
+**macOS and Windows** carry platform signatures inside the binaries (Apple's code signature and
+notarization ticket, Authenticode), so the comparison there has to strip them first. Not started.

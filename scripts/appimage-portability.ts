@@ -6,11 +6,13 @@ import {
 	copyFileSync,
 	existsSync,
 	lstatSync,
+	lutimesSync,
 	mkdirSync,
 	readdirSync,
 	readFileSync,
 	realpathSync,
 	rmSync,
+	utimesSync,
 	writeFileSync,
 } from "node:fs";
 import { basename, join } from "node:path";
@@ -107,10 +109,14 @@ export function makeAppImagePortable(bundleDir: string, env: NodeJS.ProcessEnv):
 		changes.add(`+${name}`);
 	}
 	bundleEmojiFont(appDir, changes);
-	if (changes.size === 0) {
+	// A release build packs again even with nothing to change, to pin every time in the image to
+	// the commit's (docs/reproducible-builds.md).
+	const epoch = sourceDateEpoch();
+	if (changes.size === 0 && epoch === undefined) {
 		console.log("AppImage bundle already as intended; left as built.");
 		return;
 	}
+	if (epoch !== undefined) pinTimes(appDir, epoch);
 
 	// The pinned packer, put there by ensureTools before the bundler ran (appimage-tools.ts).
 	// Warned about rather than refused if it has changed underneath: tauri fetches into the same
@@ -129,6 +135,7 @@ export function makeAppImagePortable(bundleDir: string, env: NodeJS.ProcessEnv):
 			APPIMAGE_EXTRACT_AND_RUN: "1",
 			ARCH: process.arch === "arm64" ? "aarch64" : "x86_64",
 			OUTPUT: image,
+			...(epoch === undefined ? {} : { SOURCE_DATE_EPOCH: String(epoch) }),
 		},
 	});
 
@@ -138,6 +145,29 @@ export function makeAppImagePortable(bundleDir: string, env: NodeJS.ProcessEnv):
 		["--filter", "@vault/platform-desktop", "exec", "tauri", "signer", "sign", image],
 		{ stdio: ["ignore", "ignore", "inherit"], env },
 	);
+}
+
+/** SOURCE_DATE_EPOCH, when the build sets one: the commit's time, in seconds. */
+export function sourceDateEpoch(): number | undefined {
+	const raw = process.env.SOURCE_DATE_EPOCH;
+	if (!raw) return undefined;
+	const epoch = Number(raw);
+	if (!Number.isSafeInteger(epoch) || epoch < 0) throw new Error(`bad SOURCE_DATE_EPOCH ${raw}`);
+	return epoch;
+}
+
+/** Every file, directory and link under `dir` (and `dir` itself) to `epoch`, links not followed. */
+export function pinTimes(dir: string, epoch: number): void {
+	for (const name of readdirSync(dir)) {
+		const path = join(dir, name);
+		const st = lstatSync(path);
+		if (st.isSymbolicLink()) lutimesSync(path, epoch, epoch);
+		else {
+			if (st.isDirectory()) pinTimes(path, epoch);
+			utimesSync(path, epoch, epoch);
+		}
+	}
+	utimesSync(dir, epoch, epoch);
 }
 
 /** The emoji font, its fontconfig file, and the AppRun line that sources the hook selecting it. */
