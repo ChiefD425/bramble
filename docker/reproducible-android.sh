@@ -68,3 +68,7 @@ clients/mobile/android/gradlew -p clients/mobile/android assembleRelease \
 	"-Porg.gradle.java.installations.paths=$JAVA_HOME" --no-daemon --no-watch-fs --max-workers=2 \
 	-Pkotlin.compiler.execution.strategy=in-process
 cp clients/mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk /out/
+# The container runs as root, so on a Linux host everything it wrote is root's: clear the build,
+# and hand the rest back to whoever ran the check (HOST_OWNER, from verify-release.ts).
+cd / && rm -rf /work/src
+[ -z "${HOST_OWNER:-}" ] || chown -R "$HOST_OWNER" /out /cache /work

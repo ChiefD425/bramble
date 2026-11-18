@@ -328,7 +328,8 @@ function rebuildAndroid(src: string, out: string): Files {
 	if (!base) throw new Error(`no FROM line in ${DOCKERFILE}`);
 	const cache = process.env.BRAMBLE_VERIFY_CACHE ?? join(homedir(), ".cache/bramble-verify");
 	const work = join(cache, "work");
-	rmSync(work, { recursive: true, force: true });
+	// Emptied by the container, which runs as root: on a Linux host what it leaves is root's, and
+	// removing it from here would be refused.
 	mkdirSync(work, { recursive: true });
 	execFileSync(
 		"docker",
@@ -347,13 +348,14 @@ function rebuildAndroid(src: string, out: string): Files {
 			`${out}:/out`,
 			"-v",
 			`${join(ROOT, ANDROID_SCRIPT)}:/verify/build.sh:ro`,
+			"-e",
+			`HOST_OWNER=${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
 			base,
 			"bash",
 			"/verify/build.sh",
 		],
 		{ stdio: "inherit" },
 	);
-	rmSync(work, { recursive: true, force: true });
 	return zipEntries(readFileSync(join(out, "app-release-unsigned.apk")));
 }
 
