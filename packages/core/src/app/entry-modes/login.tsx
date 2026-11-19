@@ -44,6 +44,7 @@ import { PasswordStrengthMeter } from "../components/ui/password-strength-meter"
 import { SelectField } from "../components/ui/select-field";
 import { TextArea } from "../components/ui/text-area";
 import { TextField } from "../components/ui/text-field";
+import { Toggle } from "../components/ui/toggle";
 import { useRevealState } from "../hooks/useRevealState";
 import { DetailField, DetailNotes, DetailValue, NumberedChars } from "./DetailField";
 import type { EntryDetailBodyProps, EntryFieldsProps, EntryMode } from "./types";
@@ -485,20 +486,7 @@ function ToggleRow({ title, subtitle, checked, onChange }: ToggleRowProps) {
 				<p className="text-sm">{title}</p>
 				<p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
 			</div>
-			<button
-				type="button"
-				onClick={() => onChange(!checked)}
-				aria-pressed={checked}
-				className={`relative shrink-0 w-11 h-6 rounded-full border transition-all ${
-					checked ? "bg-primary border-primary/20" : "bg-muted border-input-border"
-				}`}
-			>
-				<span
-					className={`absolute top-0.5 w-5 h-5 rounded-full bg-card shadow-sm transition-all ${
-						checked ? "left-5 dark:bg-primary-foreground" : "left-0.5 dark:bg-card-foreground"
-					}`}
-				/>
-			</button>
+			<Toggle checked={checked} onChange={onChange} label={title} />
 		</div>
 	);
 }

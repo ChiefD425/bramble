@@ -7,8 +7,9 @@ import { useVault } from "../../../../hooks/useVault";
 import type { WebauthnKeyKind } from "../../../../vault/webauthn-ceremony";
 import { Button } from "../../../components/ui/button";
 import { InlineConfirm } from "../../../components/ui/inline-confirm";
+import { Toggle } from "../../../components/ui/toggle";
 import { useWebauthnHandoff, type WebauthnHandoff } from "../../../hooks/useWebauthnHandoff";
-import { Row, Toggle } from "./primitives";
+import { Row } from "./primitives";
 
 /**
  * Touch ID / Windows Hello and security keys in one list, because they are one mechanism: both

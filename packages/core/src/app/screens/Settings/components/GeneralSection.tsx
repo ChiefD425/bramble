@@ -22,9 +22,10 @@ import { toAutofillIndex } from "../../../../vault/autofill-index";
 import { Button } from "../../../components/ui/button";
 import { SelectField } from "../../../components/ui/select-field";
 import { TextField } from "../../../components/ui/text-field";
+import { Toggle } from "../../../components/ui/toggle";
 import { useDefaultPasswordManager } from "../../../hooks/useDefaultPasswordManager";
 import { useRenameVault } from "../../../hooks/useVaultName";
-import { Row, Section, Toggle } from "./primitives";
+import { Row, Section } from "./primitives";
 
 // Auto-lock timeout values: -1 = Immediate, >0 = minutes, 0 = Never. "Immediate" locks the
 // moment the app/UI is no longer in use (mobile: on backgrounding; extension: when the last

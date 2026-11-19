@@ -10,11 +10,12 @@ import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
 import { PasswordField } from "../../../components/ui/password-field";
 import { PasswordStrengthMeter } from "../../../components/ui/password-strength-meter";
+import { Toggle } from "../../../components/ui/toggle";
 import { cn } from "../../../components/ui/utils";
 import { WeakPasswordNotice } from "../../../components/ui/weak-password-notice";
 import { useInSyncGroup } from "../../../hooks/useInSyncGroup";
 import { useSettingsHighlight } from "../settings-search";
-import { Row, Toggle } from "./primitives";
+import { Row } from "./primitives";
 
 interface PwFormValues {
 	currentPassword: string;
