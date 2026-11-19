@@ -24,6 +24,7 @@ import {
 	pruneSelection,
 	type Selection,
 	selectAll,
+	selectRange,
 	toggleSelected,
 } from "./selection";
 import { VaultSearchBar } from "./VaultSearchBar";
@@ -138,17 +139,31 @@ export function VaultHome({
 		setSelected((prev) => pruneSelection(prev, items));
 	}, [items]);
 
+	// The row a shift-click selects from: the last one toggled. Refs, so the row callbacks
+	// stay stable and the memoized rows don't all re-render on each filter change.
+	const anchor = useRef<string | null>(null);
+	const shown = useRef(filtered);
+	useEffect(() => {
+		shown.current = filtered;
+	}, [filtered]);
+
 	const exitSelection = () => {
 		setSelected(EMPTY_SELECTION);
 		setSelectMode(false);
+		anchor.current = null;
 	};
 
-	const toggleRowSelect = useCallback((id: string) => {
-		setSelected((prev) => toggleSelected(prev, id));
+	const toggleRowSelect = useCallback((id: string, range: boolean) => {
+		const from = anchor.current;
+		setSelected((prev) =>
+			range && from ? selectRange(prev, shown.current, from, id) : toggleSelected(prev, id),
+		);
+		anchor.current = id;
 	}, []);
 	const longPressRowSelect = useCallback((id: string) => {
 		setSelectMode(true);
 		setSelected((prev) => toggleSelected(prev, id));
+		anchor.current = id;
 	}, []);
 
 	// Actions run on real entries, not the list projection. Filtering `entries` (not
