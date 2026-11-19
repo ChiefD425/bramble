@@ -526,6 +526,14 @@ export async function cancelDesktopLink(id: string): Promise<void> {
 const HOST_MISSING = /not found|no such native application/i;
 
 /**
+ * How long the app's first answer may take. It answers at once when it runs, and the proxy says
+ * so at once when it doesn't, but a sandboxed browser (a Flatpak without the native messaging
+ * portal) can hold the pipe open without ever reaching either: linking then spun with no word.
+ */
+const LINK_ANSWER_MS = 15_000;
+const NO_ANSWER = "The desktop app didn't answer. Check that it's open, then try again.";
+
+/**
  * Start linking with the desktop app by emoji. Resolves with the emoji to show once the
  * handshake is done, or `{ legacy: true }` for an app that predates this and only knows the code.
  *
@@ -555,14 +563,21 @@ export async function startDesktopLink(
 	try {
 		session.send({ kind: "link", v: PROTOCOL_VERSION, label: defaultDeviceLabel() });
 		let reply: { ok?: boolean; message?: string } | undefined;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const silent = new Promise<never>((_, reject) => {
+			timer = setTimeout(() => reject(new Error(NO_ANSWER)), LINK_ANSWER_MS);
+		});
 		try {
-			reply = await session.request({ message: start.message });
+			reply = await Promise.race([session.request({ message: start.message }), silent]);
 		} catch (e) {
+			if (e instanceof Error && e.message === NO_ANSWER) throw e;
 			// An older app closes on a hello it does not know, without a word. A host that is not
 			// installed at all is a different failure, and says so.
 			if (e instanceof Error && HOST_MISSING.test(e.message)) throw e;
 			await fail();
 			return { legacy: true };
+		} finally {
+			clearTimeout(timer);
 		}
 		if (!reply?.ok || !reply.message) {
 			throw new Error("Open Connect a browser in the desktop app, then try again.");

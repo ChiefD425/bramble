@@ -1215,6 +1215,23 @@ describe("pairing borrows the page's native transport", () => {
 		await expect(paired).rejects.toThrow(/not found/);
 	});
 
+	// #235, #239: a sandboxed browser can hold the pipe open without reaching the app or the
+	// proxy, and linking spun with no word.
+	it("gives up on an app that never answers the link, and says so", async () => {
+		const mod = await load();
+		const page = lend(EXT_SENDER);
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			const started = mod.startDesktopLink(page.id);
+			const settled = expect(started).rejects.toThrow(/didn't answer/);
+			await vi.waitFor(() => expect(page.sent.length).toBe(3));
+			await vi.advanceTimersByTimeAsync(15_000);
+			await settled;
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	/** Run the emoji link handshake over `page`, resolving what startDesktopLink returned. */
 	async function linkOver(mod: Awaited<ReturnType<typeof load>>, page: ReturnType<typeof lend>) {
 		const started = mod.startDesktopLink(page.id);
