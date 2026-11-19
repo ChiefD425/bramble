@@ -43,6 +43,8 @@ export interface ChromeMockOptions {
 	offscreen?: (msg: AnyMsg) => OffscreenResponse | Promise<OffscreenResponse>;
 	/** What chrome.windows.getLastFocused resolves to (qr capture). */
 	lastFocusedWindow?: { id?: number };
+	/** What chrome.windows.getAll resolves to. */
+	allWindows?: ({ id: number } & Record<string, unknown>)[];
 	/** Expose chrome.action.openPopup (Chrome 127+). */
 	hasOpenPopup?: boolean;
 	/** What a content script answers chrome.tabs.sendMessage with. Throw for no receiver. */
@@ -392,6 +394,7 @@ function makeChrome(opts: ChromeMockOptions): { chrome: any; state: HarnessState
 			get: vi.fn(async (id: number) => ({ id, top: 0, left: 0, width: 500 })),
 			getCurrent: vi.fn(async () => ({ id: 1, top: 0, left: 0, width: 500 })),
 			getLastFocused: vi.fn(async () => opts.lastFocusedWindow ?? { id: 7 }),
+			getAll: vi.fn(async () => opts.allWindows ?? []),
 			update: vi.fn(async () => {}),
 			remove: vi.fn(async (id: number) => {
 				state.windowsRemoved.push(id);

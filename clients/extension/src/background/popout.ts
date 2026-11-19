@@ -2,6 +2,7 @@
 
 import { parseRegistry, VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
 import { api } from "../platform-api";
+import { isExtensionSender } from "../sender";
 import {
 	ACTIVE_VAULT_SESSION_KEY,
 	CORNER_HANDOFF_KEY,
@@ -22,6 +23,8 @@ const POPOUT_WINDOW_KEY = "popout.windowId";
 // Id of a pop-out opened solely to unlock (the picker's "Vault locked" row). It is a step in the
 // page's fill flow, not a place the user asked to be, so it closes itself once the vault unlocks.
 const POPOUT_UNLOCK_WINDOW_KEY = "popout.unlockWindowId";
+// Id of the browser window the pop-out was opened from (see popoutBoundsSettled).
+const POPOUT_ANCHOR_KEY = "popout.anchorWindowId";
 
 /** Make the last opened vault the active one, so a view opened to unlock boots on its unlock
  * screen instead of the picker. Leaves an existing selection alone and skips a deleted vault. */
@@ -141,6 +144,7 @@ async function popoutOpen(
 	if (created?.id !== undefined) {
 		// Track this window so the next pop-out request focuses it rather than duplicating.
 		await api.storage.session.set({ [POPOUT_WINDOW_KEY]: created.id });
+		if (anchor?.id !== undefined) await api.storage.session.set({ [POPOUT_ANCHOR_KEY]: anchor.id });
 		// An unlock-only pop-out closes itself once the vault opens (see closeUnlockPopout).
 		if (payload?.reason === "unlock") {
 			await api.storage.session.set({ [POPOUT_UNLOCK_WINDOW_KEY]: created.id });
@@ -189,5 +193,27 @@ async function popoutConsumeHandoff(): Promise<MessageEnvelope> {
 	return { ok: true, data: handoff };
 }
 
+/**
+ * Firefox keeps one saved size and position for all of its windows, and the pop-out overwrites
+ * them each time it moves or resizes (#225). Setting a normal window to the bounds it already has
+ * makes Firefox save that window's again, and nothing moves on screen. The pop-out asks for this
+ * once its own bounds settle (popout-bounds.ts). The window it was opened from goes first, else any
+ * normal one: Firefox's getLastFocused ignores windowTypes and returns the pop-out itself.
+ */
+async function popoutBoundsSettled(
+	_message: unknown,
+	sender: chrome.runtime.MessageSender,
+): Promise<MessageEnvelope> {
+	if (!isExtensionSender(sender)) return { ok: false, error: "forbidden" };
+	const anchor = (await api.storage.session.get(POPOUT_ANCHOR_KEY))[POPOUT_ANCHOR_KEY];
+	const normal = (await api.windows.getAll().catch(() => [])).filter((w) => w.type === "normal");
+	const win = normal.find((w) => w.id === anchor) ?? normal[0];
+	if (win?.id === undefined || win.state !== "normal") return { ok: true };
+	const { left, top, width, height } = win;
+	await api.windows.update(win.id, { left, top, width, height }).catch(() => undefined);
+	return { ok: true };
+}
+
 on("POPOUT_OPEN", popoutOpen);
+on("POPOUT_BOUNDS_SETTLED", popoutBoundsSettled);
 on("POPOUT_CONSUME_HANDOFF", popoutConsumeHandoff);
