@@ -115,6 +115,18 @@ describe("EntryRow action controls", () => {
 	});
 });
 
+describe("EntryRow fill (#215)", () => {
+	it("offers Fill only when the row is matched to the page", () => {
+		renderRow();
+		expect(screen.queryByRole("button", { name: "Fill" })).toBeNull();
+		cleanup();
+		const onFill = vi.fn();
+		renderRow({ onFill });
+		fireEvent.click(screen.getByRole("button", { name: "Fill" }));
+		expect(onFill).toHaveBeenCalledExactlyOnceWith("e1");
+	});
+});
+
 describe("EntryRow selection", () => {
 	it("offers no checkbox when the list isn't selectable", () => {
 		renderRow();

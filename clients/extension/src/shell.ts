@@ -225,6 +225,15 @@ export const extensionShell: ShellAdapter = {
 			.catch(() => undefined)) as { ok?: boolean } | undefined;
 		if (!res?.ok) window.open(url, "_blank", "noopener,noreferrer");
 	},
+	async fillLogin(entryId: string) {
+		const res = (await api.runtime
+			.sendMessage({ type: "AUTOFILL_FILL_TAB", payload: { entryId } })
+			.catch(() => undefined)) as { ok?: boolean } | undefined;
+		if (!res?.ok) return false;
+		// The toolbar popup has done its job; a pop-out the user keeps open stays.
+		if (!this.isDetached()) window.close();
+		return true;
+	},
 	// Reports failure, unlike setAutofillEnabled above: turning this on can genuinely fail
 	// (another extension holds the WebAuthn proxy), and a switch that says "on" while nothing is
 	// attached is worse than an error.

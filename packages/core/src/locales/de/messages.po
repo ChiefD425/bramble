@@ -1828,6 +1828,10 @@ msgstr "Dateien werden nur auf diesem Gerät gelesen. Es wird nichts hochgeladen
 msgid "Files over {LIMIT_MB} MB can't be attached."
 msgstr "Dateien über {LIMIT_MB} MB können nicht angehängt werden."
 
+#: packages/core/src/app/components/EntryRow.tsx
+msgid "Fill"
+msgstr "Ausfüllen"
+
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 #~ msgid "Fill logins from the Bramble extension without unlocking twice."
 #~ msgstr "Logins aus der Bramble-Erweiterung ausfüllen, ohne zweimal zu entsperren."
@@ -2559,6 +2563,10 @@ msgstr "In dieser Datei wurden keine importierbaren Elemente gefunden."
 msgid "No items found matching your search."
 msgstr "Es wurden keine Elemente gefunden, die Ihrer Suche entsprechen."
 
+#: packages/core/src/app/routes/VaultHomeRoute.tsx
+msgid "No login form on this page"
+msgstr "Kein Anmeldeformular auf dieser Seite"
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "No logins at risk."
 msgstr "Keine Logins gefährdet."
@@ -3075,6 +3083,10 @@ msgstr "Geben Sie das Passwort erneut ein"
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "Reading file…"
 msgstr "Datei wird gelesen..."
+
+#: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
+msgid "Recent activity"
+msgstr "Letzte Aktivitäten"
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Recently added"

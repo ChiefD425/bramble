@@ -30,7 +30,7 @@ import {
 	onDesktopFillRequest,
 	reportActiveTab,
 } from "./desktop-link";
-import { shortcutGrantLive, spendShortcutGrant } from "./fill-shortcut";
+import { armShortcutGrant, shortcutGrantLive, spendShortcutGrant } from "./fill-shortcut";
 import {
 	armLaunchGrant,
 	LAUNCH_VIEW_GRACE_MS,
@@ -864,6 +864,59 @@ async function autofillLaunch(message: any): Promise<MessageEnvelope> {
 	return { ok: true, data: null };
 }
 
+/** The web page behind Bramble's window: its own window's active tab, else (a pop-out) a normal
+ * window's. The same choice as the shell's getCurrentTabOrigin, which picked the rows offered. */
+async function pageBehind(): Promise<chrome.tabs.Tab | undefined> {
+	const web = (tab: chrome.tabs.Tab | undefined) => {
+		try {
+			return !!tab?.url && /^https?:$/.test(new URL(tab.url).protocol);
+		} catch {
+			return false;
+		}
+	};
+	const [own] = await api.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => []);
+	if (web(own)) return own;
+	const tabs = await api.tabs.query({ active: true, windowType: "normal" }).catch(() => []);
+	return tabs.find(web);
+}
+
+/**
+ * Fill a login chosen in Bramble's own window into the page behind it (#215). The tab gets one
+ * fill, as the shortcut grants, and its top frame asks for the login through AUTOFILL_SELECT,
+ * which checks it against the page again. Refused when the login isn't this page's, or the page
+ * has no login form; "Autofill on web pages" being off doesn't stop it, as it doesn't the shortcut.
+ */
+async function autofillFillTab(message: any): Promise<MessageEnvelope> {
+	const entryId = (message.payload as { entryId?: unknown } | undefined)?.entryId;
+	if (typeof entryId !== "string" || !entryId || entryId.length > 256) {
+		return { ok: false, error: "invalid_request" };
+	}
+	const owner = autofillSessionOwner();
+	if (!owner) return { ok: false, error: "unavailable" };
+	const tab = await pageBehind();
+	if (tab?.id === undefined || !tab.url) return { ok: false, error: "no_form" };
+	const page = new URL(tab.url);
+	await hydrateAutofillIndexFromDisk();
+	if (!autofillSessionOwnerIsCurrent(owner)) return { ok: false, error: "unavailable" };
+	const entry = currentIndex()?.get(entryId);
+	if (
+		entry?.type !== "login" ||
+		entry.autofillEnabled === false ||
+		!hostnameMatches(entry, page.hostname, effectivePort(page))
+	) {
+		return { ok: false, error: "no_form" };
+	}
+	armShortcutGrant(tab.id, owner);
+	// Bramble's popup closes as the page takes the fill; "Immediate" would take that for the last view going.
+	armViewGrace(LAUNCH_VIEW_GRACE_MS);
+	const reply = (await api.tabs
+		.sendMessage(tab.id, { type: "AUTOFILL_FILL_ENTRY", payload: { entryId } }, { frameId: 0 })
+		.catch(() => undefined)) as { ok?: unknown } | undefined;
+	if (reply?.ok === true) return { ok: true, data: null };
+	spendShortcutGrant(tab.id);
+	return { ok: false, error: "no_form" };
+}
+
 /** A frame's rules on top of the page rules: the page around it has to be the login's too. */
 function frameMayClaim(entry: LoginIndexEntry, sender: chrome.runtime.MessageSender): boolean {
 	if (!sameSiteAsTop(sender)) return false;
@@ -1117,6 +1170,7 @@ on("AUTOFILL_FETCH", autofillFetch);
 on("AUTOFILL_QUERY", autofillQuery);
 on("AUTOFILL_SELECT", autofillSelect);
 on("AUTOFILL_LAUNCH", extensionOnly(autofillLaunch));
+on("AUTOFILL_FILL_TAB", extensionOnly(autofillFillTab));
 on("AUTOFILL_LAUNCH_CLAIM", autofillLaunchClaim);
 on("AUTOFILL_LAUNCH_END", autofillLaunchEnd);
 on("AUTOFILL_LAUNCH_LIVE", autofillLaunchLive);

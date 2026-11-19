@@ -174,6 +174,9 @@ export interface ShellAdapter {
 	/** Open a login's website in a new tab and fill it there once (extension only). See
 	 * docs/launch-and-fill.md. */
 	launchLogin?(entryId: string, url: string): Promise<void>;
+	/** Fill a login into the page behind Bramble's window, one the list matched to it (extension
+	 * only; #215). False when that page has no login form for it. */
+	fillLogin?(entryId: string): Promise<boolean>;
 	/** Whether the browser's own password manager is switched off for Bramble (extension only; #135). */
 	getDefaultPasswordManager?(): Promise<DefaultPasswordManager>;
 	/** Switch the browser's own password saving and card autofill off (true) or hand them back.

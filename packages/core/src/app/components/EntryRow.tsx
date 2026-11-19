@@ -4,6 +4,7 @@ import {
 	Check,
 	Copy,
 	KeyRound,
+	LogIn,
 	type LucideIcon,
 	MoreVertical,
 	Pencil,
@@ -44,6 +45,8 @@ interface EntryRowProps {
 	onDelete: (id: string) => Promise<void>;
 	/** Called after a successful quick-copy, to record the entry as recently used. */
 	onUse?: (id: string) => void;
+	/** Fill this login into the page behind Bramble's window; set only on rows matched to it. */
+	onFill?: (id: string) => void;
 	/** Tint the row when it matches the current site (surfaced at the top of the list). */
 	highlighted?: boolean;
 	/**
@@ -75,6 +78,7 @@ export const EntryRow = memo(function EntryRow({
 	onEdit,
 	onDelete,
 	onUse,
+	onFill,
 	highlighted,
 	selectMode = false,
 	selected = false,
@@ -267,6 +271,18 @@ export const EntryRow = memo(function EntryRow({
 								: "row-start-1 col-start-1 justify-self-end self-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
 						}`}
 					>
+						{onFill && (
+							<Button
+								variant="ghost"
+								size="none"
+								onClick={() => onFill(id)}
+								className="p-1.5 rounded-md"
+								aria-label={t`Fill`}
+								title={t`Fill`}
+							>
+								<LogIn className="w-3.5 h-3.5" />
+							</Button>
+						)}
 						{launchUrl && (
 							<OpenWebsiteLink href={launchUrl} entryId={id} onOpen={() => onUse?.(id)} />
 						)}

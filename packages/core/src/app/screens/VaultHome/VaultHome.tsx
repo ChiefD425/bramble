@@ -85,6 +85,8 @@ interface VaultHomeProps {
 	 */
 	entries: Entry[];
 	onUseEntry: (id: string) => void;
+	/** Fill a login into the page behind the window; offered on the logins matched to it. */
+	onFillEntry?: (id: string) => void;
 	/** The vault's tag vocabulary, for the search bar's `#` suggestions. */
 	tags: string[];
 	/** Home stats row: collapsed state + toggle, both persisted in prefs. */
@@ -111,6 +113,7 @@ export function VaultHome({
 	onDeleteEntry,
 	entries,
 	onUseEntry,
+	onFillEntry,
 	tags,
 	statsCollapsed,
 	onToggleStats,
@@ -340,6 +343,9 @@ export function VaultHome({
 											onEdit={onEditEntry}
 											onDelete={onDeleteEntry}
 											onUse={onUseEntry}
+											onFill={
+												item.type === "login" && matchedIds?.has(item.id) ? onFillEntry : undefined
+											}
 											highlighted={matchedIds?.has(item.id)}
 											selectMode={selectMode}
 											selected={selected.has(item.id)}

@@ -1828,6 +1828,10 @@ msgstr "Files are read on this device only. Nothing is uploaded. Delete the expo
 msgid "Files over {LIMIT_MB} MB can't be attached."
 msgstr "Files over {LIMIT_MB} MB can't be attached."
 
+#: packages/core/src/app/components/EntryRow.tsx
+msgid "Fill"
+msgstr "Fill"
+
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 #~ msgid "Fill logins from the Bramble extension without unlocking twice."
 #~ msgstr "Fill logins from the Bramble extension without unlocking twice."
@@ -2559,6 +2563,10 @@ msgstr "No importable items were found in this file."
 msgid "No items found matching your search."
 msgstr "No items found matching your search."
 
+#: packages/core/src/app/routes/VaultHomeRoute.tsx
+msgid "No login form on this page"
+msgstr "No login form on this page"
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "No logins at risk."
 msgstr "No logins at risk."
@@ -3075,6 +3083,10 @@ msgstr "Re-enter the password"
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "Reading file…"
 msgstr "Reading file…"
+
+#: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
+msgid "Recent activity"
+msgstr "Recent activity"
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Recently added"
