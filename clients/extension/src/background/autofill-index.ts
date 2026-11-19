@@ -7,6 +7,10 @@ import type {
 	MatchSummary,
 	QueryResult,
 } from "@core/adapters/autofill";
+
+/** The browser never serves the extension's own unlock key; only the macOS AutoFill extension does. */
+type BrowserIndexEntry = Exclude<IndexEntry, { type: "unlock-key" }>;
+
 import { AliasError } from "@core/aliases";
 import { decodeEntriesPayload } from "@core/sync";
 import { parseTotp, totpAt } from "@core/util/totp";
@@ -67,7 +71,7 @@ const HOSTNAMES_KEY = "autofill.knownHostnames";
 // usable (or publishable) after a lock/unlock or active-vault replacement.
 type AutofillIndexCache = Readonly<{
 	owner: AutofillSessionOwner;
-	entries: Map<string, IndexEntry>;
+	entries: Map<string, BrowserIndexEntry>;
 }>;
 
 let autofillIndex: AutofillIndexCache | null = null;
@@ -165,7 +169,7 @@ function sameOwner(left: AutofillSessionOwner, right: AutofillSessionOwner): boo
 }
 
 /** The live index only if it belongs to the current unlocked vault/key session. */
-function currentIndex(): Map<string, IndexEntry> | null {
+function currentIndex(): Map<string, BrowserIndexEntry> | null {
 	const owner = autofillSessionOwner();
 	if (owner && autofillIndex && sameOwner(autofillIndex.owner, owner)) return autofillIndex.entries;
 	// Drop stale plaintext as soon as it is observed. Incrementing revision also prevents an
@@ -180,7 +184,7 @@ function currentIndex(): Map<string, IndexEntry> | null {
 function publishIndex(
 	owner: AutofillSessionOwner,
 	revision: number,
-	entries: Map<string, IndexEntry>,
+	entries: Map<string, BrowserIndexEntry>,
 ): boolean {
 	if (cacheRevision !== revision || !autofillSessionOwnerIsCurrent(owner)) return false;
 	autofillIndex = { owner, entries };
@@ -219,7 +223,7 @@ export function clearIndex(): void {
 }
 
 /** The index entry for `id`, or undefined when the index is absent/missing it. */
-export function getIndexEntry(id: string): IndexEntry | undefined {
+export function getIndexEntry(id: string): BrowserIndexEntry | undefined {
 	return currentIndex()?.get(id);
 }
 
@@ -252,7 +256,7 @@ export function dedupeCapture(
 }
 
 /** Masked card label for the dropdown, e.g. "Visa •••• 1234". */
-function cardSecondary(entry: Extract<IndexEntry, { type: "card" }>): string {
+function cardSecondary(entry: Extract<BrowserIndexEntry, { type: "card" }>): string {
 	const last4 = entry.number.replace(/\D/g, "").slice(-4);
 	const tail = last4 ? `•••• ${last4}` : "";
 	return [entry.brand, tail].filter(Boolean).join(" ");
@@ -483,7 +487,7 @@ async function hydrateIndexForOwner(
 		// The outer payload is `{entries, tombstones}` (see core/sync/entries-payload); parsing it
 		// as a bare array threw and left the index null, so every query answered "vault locked".
 		const { entries: encryptedEntries } = decodeEntriesPayload(outerResp.data);
-		const newIndex = new Map<string, IndexEntry>();
+		const newIndex = new Map<string, BrowserIndexEntry>();
 		// One VEK-scoped round-trip, with per-entry failures and explicit identity.
 		const batchResp = await sendToOffscreen({
 			type: "CRYPTO_DECRYPT_INDEX",
@@ -605,9 +609,10 @@ async function autofillSetIndex(
 	if (!owner || owner.vaultId !== capability.vaultId || owner.token !== capability.token) {
 		return { ok: false, error: "unavailable" };
 	}
-	const index = new Map<string, IndexEntry>();
+	const index = new Map<string, BrowserIndexEntry>();
 	knownHostnames.clear();
 	for (const entry of entries) {
+		if (entry.type === "unlock-key") continue;
 		index.set(entry.id, entry);
 		// Register every hostname a login covers so the locked-state hint lights up on all of them.
 		if (entry.type === "login") {

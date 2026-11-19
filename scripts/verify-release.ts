@@ -591,6 +591,14 @@ async function verifyDesktopMacos(tag: string, scratch: string): Promise<boolean
 			join(release, "bramble-proxy"),
 		],
 	];
+	// The AutoFill extension, from the release that first shipped it.
+	const autofill = "BrambleAutoFill.appex/Contents/MacOS/BrambleAutoFill";
+	if (existsSync(join(published, "Bramble.app/Contents/PlugIns", autofill)))
+		pairs.push([
+			"BrambleAutoFill",
+			join(published, "Bramble.app/Contents/PlugIns", autofill),
+			join(src, "clients/desktop/macos/build", autofill),
+		]);
 	let ok = true;
 	for (const [name, theirs, mine] of pairs) {
 		const unsigned = (file: string, as: string) => {

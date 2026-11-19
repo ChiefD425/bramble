@@ -36,8 +36,10 @@ import { formatDate, formatDateTimeExact } from "../../util/format-date";
 import { generate } from "../../util/password-gen";
 import { classifyScannedQr, parseTotp, type QrScanFailure, totpAt } from "../../util/totp";
 import { launchableUrl } from "../../util/url";
+import { isReservedRpId } from "../../vault/reserved-rp";
 import { OpenWebsiteLink } from "../components/OpenWebsiteLink";
 import { PasswordGeneratorModal } from "../components/PasswordGeneratorModal";
+import { TotpCode } from "../components/TotpCode";
 import { AdvancedDisclosure } from "../components/ui/advanced-disclosure";
 import { Button } from "../components/ui/button";
 import { PasswordStrengthMeter } from "../components/ui/password-strength-meter";
@@ -491,7 +493,7 @@ function ToggleRow({ title, subtitle, checked, onChange }: ToggleRowProps) {
 	);
 }
 
-/** Live two-factor code for an entry's authenticator key, recomputed every second with a countdown ring. */
+/** Live two-factor code for an entry's authenticator key. */
 function TotpField({
 	value,
 	copied,
@@ -501,14 +503,7 @@ function TotpField({
 	copied: string | null;
 	copy: (label: string, value: string) => void;
 }) {
-	const { t } = useLingui();
 	const parsed = useMemo(() => parseTotp(value), [value]);
-	const [now, setNow] = useState(() => Date.now());
-
-	useEffect(() => {
-		const id = setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(id);
-	}, []);
 
 	if (!parsed) {
 		return (
@@ -523,76 +518,16 @@ function TotpField({
 		);
 	}
 
-	const { code, secondsRemaining } = totpAt(parsed.totp, now);
-	const matched = copied === "totp";
-
 	return (
 		<div className="border-t border-border/40 pt-3 space-y-2">
 			<p className="text-sm text-muted-foreground">
 				<Trans>Verification code (TOTP)</Trans>
 			</p>
-			<div className="flex items-center justify-between gap-3">
-				<div className="flex items-baseline gap-3 font-mono text-2xl tracking-wider tabular-nums">
-					{code.length === 6 ? (
-						<>
-							<span>{code.slice(0, 3)}</span>
-							<span>{code.slice(3)}</span>
-						</>
-					) : (
-						<span>{code}</span>
-					)}
-				</div>
-				<div className="flex items-center gap-3">
-					<CountdownRing remaining={secondsRemaining} period={parsed.totp.period} />
-					<Button
-						variant="ghost"
-						size="none"
-						onClick={() => copy("totp", code)}
-						className="p-1.5 rounded-md"
-						aria-label={t`Copy verification code`}
-					>
-						{matched ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/** Ring + number that drains as the current code ages out, turning red in the final few seconds. */
-function CountdownRing({ remaining, period }: { remaining: number; period: number }) {
-	const { t } = useLingui();
-	const radius = 11;
-	const circumference = 2 * Math.PI * radius;
-	const fraction = Math.max(0, Math.min(1, remaining / period));
-	const low = remaining <= 5;
-	return (
-		<div
-			className="relative flex items-center justify-center w-7 h-7"
-			title={t`${remaining}s left`}
-		>
-			<svg width="28" height="28" viewBox="0 0 28 28" className="-rotate-90" aria-hidden="true">
-				<circle cx="14" cy="14" r={radius} fill="none" strokeWidth="2" className="stroke-muted" />
-				<circle
-					cx="14"
-					cy="14"
-					r={radius}
-					fill="none"
-					strokeWidth="2"
-					strokeLinecap="round"
-					strokeDasharray={circumference}
-					strokeDashoffset={circumference * (1 - fraction)}
-					className={low ? "stroke-destructive" : "stroke-foreground"}
-					style={{ transition: "stroke-dashoffset 1s linear" }}
-				/>
-			</svg>
-			<span
-				className={`absolute text-[10px] tabular-nums ${
-					low ? "text-destructive" : "text-muted-foreground"
-				}`}
-			>
-				{remaining}
-			</span>
+			<TotpCode
+				totp={parsed.totp}
+				copied={copied === "totp"}
+				onCopy={(code) => copy("totp", code)}
+			/>
 		</div>
 	);
 }
@@ -793,6 +728,11 @@ function LoginDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 							</span>
 						))}
 					</div>
+					{login.passkeys.some((pk) => isReservedRpId(pk.rpId)) && (
+						<p className="text-xs text-muted-foreground">
+							<Trans>Unlocks Bramble, so it isn't used to sign in</Trans>
+						</p>
+					)}
 				</div>
 			)}
 

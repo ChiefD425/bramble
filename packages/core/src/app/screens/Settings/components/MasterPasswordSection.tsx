@@ -39,9 +39,11 @@ export function MasterPasswordSection() {
 	const { t } = useLingui();
 	const cryptoError = useCryptoErrorMessage();
 	const hasWebauthnKey = webauthnKeys.length > 0;
+	// A key Bramble Desktop holds needs Bramble unlocked first, so it can't replace the password.
+	const onlyHeldByBramble = hasWebauthnKey && webauthnKeys.every((k) => k.heldByBramble);
 	// Pairing needs the password, and a synced vault can pair again at any time.
 	const inSyncGroup = useInSyncGroup();
-	const canTurnOff = hasWebauthnKey && !inSyncGroup;
+	const canTurnOff = hasWebauthnKey && !onlyHeldByBramble && !inSyncGroup;
 	// "change" reveals current+new+confirm; "set" reveals new+confirm (re-enable
 	// or first-time on a key-only vault); null = form closed.
 	const [formMode, setFormMode] = useState<null | "change" | "set">(null);
@@ -218,7 +220,14 @@ export function MasterPasswordSection() {
 					<Trans>Add a key under Tap to unlock before you can turn off the master password.</Trans>
 				</p>
 			)}
-			{hasPasswordSlot && hasWebauthnKey && inSyncGroup && (
+			{hasPasswordSlot && onlyHeldByBramble && (
+				<p className="text-xs text-muted-foreground pl-12">
+					<Trans>
+						Add a key outside Bramble Desktop before you can turn off the master password.
+					</Trans>
+				</p>
+			)}
+			{hasPasswordSlot && hasWebauthnKey && !onlyHeldByBramble && inSyncGroup && (
 				<p className="text-xs text-muted-foreground pl-12">
 					<Trans>Pairing devices needs a master password</Trans>
 				</p>

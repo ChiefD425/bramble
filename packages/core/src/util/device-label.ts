@@ -18,19 +18,29 @@ export function desktopDeviceLabel(ua: string = navigatorUa()): string {
 	return "Desktop app";
 }
 
+/**
+ * The browser, as far as it says. Brave answers to `navigator.brave`; Vivaldi and Arc pass as
+ * Chrome on purpose, so they read as Chrome here.
+ */
+export function browserName(
+	ua: string = navigatorUa(),
+	nav: { brave?: unknown } = typeof navigator !== "undefined"
+		? (navigator as { brave?: unknown })
+		: {},
+): string {
+	if (/firefox/i.test(ua)) return "Firefox";
+	if (/edg\//i.test(ua)) return "Edge";
+	if (/opr\//i.test(ua)) return "Opera";
+	if (/chrome/i.test(ua)) return nav.brave ? "Brave" : "Chrome";
+	if (/safari/i.test(ua)) return "Safari";
+	return "Browser";
+}
+
 export function defaultDeviceLabel(ua: string = navigatorUa()): string {
 	if (/android/i.test(ua)) return "Android device";
 	if (/iphone/i.test(ua)) return "iPhone";
 	if (/ipad/i.test(ua)) return "iPad";
-	const browser = /firefox/i.test(ua)
-		? "Firefox"
-		: /edg\//i.test(ua)
-			? "Edge"
-			: /chrome/i.test(ua)
-				? "Chrome"
-				: /safari/i.test(ua)
-					? "Safari"
-					: "Browser";
+	const browser = browserName(ua, {});
 	if (/macintosh|mac os x/i.test(ua)) return `${browser} on Mac`;
 	if (/windows/i.test(ua)) return `${browser} on Windows`;
 	if (/linux/i.test(ua)) return `${browser} on Linux`;

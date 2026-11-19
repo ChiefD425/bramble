@@ -4,6 +4,7 @@ import { bodyToBlob, type HttpBodySource } from "@core/adapters/http";
 import type { OptionsScreen, PopOutHandoff, ShellAdapter } from "@core/adapters/shell";
 import type { Target } from "@core/flags";
 import { loginHosts } from "@core/vault/autofill-index";
+import { UNLOCK_RP_ID } from "@core/vault/reserved-rp";
 import { setWebauthnInterceptionPauser, setWebauthnRpId } from "@core/vault/webauthn-ceremony";
 import { reconcileDefaultPasswordManager, setDefaultPasswordManager } from "./browser-saving";
 import { effectivePort, hostnameMatches } from "./dedupe";
@@ -86,7 +87,7 @@ const firefoxMajor = Number(
 	/Firefox\/(\d+)/.exec(typeof navigator === "undefined" ? "" : navigator.userAgent)?.[1] ?? 0,
 );
 const canClaimRpId = extensionTarget !== "firefox" || firefoxMajor >= FIREFOX_RPID_CLAIM_MIN;
-setWebauthnRpId(canClaimRpId ? "bramble.sh" : undefined, {
+setWebauthnRpId(canClaimRpId ? UNLOCK_RP_ID : undefined, {
 	implicitUsable: extensionTarget !== "firefox",
 });
 
