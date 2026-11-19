@@ -63,7 +63,7 @@ msgstr "{0, plural, one {백업되지 않음: 첨부 파일 #개가 아직 이 �
 msgid "{0, plural, one {This backup has # attachment, which Bramble can't store on this device yet. Keep the backup file, which still has it.} other {This backup has # attachments, which Bramble can't store on this device yet. Keep the backup file, which still has them.}}"
 msgstr "{0, plural, one {이 백업에는 Bramble이 아직 이 기기에 저장할 수 없는 첨부 파일 #개가 있습니다. 해당 파일이 계속 들어 있는 백업 파일을 보관하세요.} other {이 백업에는 Bramble이 아직 이 기기에 저장할 수 없는 첨부 파일 #개가 있습니다. 해당 파일이 계속 들어 있는 백업 파일을 보관하세요.}}"
 
-#. placeholder {0}: fingerprint(d.publicKey)
+#. placeholder {0}: shortKey(d.publicKey)
 #. placeholder {1}: addedOn(d.addedAt)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "{0} · added {1}"
@@ -2180,8 +2180,10 @@ msgstr "잠김"
 msgid "Login"
 msgstr "로그인"
 
+#. placeholder {0}: data.name
 #. placeholder {0}: info.hostname
 #: packages/core/src/app/components/CornerSavedToast.tsx
+#: packages/core/src/hooks/usePendingHandoffs.tsx
 msgid "Login saved for {0}"
 msgstr "{0} 로그인 저장됨"
 

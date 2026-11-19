@@ -73,7 +73,7 @@ msgstr "{0, plural, one {Non sauvegardée : # pièce jointe n’est pas encore s
 msgid "{0, plural, one {This backup has # attachment, which Bramble can't store on this device yet. Keep the backup file, which still has it.} other {This backup has # attachments, which Bramble can't store on this device yet. Keep the backup file, which still has them.}}"
 msgstr "{0, plural, one {Cette sauvegarde contient # pièce jointe, que Bramble ne peut pas encore stocker sur cet appareil. Conservez le fichier de sauvegarde, qui la contient encore.} other {Cette sauvegarde contient # pièces jointes, que Bramble ne peut pas encore stocker sur cet appareil. Conservez le fichier de sauvegarde, qui les contient encore.}}"
 
-#. placeholder {0}: fingerprint(d.publicKey)
+#. placeholder {0}: shortKey(d.publicKey)
 #. placeholder {1}: addedOn(d.addedAt)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "{0} · added {1}"
@@ -2409,8 +2409,10 @@ msgstr "Verrouillé"
 msgid "Login"
 msgstr "Connexion"
 
+#. placeholder {0}: data.name
 #. placeholder {0}: info.hostname
 #: packages/core/src/app/components/CornerSavedToast.tsx
+#: packages/core/src/hooks/usePendingHandoffs.tsx
 msgid "Login saved for {0}"
 msgstr "Identifiant enregistré pour {0}"
 

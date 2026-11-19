@@ -73,7 +73,7 @@ msgstr "{0, plural, one {Not backed up: # attachment isn't on this device yet. B
 msgid "{0, plural, one {This backup has # attachment, which Bramble can't store on this device yet. Keep the backup file, which still has it.} other {This backup has # attachments, which Bramble can't store on this device yet. Keep the backup file, which still has them.}}"
 msgstr "{0, plural, one {This backup has # attachment, which Bramble can't store on this device yet. Keep the backup file, which still has it.} other {This backup has # attachments, which Bramble can't store on this device yet. Keep the backup file, which still has them.}}"
 
-#. placeholder {0}: fingerprint(d.publicKey)
+#. placeholder {0}: shortKey(d.publicKey)
 #. placeholder {1}: addedOn(d.addedAt)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "{0} · added {1}"
@@ -2409,8 +2409,10 @@ msgstr "Locked"
 msgid "Login"
 msgstr "Login"
 
+#. placeholder {0}: data.name
 #. placeholder {0}: info.hostname
 #: packages/core/src/app/components/CornerSavedToast.tsx
+#: packages/core/src/hooks/usePendingHandoffs.tsx
 msgid "Login saved for {0}"
 msgstr "Login saved for {0}"
 

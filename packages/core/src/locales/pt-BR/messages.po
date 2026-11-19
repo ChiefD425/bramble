@@ -73,7 +73,7 @@ msgstr "{0, plural, one {Não incluído no backup: # anexo ainda não está nest
 msgid "{0, plural, one {This backup has # attachment, which Bramble can't store on this device yet. Keep the backup file, which still has it.} other {This backup has # attachments, which Bramble can't store on this device yet. Keep the backup file, which still has them.}}"
 msgstr "{0, plural, one {Este backup tem # anexo, que o Bramble ainda não pode armazenar neste dispositivo. Mantenha o arquivo de backup, que ainda o contém.} other {Este backup tem # anexos, que o Bramble ainda não pode armazenar neste dispositivo. Mantenha o arquivo de backup, que ainda os contém.}}"
 
-#. placeholder {0}: fingerprint(d.publicKey)
+#. placeholder {0}: shortKey(d.publicKey)
 #. placeholder {1}: addedOn(d.addedAt)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "{0} · added {1}"
@@ -2409,8 +2409,10 @@ msgstr "Bloqueado"
 msgid "Login"
 msgstr "Login"
 
+#. placeholder {0}: data.name
 #. placeholder {0}: info.hostname
 #: packages/core/src/app/components/CornerSavedToast.tsx
+#: packages/core/src/hooks/usePendingHandoffs.tsx
 msgid "Login saved for {0}"
 msgstr "Login salvo para {0}"
 
