@@ -7,6 +7,7 @@ import { loginHosts } from "@core/vault/autofill-index";
 import { setWebauthnInterceptionPauser, setWebauthnRpId } from "@core/vault/webauthn-ceremony";
 import { reconcileDefaultPasswordManager, setDefaultPasswordManager } from "./browser-saving";
 import { effectivePort, hostnameMatches } from "./dedupe";
+import { pageBehind } from "./normal-window";
 import { api } from "./platform-api";
 import { ACTIVE_VAULT_SESSION_KEY } from "./session-keys";
 import {
@@ -131,20 +132,8 @@ export const extensionShell: ShellAdapter = {
 		try {
 			// Toolbar popup: the page we're acting on is our own window's active tab.
 			const [own] = await api.tabs.query({ active: true, currentWindow: true });
-			const ownOrigin = webOrigin(own);
-			if (ownOrigin) return ownOrigin;
-			// Detached pop-out: it lives in its own popup-type window, whose only tab is this
-			// extension page, so the query above finds no web page and site-aware features
-			// (matchCurrentTab's float-to-top, the new-entry URL prefill) silently went dead.
-			// Fall back to the active tab of a normal browser window - the page behind us.
-			// With several normal windows open the first web tab wins; there's no API for
-			// "focused before ours", and any of them beats no match at all.
-			const tabs = await api.tabs.query({ active: true, windowType: "normal" });
-			for (const tab of tabs) {
-				const origin = webOrigin(tab);
-				if (origin) return origin;
-			}
-			return null;
+			// Detached pop-out: its own window holds only this page, so the page is the one behind it.
+			return webOrigin(own) ?? webOrigin(await pageBehind());
 		} catch {
 			return null;
 		}

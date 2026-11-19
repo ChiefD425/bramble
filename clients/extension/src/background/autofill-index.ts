@@ -21,6 +21,7 @@ import {
 	hostSpecificity,
 	registrableDomain,
 } from "../dedupe";
+import { lastNormalWindow, pageBehind } from "../normal-window";
 import { api } from "../platform-api";
 import { isExtensionSender } from "../sender";
 import { aliasAvailable, aliasConfiguredAnywhere, createAlias } from "./alias";
@@ -842,7 +843,7 @@ async function launchQualifies(
 
 /** A new tab in the last focused normal window, or a new window when there is none. */
 async function openInNormalWindow(url: string): Promise<number | undefined> {
-	const win = await api.windows.getLastFocused({ windowTypes: ["normal"] }).catch(() => undefined);
+	const win = await lastNormalWindow();
 	if (win?.id === undefined) return (await api.windows.create({ url }))?.tabs?.[0]?.id;
 	const tab = await api.tabs.create({ url, windowId: win.id, active: true });
 	// The launch can come from a pop-out, which would otherwise stay in front of the new tab.
@@ -862,22 +863,6 @@ async function autofillLaunch(message: any): Promise<MessageEnvelope> {
 		armLaunchGrant(tabId, launch.entryId, owner, launch.url.protocol);
 	}
 	return { ok: true, data: null };
-}
-
-/** The web page behind Bramble's window: its own window's active tab, else (a pop-out) a normal
- * window's. The same choice as the shell's getCurrentTabOrigin, which picked the rows offered. */
-async function pageBehind(): Promise<chrome.tabs.Tab | undefined> {
-	const web = (tab: chrome.tabs.Tab | undefined) => {
-		try {
-			return !!tab?.url && /^https?:$/.test(new URL(tab.url).protocol);
-		} catch {
-			return false;
-		}
-	};
-	const [own] = await api.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => []);
-	if (web(own)) return own;
-	const tabs = await api.tabs.query({ active: true, windowType: "normal" }).catch(() => []);
-	return tabs.find(web);
 }
 
 /**

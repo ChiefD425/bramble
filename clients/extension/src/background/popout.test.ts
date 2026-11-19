@@ -247,9 +247,13 @@ describe("POPOUT_BOUNDS_SETTLED (#225)", () => {
 	const settle = (bg: BackgroundHarness) =>
 		bg.send({ type: "POPOUT_BOUNDS_SETTLED" }, extensionSender);
 
+	// Firefox's getLastFocused names the pop-out itself while it has focus.
+	const popout = win(999, { type: "popup" });
+
 	it("sets the window the pop-out came from to the bounds it already has", async () => {
 		const bg = await loadBackground({
-			allWindows: [win(2), win(999, { type: "popup" }), win(1)],
+			lastFocusedWindow: popout,
+			allWindows: [win(2), popout, win(1)],
 		});
 		await bg.send({ type: "POPOUT_OPEN", payload: {} }, pageSender("example.com", 4));
 		vi.mocked(bg.chrome.windows.update).mockClear();
@@ -265,14 +269,14 @@ describe("POPOUT_BOUNDS_SETTLED (#225)", () => {
 	});
 
 	it("falls back to another normal window, never the pop-out", async () => {
-		const bg = await loadBackground({ allWindows: [win(999, { type: "popup" }), win(5)] });
+		const bg = await loadBackground({ lastFocusedWindow: popout, allWindows: [popout, win(5)] });
 		await settle(bg);
 		expect(bg.chrome.windows.update).toHaveBeenCalledExactlyOnceWith(5, expect.anything());
 	});
 
 	it("leaves a maximized, full-screen or minimized window alone", async () => {
 		for (const state of ["maximized", "fullscreen", "minimized"]) {
-			const bg = await loadBackground({ allWindows: [win(5, { state })] });
+			const bg = await loadBackground({ lastFocusedWindow: win(5, { state }) });
 			await settle(bg);
 			expect(bg.chrome.windows.update).not.toHaveBeenCalled();
 		}
