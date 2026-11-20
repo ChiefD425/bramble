@@ -1093,11 +1093,11 @@ is a local server (see the WebDAV table).
 
 ## Google Drive
 
-Decided November 2026. **Status:** the extension's one-click path is built on
-`feat/google-drive-backup` (Chromium sign-in e2e green against a faked Google; Google accepts
-both loopback redirect forms for the client). Not yet run against a real Drive; the tile stays
-"coming soon" until the client secret is committed. The user's own client, desktop and mobile
-are not built.
+Decided November 2026. **Status:** the extension's one-click path is built (Chromium sign-in e2e
+green against a faked Google) and was verified by hand against a real Drive on Chrome and
+Firefox on 2026-11-20. Google still has the client in Testing, so
+only listed test users can sign in until brand verification and "In production". The user's
+own client, desktop and mobile are not built; there the tile shows "coming soon".
 
 Two ways to connect, one code path: a one-click tile on
 **Bramble's own client**, and the **user's own client** under Advanced. Both use a Google
