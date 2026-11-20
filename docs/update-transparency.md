@@ -101,9 +101,9 @@ does not compile without the key.
 
 The `.age` files are encrypted to the Touch ID identity (`age-plugin-se`), like the other release
 secrets, and `pnpm run ci:secrets --only desktop-release` restores the two CI secrets from them.
-Re-wrap all three to the YubiKey as well once it is to hand, and keep an offline passphrase copy of
-the backup key as docs/release-signing.md describes for the others: the backup key is the one that
-matters if everything else is lost.
+The Secure Enclave key cannot leave this Mac, so all three also have an offline copy encrypted with
+a passphrase only (`age -p`), kept off this Mac and apart from the passphrase. The backup key is the
+one that matters if everything else is lost.
 
 **The public log's rate limit** is per domain. `sigsum-submit` signs a token with the rate-limit
 key, and the log checks it against a DNS TXT record:
