@@ -35,6 +35,16 @@ function inlineAuthFor(target: BackupTargetConfig, secrets: BackupSecrets) {
 	return { kind: "basicInline" as const, username: s.username, password: s.password };
 }
 
+/** The shell's `HttpReply`. Header names are lower-cased. */
+type ShellReply = { status: number; body: number[]; headers?: Record<string, string> };
+
+const reply = (res: ShellReply): BackupHttpResponse => ({
+	status: res.status,
+	ok: res.status >= 200 && res.status < 300,
+	body: Uint8Array.from(res.body),
+	headers: res.headers,
+});
+
 /** One authenticated request through the shell. `auth` decides where the secret comes from. */
 async function send(
 	vaultId: string,
@@ -61,23 +71,14 @@ async function send(
 	// shell opens the request with the secret applied, and the body follows in chunks.
 	if (body && !(body instanceof Uint8Array)) {
 		const id = await invoke<number>("backup_stream_open", { ...params, size: body.size });
-		const res = await streamInto<{ status: number; body: number[] }>(id, body);
-		return {
-			status: res.status,
-			ok: res.status >= 200 && res.status < 300,
-			body: Uint8Array.from(res.body),
-		};
+		return reply(await streamInto<ShellReply>(id, body));
 	}
 	const res = body
-		? await invoke<{ status: number; body: number[] }>("backup_send_raw", body, {
+		? await invoke<ShellReply>("backup_send_raw", body, {
 				headers: { "x-bramble-request": base64Json(params) },
 			})
-		: await invoke<{ status: number; body: number[] }>("backup_send", { ...params, body: null });
-	return {
-		status: res.status,
-		ok: res.status >= 200 && res.status < 300,
-		body: Uint8Array.from(res.body),
-	};
+		: await invoke<ShellReply>("backup_send", { ...params, body: null });
+	return reply(res);
 }
 
 export const desktopBackupCreds: BackupCredentialsAdapter = {

@@ -29,6 +29,8 @@ pub struct HttpReply {
     pub status: u16,
     /// Whole body. An API reply, a listing, or one vault blob, never a stream.
     pub body: Vec<u8>,
+    /// Names lower-cased. A provider's upload session URL comes back in `location`.
+    pub headers: HashMap<String, String>,
 }
 
 /// Time to get a connection, everywhere. A host that accepts nothing fails fast whatever the
@@ -91,12 +93,21 @@ pub async fn send_body(
         .await
         .map_err(|e| format!("request failed: {e}"))?;
     let status = res.status().as_u16();
+    let headers = res
+        .headers()
+        .iter()
+        .filter_map(|(k, v)| Some((k.as_str().to_string(), v.to_str().ok()?.to_string())))
+        .collect();
     let body = res
         .bytes()
         .await
         .map_err(|e| format!("response failed: {e}"))?
         .to_vec();
-    Ok(HttpReply { status, body })
+    Ok(HttpReply {
+        status,
+        body,
+        headers,
+    })
 }
 
 /// One request for the webview, with the caller's own credentials in `headers`.
@@ -128,4 +139,39 @@ pub async fn http_send(
         API_TIMEOUT,
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replies_carry_lowercased_headers() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/start", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 2048];
+            let _ = s.read(&mut buf).unwrap();
+            s.write_all(b"HTTP/1.1 200 OK\r\nLocation: https://up/s1\r\nRetry-After: 3\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .unwrap();
+        });
+        let reply = tauri::async_runtime::block_on(send(
+            "POST",
+            reqwest::Url::parse(&url).unwrap(),
+            vec![],
+            vec![],
+            Duration::from_secs(5),
+        ))
+        .unwrap();
+        assert_eq!(
+            reply.headers.get("location").map(String::as_str),
+            Some("https://up/s1")
+        );
+        assert_eq!(
+            reply.headers.get("retry-after").map(String::as_str),
+            Some("3")
+        );
+    }
 }

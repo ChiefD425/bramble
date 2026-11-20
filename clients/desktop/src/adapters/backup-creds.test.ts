@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
 	calls: [] as { cmd: string; args: unknown; options?: { headers?: Record<string, string> } }[],
 	failWrite: false,
+	replyHeaders: {} as Record<string, string>,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -14,7 +15,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 		h.calls.push({ cmd, args, options });
 		if (cmd === "backup_stream_open") return 7;
 		if (cmd === "stream_write" && h.failWrite) throw new Error("disk full");
-		return { status: 201, body: [] };
+		return { status: 201, body: [], headers: h.replyHeaders };
 	},
 }));
 
@@ -32,6 +33,7 @@ const target = {
 beforeEach(() => {
 	h.calls = [];
 	h.failWrite = false;
+	h.replyHeaders = {};
 });
 
 /** What the shell would decode from the request header. */
@@ -42,6 +44,25 @@ function decodeParams(header: string): Record<string, unknown> {
 }
 
 describe("desktop backup transport", () => {
+	it("returns the shell's response headers, by every path", async () => {
+		h.replyHeaders = { location: "https://upload.example/s1" };
+		const t = desktopBackupCreds.transport?.("v1", target);
+		const bare = await t?.send({ method: "POST", url: "https://dav.example/x" });
+		const raw = await t?.send({
+			method: "PUT",
+			url: "https://dav.example/x",
+			body: new Uint8Array([1]),
+		});
+		const streamed = await t?.send({
+			method: "PUT",
+			url: "https://dav.example/x",
+			body: { size: 3, read: async (o, l) => new Uint8Array(l).fill(o) },
+		});
+		for (const res of [bare, raw, streamed]) {
+			expect(res?.headers?.location).toBe("https://upload.example/s1");
+		}
+	});
+
 	it("sends a body as raw bytes, with the rest of the request in one header", async () => {
 		const body = new Uint8Array([0x50, 0x4b, 3, 4, 9, 9]);
 		const res = await desktopBackupCreds.transport?.("v1", target).send({
