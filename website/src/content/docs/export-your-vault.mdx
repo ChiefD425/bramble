@@ -39,6 +39,7 @@ keywords:
   - An attachment hasn't reached this device yet
   - Those passwords don't match.
   - Couldn't write the file.
+  - is damaged, so it can't be exported
 updatedDate: 2026-11-07
 ---
 
@@ -59,7 +60,7 @@ Every export Bramble makes is encrypted. A backup opens with your master passwor
 | --- | --- | --- | --- |
 | Logins, cards, notes and SSH keys | Yes | Yes | Yes |
 | 2FA codes | Yes | Yes | Yes |
-| Passkeys | Yes | No | Yes |
+| Passkeys | Yes | <Since commit="8edb1d72">Yes</Since><Until commit="8edb1d72">No</Until> | Yes |
 | Attachments | Yes | Yes | No |
 | Password history | Yes | No | Yes |
 | Opens with | Your master password | A password you pick | A password you pick |
@@ -92,7 +93,10 @@ KeePass has only one kind of entry, so a few things change on the way:
 - Cards, notes and SSH keys become entries, with their details in extra fields.
 - A login with several websites keeps the first under URL, and the rest as URL 2, URL 3 and so on.
 - Archived entries are included, marked with an Archived field.
-- Passkeys and password history are left out. Keep a backup for those.
+- <Since commit="8edb1d72">Passkeys go in the way KeePassXC stores them, so KeePassXC can sign in with them. A login with several passkeys gets an extra entry for each one after the first.</Since><Until commit="8edb1d72">Passkeys are left out. Keep a backup for those.</Until>
+- Password history is left out. Keep a backup for that.
+
+<Rollout commit="8edb1d72">Passkeys go with the file</Rollout>
 
 ### Need a CSV file?
 
@@ -123,3 +127,4 @@ On iOS 26 or later, Bramble can hand your logins, codes and passkeys straight to
 | An attachment hasn't reached this device yet, so the export would be missing it. | Keep Bramble unlocked alongside another of your devices until your attachments sync, then try again. |
 | Not backed up: … attachment isn't on this device yet. | Same as above: the backup waits for every attachment, so it's never missing part of your vault. |
 | Transferring between apps needs iOS 26. | Update your iPhone, or export a KeePass file instead. |
+| A passkey on "…" is damaged, so it can't be exported. | That passkey can't sign you in anyway. Remove it from the entry, then export again. |
