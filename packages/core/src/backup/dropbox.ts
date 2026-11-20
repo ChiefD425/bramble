@@ -9,6 +9,7 @@ import {
 	PART_SIZE,
 	readAll,
 	responseText,
+	withBearer,
 } from "./types";
 
 interface Call {
@@ -66,7 +67,9 @@ export function createDropboxTarget(
 	// Full Dropbox path for a backup key (keys already start with the prefix folder, e.g. "bramble/...").
 	const fullPath = (key: string) => `${prefix}/${key.replace(/^\/+/, "")}`;
 
-	async function token(): Promise<string> {
+	// Null when the transport authenticates: it adds the bearer, and mints a fresh one after a 401.
+	async function token(): Promise<string | null> {
+		if (!cfg.refreshToken) return null;
 		if (!accessToken) accessToken = await refreshAccessToken("dropbox", cfg.refreshToken);
 		return accessToken;
 	}
@@ -77,7 +80,7 @@ export function createDropboxTarget(
 			method: init.method,
 			url,
 			body: init.body,
-			headers: { ...init.headers, Authorization: `Bearer ${await token()}` },
+			headers: withBearer(init.headers, await token()),
 		});
 		if (res.status === 401 && retry) {
 			accessToken = "";

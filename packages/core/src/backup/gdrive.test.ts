@@ -308,6 +308,35 @@ describe("createGdriveTarget", () => {
 		);
 	});
 
+	describe("when the transport authenticates (desktop)", () => {
+		const bare = () => createGdriveTarget({ kind: "gdrive" });
+		const auth = (c: { init: RequestInit }) =>
+			(c.init.headers as Record<string, string> | undefined)?.Authorization;
+
+		it("adds no Authorization and never asks for a token", async () => {
+			const drive = fakeDrive();
+			await bare().put("bramble/x.bramble", bytes(1));
+			expect(drive.calls.length).toBeGreaterThan(0);
+			expect(drive.calls.map(auth)).toEqual(drive.calls.map(() => undefined));
+			expect(drive.calls.filter((c) => c.url === TOKEN)).toHaveLength(0);
+		});
+
+		it("retries once on a 401, for the transport to bring a fresh token", async () => {
+			const drive = fakeDrive();
+			let refused = false;
+			drive.override = (m, url) => {
+				if (m === "GET" && url.startsWith(API) && !refused) {
+					refused = true;
+					return new Response(null, { status: 401 });
+				}
+				return undefined;
+			};
+			expect(await bare().list("bramble/")).toEqual([]);
+			expect(drive.calls).toHaveLength(2);
+			expect(drive.calls.filter((c) => c.url === TOKEN)).toHaveLength(0);
+		});
+	});
+
 	describe("rate limits", () => {
 		beforeEach(() => vi.useFakeTimers());
 		afterEach(() => vi.useRealTimers());

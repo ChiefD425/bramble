@@ -13,6 +13,7 @@ import {
 	PART_SIZE,
 	readAll,
 	responseText,
+	withBearer,
 } from "./types";
 
 const API = "https://www.googleapis.com/drive/v3/files";
@@ -86,7 +87,9 @@ export function createGdriveTarget(
 	const folders = new Map<string, string>();
 	let accessToken = cfg.accessToken ?? "";
 
-	async function token(): Promise<string> {
+	// Null when the transport authenticates: it adds the bearer, and mints a fresh one after a 401.
+	async function token(): Promise<string | null> {
+		if (!cfg.refreshToken) return null;
 		if (!accessToken) accessToken = await refreshAccessToken("gdrive", cfg.refreshToken);
 		return accessToken;
 	}
@@ -96,7 +99,7 @@ export function createGdriveTarget(
 			method: init.method,
 			url,
 			body: init.body,
-			headers: { ...init.headers, Authorization: `Bearer ${await token()}` },
+			headers: withBearer(init.headers, await token()),
 		});
 		if (res.status === 401 && retry) {
 			accessToken = "";

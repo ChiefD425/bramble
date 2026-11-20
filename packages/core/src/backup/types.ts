@@ -55,6 +55,14 @@ export type BackupHttpResponse = HttpResponse;
  */
 export type BackupTransport = HttpTransport;
 
+/** Headers with `Authorization: Bearer`, unless there is no token (the transport adds its own). */
+export function withBearer(
+	headers: Record<string, string> | undefined,
+	token: string | null,
+): Record<string, string> {
+	return token ? { ...headers, Authorization: `Bearer ${token}` } : { ...headers };
+}
+
 /** Decode a response body as text (XML listings, error documents). */
 export function responseText(res: BackupHttpResponse): string {
 	return new TextDecoder().decode(res.body);
@@ -81,14 +89,16 @@ export interface WebdavConfig {
 
 export interface DropboxConfig {
 	kind: "dropbox";
-	refreshToken: string; // long-lived; mints access tokens on demand
+	/** Long-lived; mints access tokens on demand. Absent: the transport authenticates (desktop). */
+	refreshToken?: string;
 	accessToken?: string; // optional warm token, else minted lazily from the refresh token
 	path?: string; // optional subfolder within the connected app folder
 }
 
 export interface GdriveConfig {
 	kind: "gdrive";
-	refreshToken: string; // long-lived; mints access tokens on demand
+	/** Long-lived; mints access tokens on demand. Absent: the transport authenticates (desktop). */
+	refreshToken?: string;
 	accessToken?: string; // optional warm token, else minted lazily from the refresh token
 	path?: string; // optional subfolder within the Bramble folder in My Drive
 }

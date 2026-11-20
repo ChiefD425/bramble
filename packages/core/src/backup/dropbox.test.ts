@@ -190,6 +190,28 @@ describe("createDropboxTarget", () => {
 		);
 	});
 
+	describe("when the transport authenticates (desktop)", () => {
+		it("adds no Authorization and never asks for a token", async () => {
+			const calls = route(() => ok());
+			await createDropboxTarget({ kind: "dropbox" }).put(
+				"bramble/x.bramble",
+				bytesSource(new Uint8Array([1])),
+			);
+			expect(calls.map((c) => c.url)).toEqual([UPLOAD]);
+			expect(authOf(calls[0]!.init)).toBeUndefined();
+		});
+
+		it("retries once on a 401, for the transport to bring a fresh token", async () => {
+			let n = 0;
+			const calls = route(() => (n++ === 0 ? status(401) : ok()));
+			await createDropboxTarget({ kind: "dropbox" }).put(
+				"bramble/x.bramble",
+				bytesSource(new Uint8Array([1])),
+			);
+			expect(calls.map((c) => c.url)).toEqual([UPLOAD, UPLOAD]);
+		});
+	});
+
 	describe("rate limits", () => {
 		beforeEach(() => vi.useFakeTimers());
 		afterEach(() => vi.useRealTimers());
