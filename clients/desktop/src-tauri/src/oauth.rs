@@ -346,6 +346,9 @@ impl TokenCache {
 
 #[cfg(test)]
 pub(crate) mod test_support {
+    /// Held by every test that occupies Dropbox's real fixed port, so they never race for it.
+    pub static DROPBOX_PORT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     /// Send one GET to the listener and return the response text.
     pub async fn get(addr: &str, target: &str) -> String {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -565,6 +568,9 @@ mod tests {
 
     #[test]
     fn busy_fixed_port_names_it() {
+        let _port = super::test_support::DROPBOX_PORT
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let held = std::net::TcpListener::bind(("127.0.0.1", 53682));
         block_on(async {
             match bind(Provider::Dropbox).await {

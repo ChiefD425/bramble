@@ -1072,6 +1072,9 @@ mod tests {
 
     #[test]
     fn a_busy_dropbox_port_fails_fast() {
+        let _port = crate::oauth::test_support::DROPBOX_PORT
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let _held = std::net::TcpListener::bind(("127.0.0.1", 53682));
         let pending = std::sync::Mutex::new(None);
         let started = std::time::Instant::now();
