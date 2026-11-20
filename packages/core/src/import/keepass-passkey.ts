@@ -43,9 +43,11 @@ const KPEX = {
 	// prefix on purpose, so KeePassXC hides it with the rest and deletes it with the passkey.
 	bramble: `${PREFIX}BRAMBLE`,
 } as const;
-// Older KeePassXC builds spelled the handle this way. Read as a fallback so a database written
-// by one of them still imports; we have not seen one, so it is tolerance, not a known format.
-const LEGACY_USER_HANDLE = `${PREFIX}GENERATED_USER_ID`;
+// Older StrongBox builds wrote the credential ID and username under these names. StrongBox
+// now writes the canonical ones and reads them first, falling back to these, and so do we.
+// (KeePassXC reads the legacy credential ID first instead, which lets a stale one win.)
+const LEGACY_CREDENTIAL_ID = `${PREFIX}GENERATED_USER_ID`;
+const LEGACY_USERNAME = "KPXC_PASSKEY_USERNAME";
 
 /**
  * The fields of a stored passkey KeePassXC has no attribute for, validated as the vault validates
@@ -77,7 +79,7 @@ export function partitionPasskeyFields(fields: RawField[]): {
 	const passkey = new Map<string, string>();
 	const rest: RawField[] = [];
 	for (const f of fields) {
-		if (f.key.startsWith(PREFIX)) passkey.set(f.key, f.value);
+		if (f.key.startsWith(PREFIX) || f.key === LEGACY_USERNAME) passkey.set(f.key, f.value);
 		else rest.push(f);
 	}
 	return { passkey, rest };
@@ -128,12 +130,11 @@ export async function convertKeepassPasskey(
 	let pkcs8: string;
 	try {
 		credentialId = bareBase64UrlToBase64(
-			required(passkey, KPEX.credentialId, "credential ID"),
+			passkey.get(KPEX.credentialId)?.trim() ||
+				required(passkey, LEGACY_CREDENTIAL_ID, "credential ID"),
 			MAX_CREDENTIAL_ID_BYTES,
 		);
-		userHandle = userHandleToBase64(
-			passkey.get(KPEX.userHandle)?.trim() || required(passkey, LEGACY_USER_HANDLE, "user handle"),
-		);
+		userHandle = userHandleToBase64(required(passkey, KPEX.userHandle, "user handle"));
 		rpId = required(passkey, KPEX.relyingParty, "relying-party ID");
 		if (!validRpId(rpId)) reject("has an invalid relying-party ID");
 		pkcs8 = pemToStandardBase64(required(passkey, KPEX.privateKeyPem, "private key"));
@@ -168,7 +169,8 @@ export async function convertKeepassPasskey(
 			credentialId,
 			rpId,
 			userHandle,
-			userName: passkey.get(KPEX.username)?.trim() || undefined,
+			userName:
+				passkey.get(KPEX.username)?.trim() || passkey.get(LEGACY_USERNAME)?.trim() || undefined,
 			// From the key's OID. KeePassXC prefers Ed25519, so this is usually -8, not -7.
 			alg: material.alg,
 			publicKeyCose: material.publicKeyCose,

@@ -84,8 +84,15 @@ paths (the XML export and the .kdbx) carry them and both reach the same converte
 | `KPEX_PASSKEY_USERNAME` | no | account name |
 | `KPEX_PASSKEY_FLAG_BE` / `_FLAG_BS` | no | `1` |
 
-`KPEX_PASSKEY_GENERATED_USER_ID` is read as a fallback for the handle. We have not seen a
-database that uses it, so it is tolerance rather than a format we can point at.
+Two older names are read as fallbacks, both from early StrongBox builds:
+`KPEX_PASSKEY_GENERATED_USER_ID` holds the **credential ID** (despite the name; it is not the user
+handle) and `KPXC_PASSKEY_USERNAME` the username. StrongBox now writes the canonical names and reads
+them first, falling back to these, and so do we; Keyguard does the same and Keepass2Android reads
+both too. KeePassXC (2.7.8+) reads the legacy credential ID *first*, which lets a stale one left
+beside a newer passkey win, so we don't follow it there. The user handle has no fallback: every
+writer puts it in `KPEX_PASSKEY_USER_HANDLE`. Until 2026-11-20 we misread
+`KPEX_PASSKEY_GENERATED_USER_ID` as a fallback user handle, so a passkey saved by an older
+StrongBox, which has no `KPEX_PASSKEY_CREDENTIAL_ID`, failed with "has no credential ID".
 
 The flags are dropped: we set backup-eligible and backed-up unconditionally when asserting,
 because Bramble syncs, so storing them would be recording a value we ignore.

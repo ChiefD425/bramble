@@ -112,14 +112,52 @@ describe("convertKeepassPasskey", () => {
 		}
 	});
 
-	it("falls back to the legacy user-handle attribute", async () => {
-		const { credential } = await run(
-			attrs({
-				KPEX_PASSKEY_USER_HANDLE: undefined,
-				KPEX_PASSKEY_GENERATED_USER_ID: "d2ViYXV0aG5pby10ZXN0eQ",
-			}),
-		);
-		expect(credential?.userHandle).toBe("d2ViYXV0aG5pby10ZXN0eQ==");
+	// Older StrongBox builds kept the credential ID under KPEX_PASSKEY_GENERATED_USER_ID and the
+	// username under KPXC_PASSKEY_USERNAME. StrongBox now writes the canonical names and reads
+	// them first, falling back to these; KeePassXC, Keepass2Android and Keyguard read both too.
+	describe("StrongBox's older attribute names", () => {
+		const credentialId = "_lt5pHIIIowqyWHmHwPxBdxXYmxge4sSpTaWy1XOs6Q";
+
+		it("reads the credential ID from KPEX_PASSKEY_GENERATED_USER_ID", async () => {
+			const { credential, fields } = await run(
+				attrs({
+					KPEX_PASSKEY_CREDENTIAL_ID: undefined,
+					KPEX_PASSKEY_GENERATED_USER_ID: credentialId,
+				}),
+			);
+			expect(credential?.credentialId).toBe("/lt5pHIIIowqyWHmHwPxBdxXYmxge4sSpTaWy1XOs6Q=");
+			expect(credential?.userHandle).toBe("d2ViYXV0aG5pby10ZXN0eQ==");
+			expect(fields.map((f) => f.key)).toEqual(["Title", "UserName"]);
+		});
+
+		it("prefers KPEX_PASSKEY_CREDENTIAL_ID when both are there", async () => {
+			const { credential } = await run(attrs({ KPEX_PASSKEY_GENERATED_USER_ID: "AQID" }));
+			expect(credential?.credentialId).toBe("/lt5pHIIIowqyWHmHwPxBdxXYmxge4sSpTaWy1XOs6Q=");
+		});
+
+		it("never takes the user handle from it", async () => {
+			const { credential, warnings } = await run(
+				attrs({
+					KPEX_PASSKEY_USER_HANDLE: undefined,
+					KPEX_PASSKEY_GENERATED_USER_ID: credentialId,
+				}),
+			);
+			expect(credential).toBeNull();
+			expect(warnings[0]).toMatch(/user handle/);
+		});
+
+		it("reads the username from KPXC_PASSKEY_USERNAME", async () => {
+			const { credential, fields } = await run(
+				attrs({ KPEX_PASSKEY_USERNAME: undefined, KPXC_PASSKEY_USERNAME: "testy" }),
+			);
+			expect(credential?.userName).toBe("testy");
+			expect(fields.map((f) => f.key)).toEqual(["Title", "UserName"]);
+		});
+
+		it("prefers KPEX_PASSKEY_USERNAME when both are there", async () => {
+			const { credential } = await run(attrs({ KPXC_PASSKEY_USERNAME: "someone-else" }));
+			expect(credential?.userName).toBe("testy");
+		});
 	});
 
 	it("rejects an oversized PEM before decoding it", async () => {
