@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Block a push whose help articles wait for a commit the pushed history doesn't contain: what a
+# rebase before pushing turns a gate's hash into, and what the website deploy would fail on.
+# Fix with `pnpm docs:gates --fix`, then commit. See website/README.md, "Text that waits for a
+# release".
+root="$(git rev-parse --show-toplevel)"
+command -v node >/dev/null 2>&1 || exit 0   # no Node: don't block
+exec node "$root/scripts/docs-gates.ts" --pre-push

@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { before, describe, it } from "node:test";
@@ -26,9 +26,22 @@ import {
 	type TaggedRelease,
 	type Target,
 } from "../website/src/doc-gates.ts";
-import { describeGates } from "./docs-gates.ts";
+import { describeGates, filesAt, fixGates, prePush, unreachableGates } from "./docs-gates.ts";
 
 const COMMIT = "8edb1d72";
+
+const git = (cwd: string, ...args: string[]) =>
+	execFileSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		env: {
+			...process.env,
+			GIT_AUTHOR_NAME: "t",
+			GIT_AUTHOR_EMAIL: "t@example.com",
+			GIT_COMMITTER_NAME: "t",
+			GIT_COMMITTER_EMAIL: "t@example.com",
+		},
+	}).trim();
 const at = (day: number) => new Date(Date.UTC(2026, 10, day));
 const tagged = (tag: string, day: number): TaggedRelease => ({ tag, date: at(day) });
 
@@ -259,18 +272,6 @@ describe("releaseTagsContaining", () => {
 	let repo: string;
 	let first: string;
 	let second: string;
-	const git = (cwd: string, ...args: string[]) =>
-		execFileSync("git", args, {
-			cwd,
-			encoding: "utf8",
-			env: {
-				...process.env,
-				GIT_AUTHOR_NAME: "t",
-				GIT_AUTHOR_EMAIL: "t@example.com",
-				GIT_COMMITTER_NAME: "t",
-				GIT_COMMITTER_EMAIL: "t@example.com",
-			},
-		}).trim();
 
 	before(() => {
 		repo = mkdtempSync(join(tmpdir(), "docs-gates-"));
@@ -334,5 +335,93 @@ describe("describeGates", () => {
 			"auto-lock.mdx  ccccccc  shipped everywhere (desktop 0.21.0): keep the Since text, delete the Until and Rollout",
 			"new-thing.mdx  ddddddd  whole article, waiting for chromium, firefox, desktop, android, ios",
 		]);
+	});
+});
+
+// A rebase before pushing gives every unpushed commit a new hash, so a gate written against the old
+// one would name a commit the pushed history, and the deploy, never has. Rebases keep a commit's
+// subject and author date, which is how the rewritten one is found.
+describe("after a rebase", () => {
+	const DOCS = "docs";
+	let repo: string;
+	let base: string;
+	let feature: string;
+	let rebased: string;
+
+	before(() => {
+		repo = mkdtempSync(join(tmpdir(), "docs-gates-rebase-"));
+		git(repo, "init", "-q", "-b", "main");
+		writeFileSync(join(repo, "app"), "1");
+		git(repo, "add", "app");
+		git(repo, "commit", "-q", "-m", "base");
+		base = git(repo, "rev-parse", "--short=8", "HEAD");
+		git(repo, "branch", "upstream");
+		writeFileSync(join(repo, "app"), "2");
+		git(repo, "commit", "-q", "-am", "feat: the change");
+		feature = git(repo, "rev-parse", "--short=8", "HEAD");
+		mkdirSync(join(repo, DOCS));
+		writeFileSync(join(repo, DOCS, "a.mdx"), `Text <Since commit="${feature}">new</Since>.`);
+		writeFileSync(join(repo, DOCS, "b.mdx"), `---\nsince: "${feature}"\n---\n\nBody.`);
+		writeFileSync(join(repo, DOCS, "c.mdx"), `<Until commit="0123abcd">gone</Until>`);
+		writeFileSync(join(repo, DOCS, "d.mdx"), "No gates.");
+		// Named by a commit the rebase leaves alone.
+		writeFileSync(join(repo, DOCS, "e.mdx"), `<Since commit="${base}">kept</Since>`);
+		git(repo, "add", DOCS);
+		git(repo, "commit", "-q", "-m", "docs: the change");
+		git(repo, "checkout", "-q", "upstream");
+		writeFileSync(join(repo, "other"), "x");
+		git(repo, "add", "other");
+		git(repo, "commit", "-q", "-m", "someone else's push");
+		git(repo, "checkout", "-q", "main");
+		git(repo, "rebase", "-q", "upstream");
+		rebased = git(repo, "rev-parse", "--short=8", "HEAD~1");
+		// A later commit with the same subject but its own author date, which isn't the rewrite.
+		writeFileSync(join(repo, "app"), "3");
+		git(repo, "commit", "-q", "-am", "feat: the change", "--date=2030-01-01T00:00:00Z");
+	});
+
+	it("reads the gated articles from a commit's tree", () => {
+		assert.deepEqual(
+			filesAt("HEAD", DOCS, repo).map((f) => f.name),
+			["a.mdx", "b.mdx", "c.mdx", "e.mdx"],
+		);
+	});
+
+	it("finds gates naming a commit outside the history, and what each was rewritten as", () => {
+		assert.notEqual(rebased, feature);
+		assert.deepEqual(unreachableGates(filesAt("HEAD", DOCS, repo), "HEAD", repo), [
+			{ file: "a.mdx", commit: feature, rewrittenAs: rebased },
+			{ file: "b.mdx", commit: feature, rewrittenAs: rebased },
+			{ file: "c.mdx", commit: "0123abcd" },
+		]);
+	});
+
+	it("refuses to push a branch whose gates name a commit it doesn't contain", () => {
+		const head = git(repo, "rev-parse", "HEAD");
+		const zeros = "0".repeat(40);
+		assert.equal(prePush(`refs/heads/main ${head} refs/heads/main ${zeros}\n`, DOCS, repo), 1);
+		// A tag or a deleted branch deploys nothing.
+		assert.equal(prePush(`refs/tags/v1 ${head} refs/tags/v1 ${zeros}\n`, DOCS, repo), 0);
+		assert.equal(prePush(`(delete) ${zeros} refs/heads/old ${head}\n`, DOCS, repo), 0);
+	});
+
+	it("points the gates at the rewritten commit, and leaves the ones it can't place", () => {
+		const { fixed, left } = fixGates(DOCS, repo);
+		assert.deepEqual(
+			fixed.map((g) => g.file),
+			["a.mdx", "b.mdx"],
+		);
+		assert.deepEqual(
+			left.map((g) => g.file),
+			["c.mdx"],
+		);
+		assert.equal(
+			readFileSync(join(repo, DOCS, "a.mdx"), "utf8"),
+			`Text <Since commit="${rebased}">new</Since>.`,
+		);
+		assert.equal(
+			readFileSync(join(repo, DOCS, "b.mdx"), "utf8"),
+			`---\nsince: "${rebased}"\n---\n\nBody.`,
+		);
 	});
 });

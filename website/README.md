@@ -84,11 +84,13 @@ A tag marks what we sent: Chrome Web Store, Firefox and App Store review can hol
 for days, and an iOS tag is a TestFlight upload, so the text can switch before every user has
 the update.
 
-Gates can't nest or hold a heading (the table of contents would still list it). The build fails
-on a commit the history doesn't have, which is what a rebase before pushing turns the hash into,
-and on a shallow clone. `pnpm docs:gates` lists every gate and where it stands, and the deploy
-prints the same list in its job summary. Once one has shipped everywhere, unwrap it: keep the
-`Since` text, delete the `Until` and `Rollout`.
+Gates can't nest or hold a heading (the table of contents would still list it), and the build
+fails on a shallow clone or a commit the history doesn't have. A rebase before pushing gives
+every unpushed commit a new hash, so the pre-push hook (`.githooks/pre-push`) refuses a push whose
+gates name a commit it doesn't contain, and `pnpm docs:gates --fix` points them at the rewritten
+commits (a rebase keeps each commit's subject and author date). `pnpm docs:gates` lists every gate
+and where it stands, and the deploy prints the same list in its job summary. Once one has shipped
+everywhere, unwrap it: keep the `Since` text, delete the `Until` and `Rollout`.
 
 Numbered lists render as steps. Search runs in the browser over `/docs/search.json`, built from
 the articles, with [MiniSearch](https://lucaong.github.io/minisearch/) (typo tolerant); the
