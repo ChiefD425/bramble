@@ -295,8 +295,9 @@ export interface ShellAdapter {
 	updatesManagedExternally?(): boolean;
 	/** What to call this device in the roster, where the host knows better than the user agent
 	 * does. A native app's UA describes its webview, so a Tauri window reports as Safari and would
-	 * otherwise be listed as a browser. Absent means sniff the UA. */
-	deviceLabel?(): string;
+	 * otherwise be listed as a browser, and Zen or Orion would be listed as Firefox. Absent means
+	 * sniff the UA. */
+	deviceLabel?(): string | Promise<string>;
 	/** This device's admission verify key (base64), derived from the master password + this device's
 	 * password-slot salt (Item A rogue-injection close). Published in the device's roster entry so
 	 * peers can verify which NEW devices this one admits. Requires a fresh password entry; the signing

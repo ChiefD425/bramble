@@ -6,6 +6,7 @@ import type { Target } from "@core/flags";
 import { loginHosts } from "@core/vault/autofill-index";
 import { UNLOCK_RP_ID } from "@core/vault/reserved-rp";
 import { setWebauthnInterceptionPauser, setWebauthnRpId } from "@core/vault/webauthn-ceremony";
+import { extensionDeviceLabel } from "./browser-name";
 import { reconcileDefaultPasswordManager, setDefaultPasswordManager } from "./browser-saving";
 import { effectivePort, hostnameMatches } from "./dedupe";
 import { pageBehind } from "./normal-window";
@@ -93,6 +94,7 @@ setWebauthnRpId(canClaimRpId ? UNLOCK_RP_ID : undefined, {
 
 /** ShellAdapter for the browser-extension platform (options page, pop-out, tab origin, QR scan). */
 export const extensionShell: ShellAdapter = {
+	deviceLabel: extensionDeviceLabel,
 	appName: manifest.name,
 	version: manifest.version,
 	async openSetup(screen?: OptionsScreen) {

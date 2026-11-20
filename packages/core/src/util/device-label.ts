@@ -36,11 +36,14 @@ export function browserName(
 	return "Browser";
 }
 
-export function defaultDeviceLabel(ua: string = navigatorUa()): string {
+/** `browser` is for a host that knows its name better than its user agent says (the extension). */
+export function defaultDeviceLabel(
+	ua: string = navigatorUa(),
+	browser: string = browserName(ua, {}),
+): string {
 	if (/android/i.test(ua)) return "Android device";
 	if (/iphone/i.test(ua)) return "iPhone";
 	if (/ipad/i.test(ua)) return "iPad";
-	const browser = browserName(ua, {});
 	if (/macintosh|mac os x/i.test(ua)) return `${browser} on Mac`;
 	if (/windows/i.test(ua)) return `${browser} on Windows`;
 	if (/linux/i.test(ua)) return `${browser} on Linux`;

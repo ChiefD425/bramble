@@ -17,3 +17,15 @@ describe("browserName", () => {
 		expect(defaultDeviceLabel(CHROME_MAC)).toBe("Chrome on Mac");
 	});
 });
+
+describe("defaultDeviceLabel with the host's own browser name", () => {
+	it("keeps the platform from the user agent", () => {
+		expect(defaultDeviceLabel(CHROME_MAC, "Orion")).toBe("Orion on Mac");
+		expect(
+			defaultDeviceLabel(
+				"Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0",
+				"Zen",
+			),
+		).toBe("Zen on Linux");
+	});
+});

@@ -20,8 +20,8 @@ import { linkNonceCommit, linkSas, linkSasMaterial } from "@core/sync/link-sas";
 import type { PairingSas } from "@core/sync/pairing-sas";
 import { syncKeyFor } from "@core/sync/sync-keys";
 import { bytesToBase64 } from "@core/util/bytes";
-import { defaultDeviceLabel } from "@core/util/device-label";
 import { parseRegistry, VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
+import { extensionDeviceLabel } from "../browser-name";
 import { api, disconnectReason } from "../platform-api";
 import { isExtensionSender } from "../sender";
 import { LAST_OPENED_VAULT_KEY } from "../session-keys";
@@ -469,7 +469,7 @@ export async function pairWithDesktop(code: string, via?: string): Promise<LinkS
 			v: PROTOCOL_VERSION,
 			// What the desktop lists this browser as. The same name sync gives it, rather than an
 			// origin, which Firefox does not have in chrome-extension:// form.
-			label: defaultDeviceLabel(),
+			label: await extensionDeviceLabel(),
 		});
 		const reply = await session.request({ message: start.message });
 		if (!reply?.ok) throw new Error("The desktop app refused the code.");
@@ -561,7 +561,7 @@ export async function startDesktopLink(
 		session.close();
 	};
 	try {
-		session.send({ kind: "link", v: PROTOCOL_VERSION, label: defaultDeviceLabel() });
+		session.send({ kind: "link", v: PROTOCOL_VERSION, label: await extensionDeviceLabel() });
 		let reply: { ok?: boolean; message?: string } | undefined;
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		const silent = new Promise<never>((_, reject) => {

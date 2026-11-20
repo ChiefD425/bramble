@@ -1167,6 +1167,7 @@ describe("pairing borrows the page's native transport", () => {
 		vi.stubGlobal("navigator", {
 			userAgent:
 				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:144.0) Gecko/20100101 Firefox/144.0",
+			vendor: "",
 		});
 		try {
 			const mod = await load();
