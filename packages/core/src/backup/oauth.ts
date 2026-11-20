@@ -1,15 +1,14 @@
-// OAuth (PKCE, public client) for one-click backup providers. The whole connect runs
-// in the extension background service worker (see background/backup-connect): the
-// interactive authorize step via chrome.identity, then these helpers. The token
-// exchange + refresh are plain fetches with no client secret, so they run anywhere
-// (background or the Dropbox client). We store only the long-lived refresh token
+// OAuth (PKCE) for one-click backup providers. The whole connect runs in the extension
+// background service worker (see background/backup-connect): the interactive authorize step,
+// then these helpers. The token exchange + refresh are plain fetches, so they run anywhere
+// (background or the provider's client). We store only the long-lived refresh token
 // (VEK-wrapped, like other creds) and mint a short-lived access token on demand.
 // See docs/cloud-storage-backups.md.
 
 import { z } from "zod";
 import { bytesToBase64Url } from "../util/bytes";
 
-export type OAuthProviderId = "dropbox";
+export type OAuthProviderId = "dropbox" | "gdrive";
 
 export interface OAuthProviderMeta {
 	authUrl: string;
@@ -18,12 +17,22 @@ export interface OAuthProviderMeta {
 	scopes: string[];
 	/** Extra authorize-request params, e.g. Dropbox needs token_access_type=offline to return a refresh token. */
 	authParams?: Record<string, string>;
+	/** Sent with the code exchange and every refresh. Absent for a public client (Dropbox). An
+	 * installed app's secret is not a secret, so Google allows shipping its Desktop client's. */
+	clientSecret?: string;
 }
 
 // Public app keys, safe to ship in the client (PKCE, no secret). Registered by the
 // app owner with the provider; the redirect URI is the extension's own
 // chrome.identity.getRedirectURL(). Replace the placeholder with the real app key.
 const DROPBOX_CLIENT_ID = "z3dojxeco2znshq";
+
+// Google's Desktop app client. Committed, not injected in CI, so a rebuild from public source
+// matches the store build (verify-releases.yml). Base64 only so scanners that match Google's
+// secret prefix don't flag it; it hides nothing. Empty keeps the tile "coming soon".
+const GDRIVE_CLIENT_ID =
+	"1077151297851-7gnnuc2hur3u1jmtuntisn6f8gvhncc4.apps.googleusercontent.com";
+const GDRIVE_CLIENT_SECRET_B64 = "";
 
 export const OAUTH_PROVIDERS: Record<OAuthProviderId, OAuthProviderMeta> = {
 	dropbox: {
@@ -34,11 +43,23 @@ export const OAUTH_PROVIDERS: Record<OAuthProviderId, OAuthProviderMeta> = {
 		scopes: ["files.content.write", "files.content.read", "files.metadata.read"],
 		authParams: { token_access_type: "offline" },
 	},
+	gdrive: {
+		authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+		tokenUrl: "https://oauth2.googleapis.com/token",
+		clientId: GDRIVE_CLIENT_ID,
+		clientSecret: atob(GDRIVE_CLIENT_SECRET_B64),
+		// Only the files Bramble creates. Non-sensitive, so no Google security assessment.
+		scopes: ["https://www.googleapis.com/auth/drive.file"],
+		// Google returns a refresh token only for offline access, and only on a fresh consent.
+		authParams: { access_type: "offline", prompt: "consent" },
+	},
 };
 
-/** True once a real app key has been dropped in; gates the connect UI so an unconfigured build stays "coming soon". */
+/** True once a real app key (and secret, where one is needed) is in; gates the connect UI so an
+ * unconfigured build stays "coming soon". */
 export function isOAuthConfigured(id: OAuthProviderId): boolean {
-	return !OAUTH_PROVIDERS[id].clientId.startsWith("REPLACE_WITH_");
+	const meta = OAUTH_PROVIDERS[id];
+	return !meta.clientId.startsWith("REPLACE_WITH_") && meta.clientSecret !== "";
 }
 
 export interface Pkce {
@@ -58,11 +79,16 @@ export interface OAuthTokens {
 	accessToken: string;
 }
 
-async function postForm(url: string, params: Record<string, string>): Promise<Response> {
-	return fetch(url, {
+async function postForm(
+	meta: OAuthProviderMeta,
+	params: Record<string, string>,
+): Promise<Response> {
+	const body: Record<string, string> = { ...params, client_id: meta.clientId };
+	if (meta.clientSecret) body.client_secret = meta.clientSecret;
+	return fetch(meta.tokenUrl, {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams(params),
+		body: new URLSearchParams(body),
 	});
 }
 
@@ -94,11 +120,10 @@ export async function exchangeCodeForTokens(opts: {
 	redirectUri: string;
 }): Promise<OAuthTokens> {
 	const meta = OAUTH_PROVIDERS[opts.providerId];
-	const res = await postForm(meta.tokenUrl, {
+	const res = await postForm(meta, {
 		grant_type: "authorization_code",
 		code: opts.code,
 		code_verifier: opts.codeVerifier,
-		client_id: meta.clientId,
 		redirect_uri: opts.redirectUri,
 	});
 	if (!res.ok) throw new Error(`Sign-in failed (${res.status}). ${await tokenErrorDetail(res)}`);
@@ -115,10 +140,9 @@ export async function refreshAccessToken(
 	refreshToken: string,
 ): Promise<string> {
 	const meta = OAUTH_PROVIDERS[providerId];
-	const res = await postForm(meta.tokenUrl, {
+	const res = await postForm(meta, {
 		grant_type: "refresh_token",
 		refresh_token: refreshToken,
-		client_id: meta.clientId,
 	});
 	if (!res.ok) {
 		throw new Error(

@@ -49,6 +49,7 @@ export const hostHttp: HttpTransport = {
 					status: state.status,
 					ok: state.status >= 200 && state.status < 300,
 					body: base64ToBytes(state.body),
+					headers: state.headers,
 				};
 			}
 		} finally {

@@ -25,7 +25,7 @@ import { useVaultRegistry } from "./useVaultRegistry";
 
 export interface SaveTargetInput {
 	providerId: string;
-	provider: "s3" | "webdav" | "dropbox";
+	provider: "s3" | "webdav" | "dropbox" | "gdrive";
 	endpoint?: string;
 	region?: string;
 	bucket?: string;

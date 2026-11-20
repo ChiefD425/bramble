@@ -1,5 +1,6 @@
 import { fetchTransport, type HttpResponse, type HttpTransport } from "../adapters/http";
 import { refreshAccessToken } from "./oauth";
+import { MAX_RETRY_WAIT_MS, RATE_LIMIT_RETRIES, retryDelayMs, sleep } from "./rate-limit";
 import {
 	type BackupObject,
 	type BackupTarget,
@@ -20,18 +21,6 @@ const json = <T>(res: HttpResponse): T => JSON.parse(responseText(res) || "{}") 
 
 const CONTENT = "https://content.dropboxapi.com/2";
 const API = "https://api.dropboxapi.com/2";
-
-// A 429 waits out Retry-After (seconds), or backs off 1s, 2s, 4s without one. A wait past the cap
-// is left to the next scheduled run rather than holding this one open.
-const RATE_LIMIT_RETRIES = 3;
-const MAX_RETRY_WAIT_MS = 30_000;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function retryDelayMs(res: HttpResponse, attempt: number): number {
-	const seconds = Number(res.headers?.["retry-after"]);
-	return seconds > 0 ? seconds * 1000 : 1000 * 2 ** attempt;
-}
 
 /** Dropbox's own account of a failure: user_message is meant for end users, error_summary is its tag. */
 function failure(what: string, res: HttpResponse): Error {

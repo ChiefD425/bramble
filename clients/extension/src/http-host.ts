@@ -20,7 +20,7 @@ export interface HttpJobRequest {
 
 export type HttpJobState =
 	| { done: false }
-	| { done: true; status: number; body: string }
+	| { done: true; status: number; body: string; headers: Record<string, string> }
 	| { done: true; error: string };
 
 const jobs = new Map<string, HttpJobState>();
@@ -55,6 +55,8 @@ export async function startHttpJob(req: HttpJobRequest): Promise<string> {
 				done: true,
 				status: res.status,
 				body: bytesToBase64(new Uint8Array(await res.arrayBuffer())),
+				// Lower-cased by Headers. A provider's upload session URL comes back in Location.
+				headers: Object.fromEntries(res.headers),
 			}),
 		)
 		.catch((e: unknown) =>

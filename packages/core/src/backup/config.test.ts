@@ -172,6 +172,20 @@ describe("toProviderConfig", () => {
 			password: "pw",
 		});
 	});
+
+	it("gives a Google Drive target its refresh token and subfolder", () => {
+		const cfg: BackupTargetConfig = {
+			...TARGET,
+			providerId: "gdrive",
+			provider: "gdrive",
+			path: "Work",
+		};
+		expect(toProviderConfig(cfg, { refreshToken: "RT" })).toEqual({
+			kind: "gdrive",
+			refreshToken: "RT",
+			path: "Work",
+		});
+	});
 });
 
 describe("normalizeS3", () => {

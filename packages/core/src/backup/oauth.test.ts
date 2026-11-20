@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bytesToBase64Url } from "../util/bytes";
-import { exchangeCodeForTokens, generatePkce, refreshAccessToken } from "./oauth";
+import {
+	exchangeCodeForTokens,
+	generatePkce,
+	isOAuthConfigured,
+	OAUTH_PROVIDERS,
+	refreshAccessToken,
+} from "./oauth";
 
 const DROPBOX_TOKEN = "https://api.dropboxapi.com/oauth2/token";
 
@@ -131,5 +137,57 @@ describe("refreshAccessToken", () => {
 			vi.fn(async () => jsonResponse({ access_token: 12345 })),
 		);
 		await expect(refreshAccessToken("dropbox", "RT")).rejects.toThrow(/no access token/i);
+	});
+});
+
+describe("Google Drive (gdrive)", () => {
+	const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
+
+	it("asks for drive.file only, offline access and a fresh consent, so a refresh token comes back", () => {
+		const meta = OAUTH_PROVIDERS.gdrive;
+		expect(meta.authUrl).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+		expect(meta.tokenUrl).toBe(GOOGLE_TOKEN);
+		expect(meta.scopes).toEqual(["https://www.googleapis.com/auth/drive.file"]);
+		expect(meta.authParams).toEqual({ access_type: "offline", prompt: "consent" });
+	});
+
+	it("sends its client secret with the code exchange and every refresh", async () => {
+		vi.spyOn(OAUTH_PROVIDERS.gdrive, "clientSecret", "get").mockReturnValue("SECRET");
+		const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) =>
+			jsonResponse({ access_token: "AT", refresh_token: "RT" }),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		await exchangeCodeForTokens({
+			providerId: "gdrive",
+			code: "CODE",
+			codeVerifier: "VER",
+			redirectUri: "http://127.0.0.1:4711/",
+		});
+		await refreshAccessToken("gdrive", "RT");
+
+		for (const [url, init] of fetchMock.mock.calls) {
+			expect(url).toBe(GOOGLE_TOKEN);
+			const body = init?.body as URLSearchParams;
+			expect(body.get("client_id")).toBe(OAUTH_PROVIDERS.gdrive.clientId);
+			expect(body.get("client_secret")).toBe("SECRET");
+		}
+	});
+
+	it("never sends a client secret for Dropbox, a public client", async () => {
+		const fetchMock = vi.fn(async (_url: string | URL, _init?: RequestInit) =>
+			jsonResponse({ access_token: "NEW" }),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		await refreshAccessToken("dropbox", "RT");
+		const body = fetchMock.mock.calls[0]![1]?.body as URLSearchParams;
+		expect(body.has("client_secret")).toBe(false);
+	});
+});
+
+describe("isOAuthConfigured", () => {
+	it("is false while a provider that needs a secret has none", () => {
+		const meta = OAUTH_PROVIDERS.gdrive;
+		expect(isOAuthConfigured("gdrive")).toBe(meta.clientSecret !== "");
 	});
 });

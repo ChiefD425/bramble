@@ -49,7 +49,7 @@ export function credsAreOsHeld(creds: TargetCreds): creds is OsHeldCreds {
 export interface BackupTargetConfig {
 	id: string;
 	providerId: string; // provider tile id (drives the icon/name), e.g. "backblaze"
-	provider: "s3" | "webdav" | "dropbox";
+	provider: "s3" | "webdav" | "dropbox" | "gdrive";
 	endpoint?: string;
 	region?: string;
 	bucket?: string;
@@ -146,6 +146,7 @@ export function clearBackoff(t: BackupTargetConfig): BackupTargetConfig {
 
 type S3Secrets = { accessKeyId: string; secretAccessKey: string };
 type WebdavSecrets = { username: string; password: string };
+/** Dropbox and Google Drive: an OAuth refresh token. */
 type DropboxSecrets = { refreshToken: string };
 export type BackupSecrets = S3Secrets | WebdavSecrets | DropboxSecrets;
 
@@ -163,9 +164,9 @@ export function toProviderConfig(cfg: BackupTargetConfig, secrets: BackupSecrets
 			secretAccessKey: s.secretAccessKey,
 		};
 	}
-	if (cfg.provider === "dropbox") {
+	if (cfg.provider === "dropbox" || cfg.provider === "gdrive") {
 		const s = secrets as DropboxSecrets;
-		return { kind: "dropbox", refreshToken: s.refreshToken, path: cfg.path };
+		return { kind: cfg.provider, refreshToken: s.refreshToken, path: cfg.path };
 	}
 	const s = secrets as WebdavSecrets;
 	return {
@@ -179,8 +180,9 @@ export function toProviderConfig(cfg: BackupTargetConfig, secrets: BackupSecrets
 /**
  * The folder backups live under, else "bramble". This is the user's own folder field:
  * `prefix` on S3, `path` on WebDAV (where it used to be baked into the base URL, which
- * nested snapshots one level deeper than the user asked for). Dropbox is excluded: its
- * `path` is a container folder inside the app folder and keeps the "bramble" subfolder.
+ * nested snapshots one level deeper than the user asked for). Dropbox and Google Drive are
+ * excluded: their `path` is a container folder inside the app's own folder and keeps the
+ * "bramble" subfolder.
  */
 export function backupPrefix(cfg: BackupTargetConfig): string {
 	const folder = cfg.provider === "webdav" ? cfg.path : cfg.prefix;

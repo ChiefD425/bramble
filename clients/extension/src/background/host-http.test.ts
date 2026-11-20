@@ -49,13 +49,29 @@ describe("hostHttp", () => {
 			headers: { Authorization: "Basic abc" },
 			body: new Uint8Array([1, 2, 3]),
 		});
-		expect(res).toEqual({ status: 201, ok: true, body: new TextEncoder().encode("done") });
+		expect(res).toMatchObject({ status: 201, ok: true, body: new TextEncoder().encode("done") });
 		expect(calls[0]?.init).toMatchObject({
 			method: "PUT",
 			credentials: "omit",
 			redirect: "manual",
 		});
 		expect(await bodyBytes(calls[0]?.init.body)).toEqual(new Uint8Array([1, 2, 3]));
+	});
+
+	it("returns the response headers, names lower-cased", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(null, {
+						status: 200,
+						headers: { Location: "https://upload.example/session?id=1", "Retry-After": "3" },
+					}),
+			),
+		);
+		const res = await hostHttp.send({ method: "POST", url: "https://api.example/start" });
+		expect(res.headers?.location).toBe("https://upload.example/session?id=1");
+		expect(res.headers?.["retry-after"]).toBe("3");
 	});
 
 	it("stages a large body for the host and drops it afterwards", async () => {

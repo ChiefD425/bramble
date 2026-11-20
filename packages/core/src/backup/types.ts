@@ -86,4 +86,11 @@ export interface DropboxConfig {
 	path?: string; // optional subfolder within the connected app folder
 }
 
-export type ProviderConfig = S3Config | WebdavConfig | DropboxConfig;
+export interface GdriveConfig {
+	kind: "gdrive";
+	refreshToken: string; // long-lived; mints access tokens on demand
+	accessToken?: string; // optional warm token, else minted lazily from the refresh token
+	path?: string; // optional subfolder within the Bramble folder in My Drive
+}
+
+export type ProviderConfig = S3Config | WebdavConfig | DropboxConfig | GdriveConfig;

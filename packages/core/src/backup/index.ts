@@ -1,5 +1,6 @@
 import type { HttpTransport } from "../adapters/http";
 import { createDropboxTarget } from "./dropbox";
+import { createGdriveTarget } from "./gdrive";
 import { createS3Target, s3SigningTransport } from "./s3";
 import type { BackupTarget, BackupTransport, ProviderConfig } from "./types";
 import { createWebdavTarget, webdavSigningTransport } from "./webdav";
@@ -13,6 +14,7 @@ export type {
 	BackupTarget,
 	BackupTransport,
 	DropboxConfig,
+	GdriveConfig,
 	ProviderConfig,
 	S3Config,
 	WebdavConfig,
@@ -21,8 +23,9 @@ export type {
 /**
  * Build a BackupTarget for a provider config. `transport` overrides how requests reach the
  * provider and who authenticates them: the desktop passes one backed by Rust, since its webview
- * has neither the credentials nor a CORS grant. Dropbox has no override because its OAuth
- * connect is extension-only (`shell.connectBackupOAuth`), so no other platform can hold one.
+ * has neither the credentials nor a CORS grant. Dropbox and Google Drive have no override
+ * because their OAuth connect is extension-only (`shell.connectBackupOAuth`), so no other
+ * platform can hold one.
  */
 export function createTarget(cfg: ProviderConfig, transport?: BackupTransport): BackupTarget {
 	switch (cfg.kind) {
@@ -33,6 +36,8 @@ export function createTarget(cfg: ProviderConfig, transport?: BackupTransport): 
 		case "dropbox":
 			// Bearer auth is the target's own, so a transport here only carries the requests.
 			return createDropboxTarget(cfg, transport);
+		case "gdrive":
+			return createGdriveTarget(cfg, transport);
 	}
 }
 
@@ -45,8 +50,8 @@ export function createTarget(cfg: ProviderConfig, transport?: BackupTransport): 
  * sending needs to leave the webview. The desktop needs the stronger thing (its credentials never
  * enter the webview at all) and passes a whole `BackupTransport` instead.
  *
- * Undefined for Dropbox, whose OAuth connect is extension-only, so no platform needing this can
- * have one configured.
+ * Undefined for Dropbox and Google Drive, whose OAuth connect is extension-only, so no platform
+ * needing this can have one configured.
  */
 export function signingTransport(
 	cfg: ProviderConfig,
@@ -58,6 +63,7 @@ export function signingTransport(
 		case "webdav":
 			return webdavSigningTransport(cfg, send);
 		case "dropbox":
+		case "gdrive":
 			return undefined;
 	}
 }
