@@ -1,0 +1,9 @@
+What's new in this release:
+
+- When autofill has no login for a sign-up form, choose New login to make one, with a generated password, and fill it in one step.
+- Sort your vault by Recent activity: the latest of when you used, added or edited each item.
+- A revealed password shows the position of each character, for sites that ask for, say, the 3rd and 7th.
+- Items you archived in 1Password stay archived when you import them.
+- Bramble is now available in Bengali.
+
+No account, no cloud. Everything stays on your devices.
