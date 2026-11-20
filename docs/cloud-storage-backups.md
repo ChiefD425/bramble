@@ -1128,7 +1128,7 @@ How the code comes back, per platform:
 | Desktop app | Desktop | Rust listens on a random `127.0.0.1` port (a Desktop client accepts any port) |
 | Firefox | Desktop | `launchWebAuthFlow` with `http://127.0.0.1/mozoauth2/<subdomain of getRedirectURL()>`, allowed since Firefox 86. Not yet tried against Google. |
 | Chrome | Desktop | `launchWebAuthFlow` takes only `chromiumapp.org`, so open the consent page in a normal tab redirecting to `http://127.0.0.1:<random port>/`, read the code from the tab's URL under an optional `http://127.0.0.1/*` host permission asked for at connect, and close the tab (the page itself never loads). Unproven; the new permission needs a CWS Privacy justification. |
-| iOS | iOS (no secret) | `ASWebAuthenticationSession` with the reversed-client-ID scheme |
+| iOS | iOS (no secret) | `ASWebAuthenticationSession` with the reversed-client-ID scheme. Registered 2026-11-20 for `app.bramble.mobile`: client ID `1077151297851-0rjerbpj1rrhmr36blkdt7r402mpk9tj.apps.googleusercontent.com`, redirect `com.googleusercontent.apps.1077151297851-0rjerbpj1rrhmr36blkdt7r402mpk9tj:/oauth2redirect`. No GoogleSignIn SDK, so no Google plist and no `CFBundleURLTypes` entry (the session catches the scheme itself). |
 | Android | Desktop | in-app loopback listener plus a Custom Tab. Off-label: Google stopped loopback for Android-type clients, and its Android path wants Play Services, which Bramble does not use. |
 
 ### Advanced: the user's own client
