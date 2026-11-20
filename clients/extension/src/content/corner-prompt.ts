@@ -322,8 +322,10 @@ export function handleCornerPromptShow(payload: CornerPromptPayload): void {
 
 	const root = document.createElement("div");
 	root.id = CORNER_ID;
-	// Inline so we don't depend on the inner stylesheet loading first.
-	root.style.cssText = "position: fixed; top: 16px; right: 16px; z-index: 2147483647;";
+	// Inline so we don't depend on the inner stylesheet loading first. pointer-events: modals set
+	// `body { pointer-events: none }`, which the host would inherit.
+	root.style.cssText =
+		"position: fixed; top: 16px; right: 16px; z-index: 2147483647; pointer-events: auto;";
 	// Closed shadow root: keeps the captured credential out of page-readable DOM.
 	const shadow = root.attachShadow({ mode: "closed" });
 	let body: string;

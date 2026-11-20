@@ -328,8 +328,10 @@ function mountDropdown(field: HTMLInputElement, bodyHtml: string): ShadowRoot {
 
 	const root = document.createElement("div");
 	root.id = DROPDOWN_ID;
-	// Inline so positioning doesn't depend on the inner stylesheet parsing first.
-	root.style.cssText = "position: absolute; top: 0; left: 0; z-index: 2147483647;";
+	// Inline so positioning doesn't depend on the inner stylesheet parsing first. pointer-events:
+	// modals set `body { pointer-events: none }`, which the host would inherit.
+	root.style.cssText =
+		"position: absolute; top: 0; left: 0; z-index: 2147483647; pointer-events: auto;";
 	// Closed: page gets `root.shadowRoot === null`. Listener attaches to the returned shadow.
 	const shadow = root.attachShadow({ mode: "closed" });
 	// Box styling lives on the inner .tp-dropdown (not :host) so the host page's
@@ -514,8 +516,9 @@ function ensureIframeHost(): void {
 	const host = document.createElement("div");
 	// Random id: no stable selector for the page to target the host by.
 	host.id = `tp-${Math.random().toString(36).slice(2, 10)}`;
+	// pointer-events: modals set `body { pointer-events: none }`, which the host would inherit.
 	host.style.cssText =
-		"position: absolute; top: 0; left: 0; z-index: 2147483647; margin: 0; padding: 0; border: 0;";
+		"position: absolute; top: 0; left: 0; z-index: 2147483647; margin: 0; padding: 0; border: 0; pointer-events: auto;";
 	const shadow = host.attachShadow({ mode: "closed" });
 	const frame = document.createElement("iframe");
 	frame.src = `${AUTOFILL_UI_URL}?parentOrigin=${encodeURIComponent(location.origin)}`;

@@ -101,8 +101,9 @@ export function showRelayHost(anchor: RelayedAnchor): void {
 	}
 	const host = document.createElement("div");
 	host.id = `tp-${Math.random().toString(36).slice(2, 10)}`;
+	// pointer-events: modals set `body { pointer-events: none }`, which the host would inherit.
 	host.style.cssText =
-		"position: absolute; top: 0; left: 0; z-index: 2147483647; margin: 0; padding: 0; border: 0;";
+		"position: absolute; top: 0; left: 0; z-index: 2147483647; margin: 0; padding: 0; border: 0; pointer-events: auto;";
 	const shadow = host.attachShadow({ mode: "closed" });
 	const frame = document.createElement("iframe");
 	// relayId lets the UI answer the right frame's probe; parentOrigin is only used
