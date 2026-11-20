@@ -7,6 +7,10 @@ use base64::{
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 use zeroize::Zeroizing;
 
 #[derive(Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
@@ -105,6 +109,91 @@ pub fn authorize_url(p: Provider, redirect: &str, challenge: &str, state: &str) 
     url.into()
 }
 
+type Res<T> = Result<T, String>;
+
+/// A listener for the provider's redirect, and the redirect URI that names it.
+pub async fn bind(p: Provider) -> Res<(TcpListener, String)> {
+    let fixed = meta(p).port;
+    let listener = TcpListener::bind(("127.0.0.1", fixed.unwrap_or(0)))
+        .await
+        .map_err(|e| match fixed {
+            Some(port) if e.kind() == std::io::ErrorKind::AddrInUse => {
+                format!("Port {port} is in use. Close the app using it, then connect again.")
+            }
+            _ => format!("sign-in listener: {e}"),
+        })?;
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("sign-in listener: {e}"))?
+        .port();
+    Ok((listener, format!("http://127.0.0.1:{port}/")))
+}
+
+const SIGNED_IN: &str = "Signed in. You can close this tab and go back to Bramble.";
+const NOT_SIGNED_IN: &str = "Sign-in didn't finish. You can close this tab.";
+
+/// The request target of one HTTP request (`/?state=..&code=..`), read up to the blank line.
+async fn request_target(stream: &mut TcpStream) -> Option<String> {
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 1024];
+    while !buf.windows(4).any(|w| w == b"\r\n\r\n") && buf.len() < 8192 {
+        let n = stream.read(&mut chunk).await.ok()?;
+        if n == 0 {
+            break;
+        }
+        buf.extend_from_slice(&chunk[..n]);
+    }
+    let line = String::from_utf8_lossy(&buf).lines().next()?.to_string();
+    line.split(' ').nth(1).map(str::to_string)
+}
+
+async fn respond(stream: &mut TcpStream, status: &str, text: &str) {
+    let body = format!("<!doctype html><meta charset=utf-8><title>Bramble</title><p>{text}</p>");
+    let reply = format!(
+        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let _ = stream.write_all(reply.as_bytes()).await;
+    let _ = stream.shutdown().await;
+}
+
+/// Wait for the provider to send the browser back with a code for `state`. Other requests (a
+/// favicon) are answered and ignored; a wrong state or a refusal ends the sign-in.
+pub async fn await_code(listener: TcpListener, state: &str, wait: Duration) -> Res<String> {
+    let sign_in = async {
+        loop {
+            let (mut stream, _) = listener
+                .accept()
+                .await
+                .map_err(|e| format!("sign-in listener: {e}"))?;
+            let Some(target) = request_target(&mut stream).await else {
+                continue;
+            };
+            let Ok(url) = reqwest::Url::parse(&format!("http://127.0.0.1{target}")) else {
+                continue;
+            };
+            let q: HashMap<String, String> = url.query_pairs().into_owned().collect();
+            if !q.contains_key("code") && !q.contains_key("error") {
+                respond(&mut stream, "404 Not Found", NOT_SIGNED_IN).await;
+                continue;
+            }
+            if q.get("state").map(String::as_str) != Some(state) {
+                respond(&mut stream, "400 Bad Request", NOT_SIGNED_IN).await;
+                return Err("Sign-in could not be verified (state mismatch).".to_string());
+            }
+            if let Some(error) = q.get("error") {
+                respond(&mut stream, "200 OK", NOT_SIGNED_IN).await;
+                return Err(format!("Sign-in was cancelled or failed: {error}"));
+            }
+            respond(&mut stream, "200 OK", SIGNED_IN).await;
+            return Ok(q["code"].clone());
+        }
+    };
+    tokio::time::timeout(wait, sign_in)
+        .await
+        .map_err(|_| "Sign-in timed out. Connect again to try once more.".to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +256,116 @@ mod tests {
             .unwrap()
             .starts_with("GOCSPX-"));
         assert_ne!(random_state(), random_state());
+    }
+
+    fn block_on<F: std::future::Future>(f: F) -> F::Output {
+        tauri::async_runtime::block_on(f)
+    }
+
+    /// Send one GET to the listener and return the response text.
+    async fn get(addr: &str, target: &str) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut s = tokio::net::TcpStream::connect(addr).await.unwrap();
+        s.write_all(format!("GET {target} HTTP/1.1\r\nHost: x\r\n\r\n").as_bytes())
+            .await
+            .unwrap();
+        let mut out = String::new();
+        s.read_to_string(&mut out).await.unwrap();
+        out
+    }
+
+    fn addr_of(redirect: &str) -> String {
+        redirect
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .to_string()
+    }
+
+    #[test]
+    fn returns_the_code_for_the_right_state() {
+        block_on(async {
+            let (listener, redirect) = bind(Provider::Gdrive).await.unwrap();
+            let addr = addr_of(&redirect);
+            let client =
+                tauri::async_runtime::spawn(async move { get(&addr, "/?state=s&code=C1").await });
+            let code = await_code(listener, "s", Duration::from_secs(5))
+                .await
+                .unwrap();
+            assert_eq!(code, "C1");
+            assert!(client.await.unwrap().contains("Signed in"));
+        });
+    }
+
+    #[test]
+    fn ignores_other_requests_first() {
+        block_on(async {
+            let (listener, redirect) = bind(Provider::Gdrive).await.unwrap();
+            let addr = addr_of(&redirect);
+            let client = tauri::async_runtime::spawn(async move {
+                get(&addr, "/favicon.ico").await;
+                get(&addr, "/?state=s&code=C2").await
+            });
+            assert_eq!(
+                await_code(listener, "s", Duration::from_secs(5))
+                    .await
+                    .unwrap(),
+                "C2"
+            );
+            client.await.unwrap();
+        });
+    }
+
+    #[test]
+    fn refuses_a_wrong_state() {
+        block_on(async {
+            let (listener, redirect) = bind(Provider::Gdrive).await.unwrap();
+            let addr = addr_of(&redirect);
+            let client =
+                tauri::async_runtime::spawn(async move { get(&addr, "/?state=evil&code=C").await });
+            let err = await_code(listener, "s", Duration::from_secs(5))
+                .await
+                .unwrap_err();
+            assert!(err.contains("could not be verified"), "{err}");
+            assert!(client.await.unwrap().contains("didn't finish"));
+        });
+    }
+
+    #[test]
+    fn reports_a_refusal() {
+        block_on(async {
+            let (listener, redirect) = bind(Provider::Gdrive).await.unwrap();
+            let addr = addr_of(&redirect);
+            let client = tauri::async_runtime::spawn(async move {
+                get(&addr, "/?error=access_denied&state=s").await
+            });
+            let err = await_code(listener, "s", Duration::from_secs(5))
+                .await
+                .unwrap_err();
+            assert!(err.contains("cancelled"), "{err}");
+            client.await.unwrap();
+        });
+    }
+
+    #[test]
+    fn times_out() {
+        block_on(async {
+            let (listener, _) = bind(Provider::Gdrive).await.unwrap();
+            let err = await_code(listener, "s", Duration::from_millis(50))
+                .await
+                .unwrap_err();
+            assert!(err.contains("timed out"), "{err}");
+        });
+    }
+
+    #[test]
+    fn busy_fixed_port_names_it() {
+        let held = std::net::TcpListener::bind(("127.0.0.1", 53682));
+        block_on(async {
+            match bind(Provider::Dropbox).await {
+                Err(e) => assert!(e.contains("Port 53682 is in use"), "{e}"),
+                // Something else already holds the port, so ours failed to; either way bind errs.
+                Ok(_) => panic!("bind should fail while 53682 is held: {held:?}"),
+            }
+        });
     }
 }
