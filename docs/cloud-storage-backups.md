@@ -1012,7 +1012,7 @@ One WebDAV client reaches the self-hosted and privacy ecosystem.
 | **Nextcloud / ownCloud** | self-hosted, the privacy crowd's default. Must-have. |
 | Fastmail, mailbox.org, Koofr | hosted WebDAV |
 | pCloud | hosted WebDAV |
-| Filen, Internxt | WebDAV only through a **local** server run by their desktop app or CLI (verified November 2026). Both are end-to-end encrypted, so their servers cannot serve plain files; `local.webdav.filen.io` and `webdav.local.internxt.com` resolve to 127.0.0.1. Usable only on a computer running that app, never on mobile. See [Folder targets](#folder-targets-desktop-and-ios). |
+| Filen, Internxt | WebDAV only through a **local** server run by their desktop app or CLI (verified November 2026). Both are end-to-end encrypted, so their servers cannot serve plain files; `local.webdav.filen.io` and `webdav.local.internxt.com` resolve to 127.0.0.1. Usable only on a computer running that app, never on mobile. **Filen verified 2026-11-20:** Filen Desktop's WebDAV (Basic auth, `http://127.0.0.1:<port>`) took a backup through the existing WebDAV adapter with no code change; restore not yet recorded. See [Filen through its local WebDAV](#filen-through-its-local-webdav). |
 
 ## OAuth one-click providers (Dropbox; Google Drive planned)
 
@@ -1088,7 +1088,8 @@ and dropped, because neither offers Dropbox's true-public-client experience:
 
 Everyone else (pCloud, Fastmail, Yandex, Koofr) is already reachable via the WebDAV tile,
 and Backblaze / R2 / Storj / Wasabi / iDrive / MinIO via S3, so no other OAuth work is
-warranted. Filen and Internxt are not: their WebDAV is a local server (see the WebDAV table).
+warranted. Filen and Internxt are reachable only on a computer running their app: their WebDAV
+is a local server (see the WebDAV table).
 
 ## Google Drive
 
@@ -1206,6 +1207,31 @@ password and 2FA, re-authenticates every 30 days, needs "Access iCloud Data on t
 and can break at any time; a password manager should not hold an Apple ID session for that.
 So iCloud is the desktop folder target plus the iOS container.
 
+## Filen through its local WebDAV
+
+Decided November 2026, not built. Filen Desktop runs a WebDAV server on the user's own machine
+that does Filen's encryption itself, and the existing WebDAV adapter already talks to it (a
+user-run backup on 2026-11-20 succeeded with no code change). So Filen gets a tile, a WebDAV
+preset rather than a new provider kind:
+
+- **Where.** Desktop app and both extensions (the extension's `<all_urls>` covers
+  `127.0.0.1`). Not mobile: there is no Filen Desktop on a phone.
+- **No Filen password in Bramble.** The WebDAV username and password are local-only ones set in
+  Filen Desktop, separate from the account.
+- **The preset.** `http://127.0.0.1:` plus a port field (Filen does not document a default; the
+  user reads it from Filen Desktop's WebDAV settings), and one setup line: turn on WebDAV in
+  Filen Desktop with Basic auth (the adapter sends only Basic) and a new username and password.
+  `127.0.0.1`, not `local.webdav.filen.io`: that name needs public DNS, and routers with
+  DNS-rebinding protection refuse names that resolve to 127.0.0.1.
+- **Errors.** A refused connection reads "Filen Desktop isn't running", since that is the
+  usual cause: unlike the folder target, nothing is written when Filen Desktop is closed.
+- **Accepted risks.** With Filen Desktop closed, another local program could listen on that port
+  and receive the backup (ciphertext) and the local-only WebDAV password. Whether Chrome's
+  Local Network Access rules ever gate an extension with host permissions from reaching
+  `127.0.0.1` is unverified.
+- **Open.** A restore from it; whether a finished PUT means the file reached Filen's servers or
+  only Filen Desktop.
+
 ## Dedicated providers worth naming
 
 Only worth a bespoke integration if users ask for it and the API is clean.
@@ -1213,7 +1239,7 @@ Only worth a bespoke integration if users ask for it and the API is clean.
 | Provider | API (July 2026) | Verdict |
 |---|---|---|
 | pCloud | REST + OAuth2, official JS/PHP SDKs, Swiss | cleanest OAuth story of the privacy set |
-| Filen | TS/Rust/Go SDKs, REST API; WebDAV + S3 only as local gateways (desktop app, CLI) | best "private name with a first-class API", but not reachable by the S3/WebDAV tiles off a machine running Filen. A native target is MEGA-sized: Bramble would do Filen's E2EE itself (account login with password + 2FA, decrypt the master keys, AES-GCM per 1 MiB chunk, encrypted names), store an API key plus master keys that open the whole drive (not a scoped folder), and reconnect after every Filen password change. If ever, in `core-rust`, so desktop keeps the keys out of the webview. Deferred: desktop users get Filen through the folder target. |
+| Filen | TS/Rust/Go SDKs, REST API; WebDAV + S3 only as local gateways (desktop app, CLI) | best "private name with a first-class API", but not reachable by the S3/WebDAV tiles off a machine running Filen. A native target is MEGA-sized: Bramble would do Filen's E2EE itself (account login with password + 2FA, decrypt the master keys, AES-GCM per 1 MiB chunk, encrypted names), store an API key plus master keys that open the whole drive (not a scoped folder), and reconnect after every Filen password change. If ever, in `core-rust`, so desktop keeps the keys out of the webview. Deferred: desktop and extension users get Filen through its local WebDAV (below) or the folder target. |
 | Internxt | open source, CLI, local-only WebDAV server | desktop folder target via its sync app; nothing on mobile |
 | Storj | S3-compatible + native libuplink | already covered by S3 |
 | MEGA | official C++ SDK (native), maintained browser-compatible `megajs` (unofficial, MIT), E2EE, permissive licenses, stable API | **feasible + shippable** (medium effort — `megajs` does login/upload/crypto and even works cross-origin, so possibly no mobile native-HTTP needed). Held back not by difficulty but by two trust issues: no OAuth so it's the full MEGA **account password** (no app passwords; store the session id, not the password), and bundling an *unofficial* account-crypto lib in a password manager needs a real security review. Skip unless demand mounts. |
@@ -1268,7 +1294,8 @@ The mechanism above is platform plumbing; the adapters below are the reach.
    Advanced. Register the client and pass brand verification first. Extension first (Firefox
    loopback, Chrome tab capture), then OAuth connect on desktop and mobile, which brings
    Dropbox there too. See [Google Drive](#google-drive).
-8. **Filen native target: deferred**, like MEGA.
+8. **Filen tile** on the local WebDAV (desktop app and extension). The native Filen target
+   stays deferred, like MEGA.
 
 Because the payload is already ciphertext, the user-facing promise (the provider
 never sees anything readable) holds for every backend, not only the private ones.
@@ -1277,7 +1304,7 @@ never sees anything readable) holds for every backend, not only the private ones
 
 - Proton: [SDK preview](https://proton.me/blog/proton-drive-sdk-preview), [SDK update Jan 2026](https://proton.me/blog/drive-sdk-january-2026), [ProtonDriveApps/sdk](https://github.com/ProtonDriveApps/sdk), [Proton-API-Bridge](https://github.com/henrybear327/Proton-API-Bridge)
 - [pCloud API docs](https://docs.pcloud.com/)
-- [Filen (GitHub org)](https://github.com/FilenCloudDienste), [Filen CLI WebDAV and S3 server](https://docs.filen.io/docs/cli/webdav-and-s3-server/)
+- [Filen (GitHub org)](https://github.com/FilenCloudDienste), [Filen CLI WebDAV and S3 server](https://docs.filen.io/docs/cli/webdav-and-s3-server/), [Filen Desktop WebDAV](https://docs.filen.io/docs/desktop/webdav)
 - [Internxt WebDAV / rclone](https://internxt.com/webdav-rclone), [Internxt WebDAV is a local server](https://blog.internxt.com/internxt-webdav/)
 - Google Drive: [OAuth 2.0 (7-day Testing tokens)](https://developers.google.com/identity/protocols/oauth2), [Drive auth and `drive.file`](https://developers.google.com/drive/about-auth), [rclone: your own client ID](https://rclone.org/drive/), [rclone retiring its shared client ID](https://forum.rclone.org/t/google-drive-and-google-photos-users-action-required/54005), [loopback still supported for desktop apps](https://developers.google.com/identity/protocols/oauth2/resources/loopback-migration), [Firefox loopback redirect (86+)](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/identity/launchWebAuthFlow), ["installed apps cannot keep secrets"](https://blog.sentry.security/oauth-2-0-client-credentials-misuse-in-public-apps/)
 - iCloud: [CloudKit Web Services reference](https://developer.apple.com/library/archive/documentation/DataManagement/Conceptual/CloudKitWebServicesReference/SettingUpWebServices.html), [rclone iCloud Drive backend](https://rclone.org/iclouddrive/)
