@@ -1093,7 +1093,13 @@ is a local server (see the WebDAV table).
 
 ## Google Drive
 
-Decided November 2026, not built. Two ways to connect, one code path: a one-click tile on
+Decided November 2026. **Status:** the extension's one-click path is built on
+`feat/google-drive-backup` (Chromium sign-in e2e green against a faked Google; Google accepts
+both loopback redirect forms for the client). Not yet run against a real Drive; the tile stays
+"coming soon" until the client secret is committed. The user's own client, desktop and mobile
+are not built.
+
+Two ways to connect, one code path: a one-click tile on
 **Bramble's own client**, and the **user's own client** under Advanced. Both use a Google
 **Desktop app** client, so the flows are identical and only the client ID and secret differ.
 No Bramble server sits in the token path; tokens go device to Google.
@@ -1104,9 +1110,10 @@ Bramble registers one Desktop app client. Google treats an installed app's secre
 secret ("installed apps cannot keep secrets"), so shipping it is allowed, unlike a Web
 application client's.
 
-- **Into the build from a CI secret, not the repo.** It is readable in every shipped bundle,
-  which is fine for this client type, but it stays out of GitHub secret scanning, which knows
-  Google's `GOCSPX-` prefix.
+- **Committed, not injected in CI.** `verify-releases.yml` rebuilds the extension from public
+  source every day and compares it with the store build, so a secret only CI has would make
+  every public rebuild differ. It is stored base64 in `@core/backup/oauth` only so scanners that
+  match Google's `GOCSPX-` prefix don't flag it; that hides nothing, and needn't.
 - **Not served from bramble.sh.** The extension is open source, so anyone can fetch the same
   URL: serving it hides nothing. It would only buy rotation without a release, at the cost of
   a bramble.sh request on every connect.
@@ -1127,7 +1134,7 @@ How the code comes back, per platform:
 |---|---|---|
 | Desktop app | Desktop | Rust listens on a random `127.0.0.1` port (a Desktop client accepts any port) |
 | Firefox | Desktop | `launchWebAuthFlow` with `http://127.0.0.1/mozoauth2/<subdomain of getRedirectURL()>`, allowed since Firefox 86. Not yet tried against Google. |
-| Chrome | Desktop | `launchWebAuthFlow` takes only `chromiumapp.org`, so open the consent page in a normal tab redirecting to `http://127.0.0.1:<random port>/`, read the code from the tab's URL under an optional `http://127.0.0.1/*` host permission asked for at connect, and close the tab (the page itself never loads). Unproven; the new permission needs a CWS Privacy justification. |
+| Chrome | Desktop | `launchWebAuthFlow` takes only `chromiumapp.org`, so open the consent page in a normal tab redirecting to `http://127.0.0.1:<random port>/`, read the code from the tab's URL (`tabs.onUpdated`, visible through the existing `<all_urls>`, so no new permission), and close the tab (the page itself never loads). Proven in Chromium by `e2e/extension/gdrive-connect.spec.ts`. |
 | iOS | iOS (no secret) | `ASWebAuthenticationSession` with the reversed-client-ID scheme. Registered 2026-11-20 for `app.bramble.mobile`: client ID `1077151297851-0rjerbpj1rrhmr36blkdt7r402mpk9tj.apps.googleusercontent.com`, redirect `com.googleusercontent.apps.1077151297851-0rjerbpj1rrhmr36blkdt7r402mpk9tj:/oauth2redirect`. No GoogleSignIn SDK, so no Google plist and no `CFBundleURLTypes` entry (the session catches the scheme itself). |
 | Android | Desktop | in-app loopback listener plus a Custom Tab. Off-label: Google stopped loopback for Android-type clients, and its Android path wants Play Services, which Bramble does not use. |
 
@@ -1157,12 +1164,20 @@ S3 secret (VEK-wrapped, or in the OS store on desktop).
 - **Scope `drive.file`**: Bramble sees only the files it created.
 - **`OAuthProviderMeta` grows a client secret**, sent with PKCE at the code exchange and every
   refresh: Bramble's from the build, or the target's own.
-- **The storage client** mirrors `dropbox.ts`: find or create one folder, resumable upload in
-  `PART_SIZE` parts (a multiple of 256 KiB, as Drive requires), `files.list` scoped to that
-  folder, `alt=media` download, delete. Drive allows two files with one name, so `put` checks
-  for the key first or retention would see duplicates.
-- **Per platform.** The extension's connect exists but redirects to `getRedirectURL()`, so it
-  gains the loopback variants above. Desktop and mobile wait on OAuth connect there
+- **The storage client** (`@core/backup/gdrive`) mirrors `dropbox.ts`: a "Bramble" folder in
+  My Drive with the key's folders nested under it (looked up by name, oldest first if two
+  devices raced to create one), `files.list` scoped to a folder, `alt=media` download,
+  permanent delete. Drive allows two files with one name, so `put` updates a file of that name
+  in place rather than adding one.
+- **One PUT per backup, never parts.** A resumable session (whose URL comes back in `Location`)
+  then the whole body in a single request, as a body source when large, the way WebDAV sends
+  one. Uploading in parts makes Drive answer each with a 308, and every transport here uses
+  `redirect: "manual"`, which turns a 308 into an opaque status 0. The offscreen HTTP job now
+  returns response headers for the `Location` (and Dropbox's `Retry-After`).
+- **Per platform.** The extension signs in through `background/oauth-redirect.ts` (the loopback
+  variants above), chosen at runtime from `identity.getRedirectURL()`: allizom.org is Gecko.
+  Chromium's tab is read through `tabs.onUpdated`, which `<all_urls>` covers, so no new
+  permission. Desktop and mobile wait on OAuth connect there
   (`connectBackupOAuth` is extension-only today); desktop mints access tokens in Rust, since
   its credentials never enter the webview. That same work brings Dropbox to desktop and mobile.
 
