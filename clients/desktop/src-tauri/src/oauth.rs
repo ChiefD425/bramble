@@ -8,7 +8,8 @@ use base64::{
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::time::Duration;
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use zeroize::Zeroizing;
@@ -194,6 +195,135 @@ pub async fn await_code(listener: TcpListener, state: &str, wait: Duration) -> R
         .map_err(|_| "Sign-in timed out. Connect again to try once more.".to_string())?
 }
 
+/// One token-endpoint call, with the client's ID (and secret, where it has one) added.
+async fn token_request(
+    p: Provider,
+    token_url: &str,
+    params: &[(&str, &str)],
+) -> Result<serde_json::Value, (u16, String)> {
+    let m = meta(p);
+    let secret = client_secret(p).map(Zeroizing::new);
+    let mut form: Vec<(&str, &str)> = params.to_vec();
+    form.push(("client_id", m.client_id));
+    if let Some(secret) = secret.as_deref() {
+        form.push(("client_secret", secret));
+    }
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(20))
+        .timeout(Duration::from_secs(60))
+        .build()
+        .map_err(|e| (0, format!("http client: {e}")))?;
+    // Url's own serializer is application/x-www-form-urlencoded, so no reqwest `form` feature.
+    let mut encoder = reqwest::Url::parse("http://form.invalid/").expect("static url");
+    encoder.query_pairs_mut().extend_pairs(form);
+    let encoded = Zeroizing::new(encoder.query().unwrap_or_default().to_string());
+    let res = client
+        .post(token_url)
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(encoded.to_string())
+        .send()
+        .await
+        .map_err(|e| (0, format!("request failed: {e}")))?;
+    let status = res.status().as_u16();
+    let bytes = res.bytes().await.unwrap_or_default();
+    let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+    if (200..300).contains(&status) {
+        return Ok(body);
+    }
+    let detail = body
+        .get("error_description")
+        .or_else(|| body.get("error"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("HTTP {status}"));
+    Err((status, detail))
+}
+
+/// Trade an authorization code (+ PKCE verifier) for the long-lived refresh token.
+pub async fn exchange(
+    p: Provider,
+    token_url: &str,
+    code: &str,
+    verifier: &str,
+    redirect: &str,
+) -> Res<Zeroizing<String>> {
+    let body = token_request(
+        p,
+        token_url,
+        &[
+            ("grant_type", "authorization_code"),
+            ("code", code),
+            ("code_verifier", verifier),
+            ("redirect_uri", redirect),
+        ],
+    )
+    .await
+    .map_err(|(status, detail)| format!("Sign-in failed ({status}). {detail}"))?;
+    body.get("refresh_token")
+        .and_then(|v| v.as_str())
+        .map(|t| Zeroizing::new(t.to_string()))
+        .ok_or_else(|| "The provider didn't return a refresh token. Try connecting again.".into())
+}
+
+/// Access tokens minted from stored refresh tokens, by credential account, until shortly before
+/// they expire. Only ever in this process's memory.
+#[derive(Default)]
+pub struct TokenCache {
+    entries: std::sync::Mutex<HashMap<String, (Zeroizing<String>, Instant)>>,
+}
+
+impl TokenCache {
+    pub fn global() -> &'static TokenCache {
+        static CACHE: OnceLock<TokenCache> = OnceLock::new();
+        CACHE.get_or_init(TokenCache::default)
+    }
+
+    pub async fn bearer(
+        &self,
+        key: &str,
+        p: Provider,
+        token_url: &str,
+        refresh: &str,
+    ) -> Res<Zeroizing<String>> {
+        if let Some((token, until)) = self.entries.lock().unwrap().get(key) {
+            if Instant::now() < *until {
+                return Ok(token.clone());
+            }
+        }
+        let body = token_request(
+            p,
+            token_url,
+            &[("grant_type", "refresh_token"), ("refresh_token", refresh)],
+        )
+        .await
+        .map_err(|(status, detail)| {
+            format!("Couldn't refresh access ({status}: {detail}). Reconnect the account.")
+        })?;
+        let token = body
+            .get("access_token")
+            .and_then(|v| v.as_str())
+            .map(|t| Zeroizing::new(t.to_string()))
+            .ok_or("No access token returned. Reconnect the account.")?;
+        // A minute short of what the provider says, so a token is never used as it expires.
+        let lifetime = body
+            .get("expires_in")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(3600);
+        let until = Instant::now() + Duration::from_secs(lifetime.saturating_sub(60));
+        self.entries
+            .lock()
+            .unwrap()
+            .insert(key.to_string(), (token.clone(), until));
+        Ok(token)
+    }
+
+    /// Forget a token the provider refused, so the next request mints a fresh one.
+    pub fn evict(&self, key: &str) {
+        self.entries.lock().unwrap().remove(key);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -367,5 +497,169 @@ mod tests {
                 Ok(_) => panic!("bind should fail while 53682 is held: {held:?}"),
             }
         });
+    }
+
+    /// A token endpoint that answers each request with the next canned reply and records the
+    /// form bodies it was sent.
+    fn fake_token_server(
+        replies: Vec<(u16, &'static str)>,
+    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/token", listener.local_addr().unwrap());
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let record = seen.clone();
+        std::thread::spawn(move || {
+            for (status, body) in replies {
+                let Ok((mut s, _)) = listener.accept() else {
+                    return;
+                };
+                let mut buf = Vec::new();
+                let mut chunk = [0u8; 4096];
+                loop {
+                    let n = s.read(&mut chunk).unwrap();
+                    buf.extend_from_slice(&chunk[..n]);
+                    let text = String::from_utf8_lossy(&buf).to_string();
+                    if let Some(end) = text.find("\r\n\r\n") {
+                        let len = text[..end]
+                            .lines()
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(|v| v.trim().parse::<usize>().unwrap())
+                            })
+                            .unwrap_or(0);
+                        if buf.len() >= end + 4 + len {
+                            record
+                                .lock()
+                                .unwrap()
+                                .push(text[end + 4..end + 4 + len].to_string());
+                            break;
+                        }
+                    }
+                    if n == 0 {
+                        break;
+                    }
+                }
+                let reply = format!(
+                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                s.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        (url, seen)
+    }
+
+    fn form(body: &str) -> HashMap<String, String> {
+        reqwest::Url::parse(&format!("http://x/?{body}"))
+            .unwrap()
+            .query_pairs()
+            .into_owned()
+            .collect()
+    }
+
+    #[test]
+    fn exchange_sends_code_verifier_redirect_and_gdrive_secret() {
+        let (url, seen) = fake_token_server(vec![(
+            200,
+            r#"{"access_token":"AT","refresh_token":"RT","expires_in":3599}"#,
+        )]);
+        let refresh = block_on(exchange(
+            Provider::Gdrive,
+            &url,
+            "CODE",
+            "VER",
+            "http://127.0.0.1:9/",
+        ))
+        .unwrap();
+        assert_eq!(*refresh, "RT");
+        let f = form(&seen.lock().unwrap()[0]);
+        assert_eq!(f["grant_type"], "authorization_code");
+        assert_eq!(f["code"], "CODE");
+        assert_eq!(f["code_verifier"], "VER");
+        assert_eq!(f["redirect_uri"], "http://127.0.0.1:9/");
+        assert_eq!(f["client_id"], meta(Provider::Gdrive).client_id);
+        assert_eq!(f["client_secret"], client_secret(Provider::Gdrive).unwrap());
+    }
+
+    #[test]
+    fn dropbox_exchange_sends_no_secret() {
+        let (url, seen) =
+            fake_token_server(vec![(200, r#"{"access_token":"AT","refresh_token":"RT"}"#)]);
+        block_on(exchange(
+            Provider::Dropbox,
+            &url,
+            "CODE",
+            "VER",
+            "http://127.0.0.1:53682/",
+        ))
+        .unwrap();
+        assert!(!form(&seen.lock().unwrap()[0]).contains_key("client_secret"));
+    }
+
+    #[test]
+    fn exchange_without_refresh_token_fails() {
+        let (url, _) = fake_token_server(vec![(200, r#"{"access_token":"AT"}"#)]);
+        let err = block_on(exchange(
+            Provider::Gdrive,
+            &url,
+            "C",
+            "V",
+            "http://127.0.0.1:9/",
+        ))
+        .unwrap_err();
+        assert!(err.contains("didn't return a refresh token"), "{err}");
+    }
+
+    #[test]
+    fn bearer_is_minted_once_then_cached() {
+        let (url, seen) =
+            fake_token_server(vec![(200, r#"{"access_token":"A1","expires_in":3599}"#)]);
+        let cache = TokenCache::default();
+        assert_eq!(
+            *block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).unwrap(),
+            "A1"
+        );
+        assert_eq!(
+            *block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).unwrap(),
+            "A1"
+        );
+        let f = form(&seen.lock().unwrap()[0]);
+        assert_eq!(f["grant_type"], "refresh_token");
+        assert_eq!(f["refresh_token"], "RT");
+        assert_eq!(seen.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn evict_forces_a_fresh_mint() {
+        let (url, seen) = fake_token_server(vec![
+            (200, r#"{"access_token":"A1","expires_in":3599}"#),
+            (200, r#"{"access_token":"A2","expires_in":3599}"#),
+        ]);
+        let cache = TokenCache::default();
+        block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).unwrap();
+        cache.evict("k");
+        assert_eq!(
+            *block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).unwrap(),
+            "A2"
+        );
+        assert_eq!(seen.lock().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn revoked_refresh_token_asks_to_reconnect_and_is_not_cached() {
+        let (url, seen) = fake_token_server(vec![
+            (
+                400,
+                r#"{"error":"invalid_grant","error_description":"Token has been expired or revoked."}"#,
+            ),
+            (400, r#"{"error":"invalid_grant"}"#),
+        ]);
+        let cache = TokenCache::default();
+        let err = block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).unwrap_err();
+        assert!(err.contains("Reconnect the account"), "{err}");
+        assert!(block_on(cache.bearer("k", Provider::Gdrive, &url, "RT")).is_err());
+        assert_eq!(seen.lock().unwrap().len(), 2);
     }
 }
