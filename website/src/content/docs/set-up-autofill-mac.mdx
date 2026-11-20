@@ -1,0 +1,75 @@
+---
+title: Set up AutoFill on Mac
+description: Turn on Bramble in macOS AutoFill to fill logins, 2FA codes and passkeys in Safari and Mac apps, and set up 2FA codes from links.
+section: autofill
+kind: guide
+order: 4
+keywords:
+  - Mac
+  - macOS
+  - Safari
+  - AutoFill
+  - AutoFill & Passwords
+  - AutoFill from
+  - Set Up Codes In
+  - Password Options
+  - Mac apps
+  - passkeys on Mac
+  - 2FA setup link
+  - otpauth
+  - Unlock Bramble Desktop once so AutoFill has your vault
+  - Touch ID isn't set up for this vault
+  - Bramble has no passkey for this site
+  - use Bramble in Safari
+updatedDate: 2026-11-19
+---
+
+On a Mac, the Bramble desktop app fills your logins, 2FA codes and passkeys in Safari and other Mac apps through macOS AutoFill. It needs desktop app 0.20.0 or later.
+
+## Turn on AutoFill
+
+1. [Install the desktop app](/docs/install-desktop-app), open it and unlock your vault once, so AutoFill has your logins.
+2. Open System Settings and go to **General → AutoFill & Passwords**. On older macOS versions, look for the same setting under **Passwords**.
+3. Under **AutoFill from**, turn on **Bramble**.
+
+To unlock AutoFill with Touch ID, open the desktop app's **Settings → Security** and turn on **Touch ID**. Otherwise AutoFill asks for your master password.
+
+## Fill a login
+
+1. In Safari or an app, click a username or password field.
+2. Pick a login from Bramble in the list that appears, or choose Bramble to see all your logins.
+3. Unlock with Touch ID, or enter your master password and choose **Unlock**.
+
+Bramble shows the logins for this site first. **Search logins** finds any other.
+
+## Fill a 2FA code
+
+On macOS 15 and later, click the code field on a site's 2FA page and pick the code from Bramble. It comes from the login's **Authenticator key (TOTP)**.
+
+## Passkeys
+
+On macOS 14 and later, when a site or app asks to create or use a passkey, choose Bramble in the window that opens. A new passkey works right away, and joins your vault the next time you open the desktop app. See [Passkeys](/docs/passkeys).
+
+## Set up 2FA codes from a link
+
+On macOS 15 and later, Bramble can take a site's 2FA setup link, so you don't copy the key by hand.
+
+1. In **General → AutoFill & Passwords**, choose **Bramble** under **Set Up Codes In**.
+2. On the site's 2FA setup page, click the setup link. Bramble opens, and once your vault is unlocked it shows **Add 2FA code**.
+3. Choose **Existing login** and pick the login, or **New login**, then choose **Add** or **Save new login**.
+
+If the site asks for a code to finish setting up, enter the one Bramble shows.
+
+## Where AutoFill doesn't fill
+
+- **Chrome, Firefox and other browsers** don't ask macOS for passwords or 2FA codes. Use the [Bramble browser extension](/docs/autofill-in-the-browser) there. Passkeys can still come from AutoFill.
+- **Some apps** draw their own text fields and don't support macOS AutoFill, including many built with web technology.
+
+## Messages
+
+| Message | What to do |
+| --- | --- |
+| Unlock Bramble Desktop once so AutoFill has your vault. | Open the desktop app, unlock your vault, then try again. |
+| Touch ID isn't set up for this vault. Use your master password. | Enter your master password, or turn on **Touch ID** in the desktop app's **Settings → Security**. |
+| Bramble has no passkey for this site. | Sign in another way, or save a passkey for this site first. |
+| No logins saved yet. Add one in Bramble. | Add a login in the desktop app, or [import your passwords](/docs/import-passwords). |

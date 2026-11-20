@@ -1,6 +1,6 @@
 ---
 title: Which browsers and apps can use Bramble passkeys?
-description: Bramble passkeys work in Chrome, Firefox, iPhone and Android 14 and later, with a few limits. Safari on a Mac and the desktop app can't use them.
+description: Bramble passkeys work in Chrome, Firefox, iPhone, Android 14 and later, and Safari and apps on a Mac through the desktop app, with a few limits.
 section: passkeys
 kind: question
 order: 2
@@ -25,7 +25,7 @@ keywords:
   - The request either timed out, was canceled or the device is already registered
   - Touch ID registration fails
   - Registration was cancelled or timed out. Please try again.
-updatedDate: 2026-11-07
+updatedDate: 2026-11-19
 ---
 
 | Where | Bramble passkeys |
@@ -34,8 +34,7 @@ updatedDate: 2026-11-07
 | Firefox, with the extension | Yes |
 | Safari and apps on iPhone | iOS 17 and later |
 | Browsers and apps on Android | Android 14 and later, in most browsers |
-| Safari on a Mac | No |
-| The desktop app | No |
+| Safari and apps on a Mac | macOS 14 and later, through the desktop app |
 
 To turn passkeys on, see [Save and use passkeys](/docs/passkeys).
 
@@ -49,13 +48,15 @@ In Firefox, passkey suggestions in a site's username field come from Firefox, no
 
 ## Safari on a Mac
 
-Bramble has no Safari extension, so Safari on a Mac can't use Bramble passkeys. Use Chrome, Firefox or another Chromium browser with the Bramble extension instead.
+On a Mac, Safari and other apps use Bramble passkeys through macOS AutoFill, with the desktop app installed. It needs macOS 14 or later. See [Set up AutoFill on Mac](/docs/set-up-autofill-mac).
+
+Bramble has no Safari extension, so on a Mac, Safari gets passkeys, passwords and 2FA codes from AutoFill, and not the extension's other features.
 
 On iPhone, Safari works through iOS AutoFill. See [Set up AutoFill on iPhone](/docs/set-up-autofill-iphone).
 
 ## The desktop app
 
-The desktop app can't create passkeys or sign in with them. Passkeys you save elsewhere still sync to it and show on your logins.
+On a Mac, the desktop app creates passkeys and signs in with them through macOS AutoFill, in Safari and other apps. See [Safari on a Mac](#safari-on-a-mac). On Linux it can't, but passkeys you save elsewhere still sync to it and show on your logins.
 
 ## Android
 

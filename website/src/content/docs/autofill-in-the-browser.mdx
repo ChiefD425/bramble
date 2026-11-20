@@ -47,10 +47,13 @@ keywords:
   - custom fields
   - keyboard shortcut
   - fill shortcut
+  - Fill button
+  - fill from the popup
+  - 2FA shortcut
   - Ctrl+Shift+L
   - Cmd+Shift+L
   - New login
-updatedDate: 2026-11-12
+updatedDate: 2026-11-19
 ---
 
 The Bramble browser extension fills logins, 2FA codes and payment cards on web pages. Nothing goes into a page until you pick an entry.
@@ -64,12 +67,14 @@ The Bramble browser extension fills logins, 2FA codes and payment cards on web p
 - Bramble lists a login when one of its **Websites** matches the site. A login for `accounts.example.com` also shows on `www.example.com`. Phones match more narrowly.
 - If your vault is locked, the list shows **Vault locked**. Click it, unlock in the window that opens, then pick a login.
 - To save another login for this site, click **New login** under the list on the username field.
+- In Bramble's own window, from the toolbar button or the pop-out, logins for the page you're on have a **Fill** button. It fills that page, even with **Autofill on web pages** off.
 
 ## Fill with a keyboard shortcut
 
 Click in a sign-in field and press **Ctrl+Shift+L** (**Cmd+Shift+L** on a Mac). Bramble fills the first login saved for this site, or the first whose username starts with what you've typed.
 
 - It works even with **Autofill on web pages** off.
+- In a 2FA code field, it fills the current code instead.
 - If your vault is locked, the shortcut opens the unlock window instead.
 - To change the keys, open your browser's extension shortcuts page.
 
@@ -77,7 +82,7 @@ Click in a sign-in field and press **Ctrl+Shift+L** (**Cmd+Shift+L** on a Mac). 
 
 Click the code field on a site's 2FA page. Bramble lists this site's logins that have an **Authenticator key (TOTP)**. Pick one to fill the current code.
 
-This works on single code boxes and on forms with one box per digit.
+This works on single code boxes and on forms with one box per digit. You can also press the [keyboard shortcut](#fill-with-a-keyboard-shortcut) in the code field.
 
 ## Fill a card
 
@@ -132,7 +137,7 @@ Passwords your browser already saved stay in the browser. To move them to Brambl
 
 ## Settings that change autofill
 
-- **Settings → General → Autofill on web pages** turns the list on pages on or off. When it's off, use the [keyboard shortcut](#fill-with-a-keyboard-shortcut) or copy from your vault.
+- **Settings → General → Autofill on web pages** turns the list on pages on or off. When it's off, use the [keyboard shortcut](#fill-with-a-keyboard-shortcut), the **Fill** button in Bramble's window, or copy from your vault.
 - In a login's editor, under **Advanced**:
   - **Auto-submit after fill** submits the form right after Bramble fills it. Bramble skips this when the page shows a CAPTCHA.
   - **Subdomain match** sets which addresses the login is offered on. See [Why isn't a field filled?](/docs/browser-field-not-filled#the-login-doesnt-show-up)

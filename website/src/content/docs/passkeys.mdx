@@ -5,6 +5,9 @@ section: passkeys
 kind: guide
 order: 1
 keywords:
+  - security key Firefox
+  - Safari passkeys
+  - Mac passkeys
   - passkey
   - passkeys
   - passwordless sign-in
@@ -26,7 +29,7 @@ keywords:
   - Unlock Bramble to save a passkey for this site.
   - Holds a passkey
   - This login has a passkey
-updatedDate: 2026-11-07
+updatedDate: 2026-11-19
 ---
 
 A passkey signs you in to a website without a password. Bramble can create passkeys, keep them in your vault next to your logins, and sync them to your other devices.
@@ -39,8 +42,7 @@ A passkey signs you in to a website without a password. Bramble can create passk
 | Browser extension in Firefox | Yes |
 | iPhone | iOS 17 and later |
 | Android | Android 14 and later |
-| Desktop app | No |
-| Safari on a Mac | No |
+| Safari and apps on a Mac | macOS 14 and later, through the desktop app |
 
 Some browsers and phones have limits. See [Which browsers and apps can use Bramble passkeys?](/docs/passkey-browsers)
 
@@ -52,7 +54,10 @@ Some browsers and phones have limits. See [Which browsers and apps can use Bramb
 1. Open **Settings → General**.
 2. Turn on **Use Bramble for passkeys**. It's off by default.
 
-While it's on, Bramble handles every passkey prompt in that browser. To use a security key or a passkey saved somewhere else, turn it off first.
+While it's on, Bramble handles passkey prompts in that browser.
+
+- In Chrome, Brave and other Chromium browsers, turn it off first to use a security key or a passkey saved somewhere else.
+- In Firefox, choose **Not now** on Bramble's card and Firefox's own passkey window opens. A site that asks for a security key goes straight to Firefox.
 
 </div>
 <div slot="ios">
@@ -63,6 +68,11 @@ Turn on Bramble in iOS AutoFill. The same switch fills your passwords. See [Set 
 <div slot="android">
 
 Open your phone's Settings, search for "passkeys" and turn on Bramble as a passkey provider. This is separate from the autofill service in [Set up autofill on Android](/docs/set-up-autofill-android).
+
+</div>
+<div slot="desktop">
+
+On a Mac, turn on Bramble in macOS AutoFill. The same switch fills your passwords. It needs macOS 14 or later. See [Set up AutoFill on Mac](/docs/set-up-autofill-mac).
 
 </div>
 </PlatformTabs>
