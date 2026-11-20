@@ -1,6 +1,6 @@
 ---
 title: Why did my cloud backup fail?
-description: What a failed cloud backup means for Dropbox, WebDAV and S3 providers, and how to fix it.
+description: What a failed cloud backup means for one-click, WebDAV and S3 providers, and how to fix it.
 section: backups
 kind: question
 order: 1
@@ -45,6 +45,10 @@ keywords:
   - S3 POST failed
   - S3 failed to complete the upload
   - Dropbox upload failed
+  - Google Drive
+  - Google Drive upload failed
+  - Connect Google Drive
+  - storage quota has been exceeded
   - insufficient_space
   - Couldn't refresh access
   - Reconnect the account
@@ -62,7 +66,7 @@ keywords:
   - Failed to fetch
   - NetworkError when attempting to fetch resource
   - request failed
-updatedDate: 2026-11-07
+updatedDate: 2026-11-20
 ---
 
 A failed backup shows **Failed** on its card under **Settings → Backups → Cloud backups**, followed by the reason. Most reasons quote your provider, with its status code in brackets.
@@ -104,18 +108,18 @@ Large backups go up in parts, so the message may say POST instead of PUT.
 
 A key that can upload but can't list or delete still backs up. Bramble just can't remove old copies with it, so **Backups to keep** has no effect.
 
-## Dropbox
+## One-click sign-in
 
-Dropbox works only in the browser extension.
+<Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive work</Since><Until commit="48521e2d" on="chromium firefox">Dropbox works</Until> only in the browser extension.
 
 | Message | What to do |
 | --- | --- |
-| One-click sign-in for Dropbox is coming in a future update. | You're in the phone or desktop app. Connect Dropbox from the browser extension, or pick another provider here. |
-| Unlock Bramble first, then connect. | Unlock your vault, then choose **Connect Dropbox** again. |
-| Sign-in was cancelled or failed | The Dropbox window closed before you finished. Choose **Connect Dropbox** and finish signing in. |
-| Dropbox shows an error while you sign in | Try again later, or pick another provider. |
-| Couldn't refresh access (…). Reconnect the account. | Bramble lost access to your Dropbox, for example after you removed it from Dropbox's connected apps. Choose **Reconnect** on the card. |
-| Dropbox upload failed (…) | The text in brackets is Dropbox's reason. `insufficient_space` means your Dropbox is full. |
+| One-click sign-in for Dropbox is coming in a future update. | You're in the phone or desktop app. Connect it from the browser extension, or pick another provider here. |
+| Unlock Bramble first, then connect. | Unlock your vault, then choose **Connect Dropbox**<Since commit="48521e2d" on="chromium firefox"> or **Connect Google Drive**</Since> again. |
+| Sign-in was cancelled or failed | The sign-in window<Since commit="48521e2d" on="chromium firefox"> or tab</Since> closed before you finished. Choose **Connect** again and finish signing in. |
+| Dropbox<Since commit="48521e2d" on="chromium firefox"> or Google</Since> shows an error while you sign in | Try again later, or pick another provider. |
+| Couldn't refresh access (…). Reconnect the account. | Bramble lost access, for example after you removed it from Dropbox's connected apps<Since commit="48521e2d" on="chromium firefox"> or your Google account's third-party connections</Since>. Choose **Reconnect** on the card. |
+| Dropbox upload failed (…)<Since commit="48521e2d" on="chromium firefox">, Google Drive upload failed (…)</Since> | The text in brackets is the provider's reason. `insufficient_space` means your Dropbox is full.<Since commit="48521e2d" on="chromium firefox"> "The user's Drive storage quota has been exceeded" means your Google Drive is full.</Since> |
 | No response from Bramble's background (reload the extension?). | Turn the extension off and on again in your browser's extensions page, or restart the browser. |
 
 ## Any provider

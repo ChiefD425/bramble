@@ -58,7 +58,7 @@ Every backup is encrypted. It opens only with the master password your vault had
 | Backup file | Yes | Yes | Yes |
 | Cloud backups | Yes | Yes | Yes |
 | Cloud backups run | While unlocked | When you open Bramble | On schedule, even locked |
-| Dropbox sign-in | Yes | No | No |
+| <Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive sign-in</Since><Until commit="48521e2d" on="chromium firefox">Dropbox sign-in</Until> | Yes | No | No |
 | Export as KeePass | Yes | Yes | Yes |
 
 Everything is under **Settings → Backups**.
@@ -82,11 +82,11 @@ Choose **Back up now** to make one straight away.
 
 | Provider | Setup |
 | --- | --- |
-| Dropbox | Sign in with one click. Browser extension only. |
+| Dropbox<Since commit="48521e2d" on="chromium firefox">, Google Drive</Since> | Sign in with one click. Browser extension only.<Since commit="48521e2d" on="chromium firefox"> Google Drive backups go in a **Bramble** folder in My Drive.</Since> |
 | Backblaze B2, Cloudflare R2, Storj, Wasabi, other S3 | An access key for a bucket |
 | Nextcloud, pCloud, Fastmail, other WebDAV | Your WebDAV address and an app password |
 
-Google Drive, iCloud Drive and Proton Drive aren't built in. [Save a backup file](#save-a-backup-file) there instead.
+<Since commit="48521e2d" on="chromium firefox">iCloud Drive and Proton Drive</Since><Until commit="48521e2d" on="chromium firefox">Google Drive, iCloud Drive and Proton Drive</Until> aren't built in. [Save a backup file](#save-a-backup-file) there instead.
 
 <Callout type="tip" title="Limit what Bramble can reach">
 For S3, make a key for that one bucket that can upload and list, but not delete. A WebDAV app password reaches every file in the account, so a separate account just for backups is safest.
