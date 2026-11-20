@@ -271,6 +271,10 @@ msgstr "기기가 온라인 상태이지만 이 기기에 연결할 수 없습�
 msgid "A one-time backup code that unlocks your vault if you're locked out."
 msgstr "잠긴 경우 저장소를 여는 일회용 백업 코드입니다."
 
+#: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
+msgid "A passkey on \"{name}\" is damaged, so it can't be exported. Remove it, then try again."
+msgstr "\"{name}\"의 패스키가 손상되어 내보낼 수 없습니다. 해당 패스키를 제거한 후 다시 시도하세요."
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "A QR code was found, but it isn't an authenticator setup code. Open the site's 2FA page, or paste the setup key."
 msgstr "QR 코드를 찾았지만 인증기 설정 코드가 아닙니다. 사이트의 2FA 페이지를 열거나 설정 키를 붙여넣으세요."
@@ -2783,8 +2787,12 @@ msgid "Pick a password for the exported file. It's separate from your master pas
 msgstr "내보낸 파일에 사용할 비밀번호를 설정하세요. 이 비밀번호는 마스터 비밀번호와 별개이며 파일을 여는 유일한 방법이므로 복사본을 보관하지 않습니다."
 
 #: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
-msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments go with it. Passkeys don't yet, so keep a .bramble backup for those."
-msgstr "내보낸 파일에 사용할 비밀번호를 설정하세요. 이 비밀번호는 마스터 비밀번호와 별개이며 파일을 여는 유일한 방법입니다. 복사본은 보관하지 않습니다. 첨부 파일은 함께 내보내집니다. 패스키는 아직 함께 내보내지지 않으므로 패스키는 .bramble 백업으로 보관하세요."
+msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments and passkeys go with it."
+msgstr "내보낼 파일의 비밀번호를 설정하세요. 이 비밀번호는 마스터 비밀번호와 별개이며 파일을 여는 유일한 방법입니다. 저희는 사본을 보관하지 않습니다. 첨부 파일과 패스키도 함께 내보내집니다."
+
+#: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
+#~ msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments go with it. Passkeys don't yet, so keep a .bramble backup for those."
+#~ msgstr "내보낸 파일에 사용할 비밀번호를 설정하세요. 이 비밀번호는 마스터 비밀번호와 별개이며 파일을 여는 유일한 방법입니다. 복사본은 보관하지 않습니다. 첨부 파일은 함께 내보내집니다. 패스키는 아직 함께 내보내지지 않으므로 패스키는 .bramble 백업으로 보관하세요."
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Pig"

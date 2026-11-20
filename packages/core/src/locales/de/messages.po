@@ -350,6 +350,10 @@ msgstr "Ein Gerät ist online, kann aber keine Verbindung zu diesem herstellen."
 msgid "A one-time backup code that unlocks your vault if you're locked out."
 msgstr "Ein einmaliger Wiederherstellungscode, der Ihren Tresor entsperrt, falls Sie ausgesperrt sind."
 
+#: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
+msgid "A passkey on \"{name}\" is damaged, so it can't be exported. Remove it, then try again."
+msgstr "Ein Passkey auf „{name}“ ist beschädigt, daher kann er nicht exportiert werden. Entfernen Sie ihn und versuchen Sie es erneut."
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "A QR code was found, but it isn't an authenticator setup code. Open the site's 2FA page, or paste the setup key."
 msgstr "Es wurde ein QR-Code gefunden, aber es ist kein Einrichtungscode für einen Authenticator. Öffnen Sie die 2FA-Seite der Website oder fügen Sie den Einrichtungsschlüssel ein."
@@ -3080,8 +3084,12 @@ msgid "Pick a password for the exported file. It's separate from your master pas
 msgstr "Legen Sie ein Passwort für die exportierte Datei fest. Es ist unabhängig von Ihrem Master-Passwort und der einzige Weg, die Datei zu öffnen, daher bewahren wir es nicht auf."
 
 #: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
-msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments go with it. Passkeys don't yet, so keep a .bramble backup for those."
-msgstr "Legen Sie ein Passwort für die exportierte Datei fest. Es ist von Ihrem Master-Passwort getrennt und die einzige Möglichkeit, die Datei zu öffnen: Wir bewahren keine Kopie auf. Ihre Anhänge werden mit exportiert. Passkeys werden noch nicht mit exportiert; bewahren Sie für diese eine .bramble-Sicherung auf."
+msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments and passkeys go with it."
+msgstr "Wählen Sie ein Passwort für die exportierte Datei. Es ist von Ihrem Master-Passwort getrennt und die einzige Möglichkeit, die Datei zu öffnen: Wir bewahren keine Kopie auf. Ihre Anhänge und Passkeys werden mit der Datei exportiert."
+
+#: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
+#~ msgid "Pick a password for the exported file. It's separate from your master password, and it's the only way to open the file: we don't keep a copy. Your attachments go with it. Passkeys don't yet, so keep a .bramble backup for those."
+#~ msgstr "Legen Sie ein Passwort für die exportierte Datei fest. Es ist von Ihrem Master-Passwort getrennt und die einzige Möglichkeit, die Datei zu öffnen: Wir bewahren keine Kopie auf. Ihre Anhänge werden mit exportiert. Passkeys werden noch nicht mit exportiert; bewahren Sie für diese eine .bramble-Sicherung auf."
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Pig"

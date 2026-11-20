@@ -1,15 +1,19 @@
 /** @vitest-environment happy-dom */
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { UnexportablePasskeyError } from "../../../../export/kdbx";
 import type { EntryConflict } from "../../../../sync";
 import { KdbxExportDialog } from "./KdbxExportDialog";
 
-const h = vi.hoisted(() => ({ conflicts: new Map<string, EntryConflict>() }));
+const h = vi.hoisted(() => ({
+	conflicts: new Map<string, EntryConflict>(),
+	exportKdbx: async (_password: string) => {},
+}));
 
 vi.mock("../../../../hooks/useVault", () => ({
-	useVault: () => ({ exportKdbx: async () => {}, conflicts: h.conflicts }),
+	useVault: () => ({ exportKdbx: h.exportKdbx, conflicts: h.conflicts }),
 }));
 
 afterEach(cleanup);
@@ -44,5 +48,24 @@ describe("the KeePass export dialog", () => {
 		h.conflicts = new Map([["3", { versions: 0, deleted: true }]]);
 		show();
 		expect(screen.queryByText(/sync conflict/)).toBeNull();
+	});
+
+	it("says the file carries passkeys as well as attachments", () => {
+		h.conflicts = new Map();
+		show();
+		expect(screen.getByText(/Your attachments and passkeys go with it\./)).toBeTruthy();
+	});
+
+	it("names the entry whose damaged passkey stopped the export", async () => {
+		h.conflicts = new Map();
+		h.exportKdbx = async () => {
+			throw new UnexportablePasskeyError("GitHub");
+		};
+		show();
+		for (const label of ["Password for the file", "Confirm password"]) {
+			fireEvent.change(screen.getByLabelText(label), { target: { value: "file-pw" } });
+		}
+		fireEvent.click(screen.getByRole("button", { name: "Export" }));
+		expect(await screen.findByText(/A passkey on "GitHub" is damaged/)).toBeTruthy();
 	});
 });

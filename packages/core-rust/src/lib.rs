@@ -1762,8 +1762,8 @@ mod portable_vault_tests {
         assert_eq!(opened.as_deref(), Some(ENTRIES));
     }
 
-    // Passkeys are the reason this format exists rather than reusing the KDBX export, which
-    // cannot represent them at all.
+    // Passkeys ride this format in Bramble's own representation, nested inside the entry, rather
+    // than converted the way the KDBX export converts them.
     #[test]
     fn carries_nested_passkey_material_through() {
         let file = seal("pw");

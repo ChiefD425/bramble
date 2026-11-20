@@ -36,7 +36,7 @@ const baseEntryFields = {
 };
 
 // Mirror of PasskeyCredential. Kept in lockstep with the interface in useVault.
-const passkeyCredentialSchema = z.object({
+export const passkeyCredentialSchema = z.object({
 	credentialId: z.string(),
 	rpId: z.string(),
 	rpName: z.string().optional(),

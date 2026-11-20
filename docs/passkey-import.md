@@ -130,6 +130,37 @@ not dedupe against each other.
 | is in SEC1 form rather than PKCS#8 | `BEGIN EC PRIVATE KEY`, a real key in the wrong container |
 | is longer than the 4096-character maximum | the PEM is over the cap, checked before any decode |
 | has key material we can't read | the core refused it; its own error is suppressed because it can name key bytes |
+| came with Bramble details we can't read | `KPEX_PASSKEY_BRAMBLE` (below) didn't parse; the passkey imports and the attribute is kept as a field |
+
+### Exporting to KeePassXC
+
+The KDBX export writes the same attributes (`keepassPasskeyAttributes`, beside the reader), with
+the names and protection KeePassXC's own browser integration uses, so KeePassXC signs in with a
+passkey Bramble exported. The ids go out as bare base64url and the key as PKCS#8 PEM in Botan's
+layout (64-character lines, closing newline). Both key types are wrapped structurally by
+`exchange/passkey-key.ts`: ES256 as an `ECPrivateKey` without the optional public key, which Botan
+and WebCrypto recompute, and Ed25519 in RFC 8410's v1 layout, byte for byte what KeePassXC
+writes. A key with no PKCS#8 form, which only a damaged passkey has, stops the export and names
+the entry rather than leaving the passkey out.
+
+KeePassXC holds one passkey per entry, so a login's first passkey goes on the login and each
+further one on an entry of its own (same title, the passkey's username, `https://<rpId>`), after
+every vault entry so attachment indices still point at the right entries.
+
+KeePassXC has no attribute for some of what a passkey holds, so one more travels with it:
+
+| Attribute | Protected | Shape |
+|---|---|---|
+| `KPEX_PASSKEY_BRAMBLE` | yes | JSON: `credentialId`, `rpName`, `userDisplayName`, `createdAt`, `lastUsedAt`, `prf`, `fido2Extensions` |
+
+That is every stored field except what the key re-derives (`alg`, `publicKeyCose`) and the
+counter, which is always zero. The PRF secrets are the reason it exists: without them a site
+that encrypted data with the passkey's PRF output could not decrypt it after a round trip through
+KeePass. On import it is validated with the vault's own passkey schema and applied only when its
+`credentialId` matches the passkey's. KeePassXC overwrites only its own attributes when a passkey
+on an entry is replaced, so a set left from the old one is ignored rather than attached to the new
+one. It sits inside KeePassXC's `KPEX_PASSKEY` prefix on purpose: KeePassXC hides attributes with
+that prefix from its attribute list and deletes them with the passkey.
 
 ## Proton Pass
 

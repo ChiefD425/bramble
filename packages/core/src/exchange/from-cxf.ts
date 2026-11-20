@@ -27,7 +27,7 @@ import { undoEpochShift } from "../util/epoch-shift";
 import { buildTotpUri } from "../util/totp";
 import { keptExtensions, MAX_PRF_SECRET_BYTES } from "../vault/passkey";
 import { normalizeTags } from "../vault/tags";
-
+import { pkcs8Pem } from "./passkey-key";
 import {
 	type CxfCredential,
 	type CxfEditableField,
@@ -140,13 +140,6 @@ function passkeyExtensions(ext: Record<string, unknown> | undefined): {
 		}
 	}
 	return { prf, rest, unusable: !prf, badLargeBlob };
-}
-
-/** CXF ships PKCS#8 DER; our SSH entries hold PEM text, and that direction is a clean wrap. */
-function derToPem(keyB64Url: string): string {
-	const b64 = base64UrlToBase64(keyB64Url);
-	const lines = b64.match(/.{1,64}/g) ?? [];
-	return `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----\n`;
 }
 
 async function toPasskeys(
@@ -324,7 +317,8 @@ async function entryFor(
 			...common,
 			// CXF carries no public key, and we only ever copy it out, so leave it empty.
 			publicKey: "",
-			privateKey: derToPem(g.ssh.privateKey),
+			// CXF ships PKCS#8 DER; our SSH entries hold PEM text, and that direction is a clean wrap.
+			privateKey: pkcs8Pem(base64UrlToBase64(g.ssh.privateKey)),
 			keyType: g.ssh.keyType || undefined,
 			customFields: toCustomFields(g.fields),
 		};

@@ -167,6 +167,55 @@ describe("convertKeepassPasskey", () => {
 	});
 });
 
+// A passkey holds more than KeePassXC's attributes can say. Bramble's KDBX export writes the rest
+// into one more attribute, so a file brought back into Bramble loses none of it.
+describe("convertKeepassPasskey: what only Bramble keeps", () => {
+	const extras = {
+		credentialId: "/lt5pHIIIowqyWHmHwPxBdxXYmxge4sSpTaWy1XOs6Q=",
+		rpName: "WebAuthn.io",
+		userDisplayName: "Testy McTest",
+		createdAt: 1_600_000_000_000,
+		lastUsedAt: 1_650_000_000_000,
+		prf: {
+			credWithUV: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+			credWithoutUV: "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
+		},
+		fido2Extensions: { credBlob: "AQ" },
+	};
+	const withExtras = (value: unknown) =>
+		attrs({ KPEX_PASSKEY_BRAMBLE: typeof value === "string" ? value : JSON.stringify(value) });
+
+	it("restores it from a file Bramble wrote", async () => {
+		const { credential, fields, warnings } = await run(withExtras(extras));
+		expect(credential).toMatchObject(extras);
+		expect(fields.map((f) => f.key)).toEqual(["Title", "UserName"]);
+		expect(warnings).toEqual([]);
+	});
+
+	// KeePassXC overwrites a passkey's own attributes and leaves the rest, so details for the
+	// passkey it replaced can still be there. They belong to a credential that no longer exists.
+	it("ignores what was left from a passkey KeePassXC has since replaced", async () => {
+		const { credential, fields, warnings } = await run(
+			withExtras({ ...extras, credentialId: "AQID" }),
+		);
+		expect(credential?.prf).toBeUndefined();
+		expect(credential?.createdAt).toBe(1_700_000_000_000);
+		expect(fields.map((f) => f.key)).toEqual(["Title", "UserName"]);
+		expect(warnings).toEqual([]);
+	});
+
+	it("keeps details it can't read as a field, and says so", async () => {
+		for (const bad of ["{not json", { ...extras, prf: { credWithUV: "junk!" } }]) {
+			const { credential, fields, warnings } = await run(withExtras(bad));
+			expect(credential?.credentialId).toBe(extras.credentialId);
+			expect(credential?.prf).toBeUndefined();
+			expect(fields.map((f) => f.key)).toEqual(["Title", "UserName", "KPEX_PASSKEY_BRAMBLE"]);
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0]).toMatch(/details we can't read/);
+		}
+	});
+});
+
 // The two KeePass paths hand us the same attributes from different containers. Import
 // de-duplication hashes the whole entry including its passkeys, so if these ever diverged,
 // importing the XML and then the .kdbx of one database would store the private key twice and

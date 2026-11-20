@@ -21,6 +21,11 @@ const BITWARDEN_FIXTURE = path.resolve(
 	dir,
 	"../../clients/extension/src/fixtures/imports/bitwarden.json",
 );
+/** Seven entries, with P-256 passkeys on its logins. */
+const PASSKEY_FIXTURE = path.resolve(
+	dir,
+	"../../clients/extension/src/fixtures/imports/bitwarden-passkeys.json",
+);
 
 /** The password protecting the exported file. Deliberately not STRONG_PW: the export password is
  * independent of the master password, and reusing it here would hide a mix-up between the two. */
@@ -186,4 +191,58 @@ test("carries every attachment, byte for byte, as KeePassXC reads it", async ({
 		);
 		expect(readFileSync(extracted).equals(f.body)).toBe(true);
 	}
+});
+
+// Passkeys go in as KeePassXC stores them. KeePassXC reads the attributes (a reader we didn't
+// write), and the app's own .kdbx import turns them back into passkeys, which it only does once
+// the Rust core has parsed the key inside each one.
+test("carries passkeys as KeePassXC stores them, and back into Bramble", async ({
+	context,
+	extensionId,
+}) => {
+	const setup = await context.newPage();
+	await createVault(setup, extensionId);
+	await pickImportFile(setup, extensionId, /Bitwarden/, PASSKEY_FIXTURE);
+	const seeded = setup.getByText(/\d+ passkeys?/);
+	await expect(seeded).toBeVisible();
+	const passkeys = (await seeded.textContent())?.match(/\d+ passkeys?/)?.[0] ?? "";
+	expect(passkeys).not.toBe("");
+	await setup.getByRole("button", { name: /Import 7 items/i }).click();
+	await expect(setup.getByRole("heading", { name: /Imported 7 items/i })).toBeVisible();
+
+	const page = await context.newPage();
+	await openPopup(page, extensionId);
+	const { out } = await exportKdbx(page, FILE_PW);
+
+	if (keepassxc) {
+		const show = (attribute: string) =>
+			execFileSync("keepassxc-cli", ["show", "-q", "-s", "-a", attribute, out, "GitHub"], {
+				input: `${FILE_PW}\n`,
+			})
+				.toString()
+				.trim();
+		expect(show("KPEX_PASSKEY_RELYING_PARTY")).toBe("github.com");
+		expect(show("KPEX_PASSKEY_USERNAME")).toBe("octocat");
+		expect(show("KPEX_PASSKEY_PRIVATE_KEY_PEM")).toMatch(
+			/^-----BEGIN PRIVATE KEY-----\n[A-Za-z0-9+/=\n]+\n-----END PRIVATE KEY-----$/,
+		);
+	}
+
+	// Into a second, empty vault, for the same reason as the round trip above.
+	await createVault(await context.newPage(), extensionId);
+	const back = await context.newPage();
+	await pickImportFile(back, extensionId, /KeePass \(\.kdbx\)/, out);
+	await back.locator('input[type="password"]').first().fill(FILE_PW);
+	await back.getByRole("button", { name: /Open database/i }).click();
+	await expect(back.getByText(/7 items ready to import/i)).toBeVisible();
+	await expect(back.getByText(new RegExp(`\\b${passkeys}\\b`))).toBeVisible();
+	await back.getByRole("button", { name: /Import 7 items/i }).click();
+	await expect(back.getByRole("heading", { name: /Imported 7 items/i })).toBeVisible();
+
+	const popup = await context.newPage();
+	await openPopup(popup, extensionId);
+	// The popup reopens on the last screen, which was Settings for the export.
+	await popup.getByRole("button", { name: "Go to vault" }).click();
+	await popup.getByLabel(/Search vault/i).fill("GitHub");
+	await expect(popup.getByRole("img", { name: /Holds a passkey/ })).toBeVisible();
 });

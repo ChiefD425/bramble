@@ -1,20 +1,30 @@
-import { describe, expect, it } from "vitest";
-import type { EntryData } from "../hooks/useVault";
+import { beforeAll, describe, expect, it } from "vitest";
+import { fakePasskeyImportPkcs8, testParserContext } from "../exchange/test-crypto";
+import type { EntryData, PasskeyCredential } from "../hooks/useVault";
 import { kdbxEntriesToResult } from "../import/kdbx";
+import { pemToStandardBase64 } from "../import/passkey-fields";
+import type { ImportParserContext } from "../import/types";
 import type { FileRecord } from "../sync";
 import { fileRecord } from "../test/vault-fixtures";
-import { toKdbxEntries, toKdbxExport } from "./kdbx";
+import { base64ToBytes, bytesToBase64 } from "../util/bytes";
+import { toKdbxEntries, toKdbxExport, UnexportablePasskeyError } from "./kdbx";
 
-/** No KeePass fixture here carries a passkey, so reaching the crypto bridge is itself a bug. */
+/** For the entries here without a passkey, reaching the crypto bridge is itself a bug. */
 const noPasskeys = {
 	passkeyImportPkcs8: () => Promise.reject(new Error("no passkey expected in this test")),
 };
 
 /** Export then re-import through the real KDBX import path, which is what a user
  * moving a file between Bramble installs actually goes through. */
-const roundTrip = async (e: EntryData): Promise<EntryData> => {
-	const opened = { entries: toKdbxEntries([e]), attachments: [] };
-	const [back] = (await kdbxEntriesToResult(opened, noPasskeys)).imported;
+const roundTripAll = async (
+	entries: EntryData[],
+	context: ImportParserContext = noPasskeys,
+): Promise<EntryData[]> => {
+	const opened = { entries: toKdbxEntries(entries), attachments: [] };
+	return (await kdbxEntriesToResult(opened, context)).imported;
+};
+const roundTrip = async (e: EntryData, context?: ImportParserContext): Promise<EntryData> => {
+	const [back] = await roundTripAll([e], context);
 	if (!back) throw new Error("nothing re-imported");
 	return back;
 };
@@ -122,6 +132,142 @@ describe("toKdbxEntries: archived entries", () => {
 
 	it("is not protected: it is a date, not a secret", async () => {
 		expect(isProtected(login({ archivedAt: 1 }), "Archived")).toBe(false);
+	});
+});
+
+/**
+ * A real P-256 passkey, made with WebCrypto and converted as the core converts one, so the public
+ * key a re-import derives from the written private key has to match the one stored here.
+ */
+const makePasskey = async (over: Partial<PasskeyCredential> = {}): Promise<PasskeyCredential> => {
+	const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+		"sign",
+	]);
+	const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+	const { privateKey, publicKeyCose } = await fakePasskeyImportPkcs8(bytesToBase64(pkcs8));
+	return {
+		// "++//AQ==": both characters base64url swaps, and padding it drops.
+		credentialId: bytesToBase64(Uint8Array.of(0xfb, 0xef, 0xff, 0x01)),
+		rpId: "github.com",
+		rpName: "GitHub",
+		userHandle: bytesToBase64(new TextEncoder().encode("octocat-id")),
+		userName: "octocat",
+		userDisplayName: "The Octocat",
+		alg: -7,
+		publicKeyCose,
+		privateKey,
+		signCount: 0,
+		createdAt: Date.UTC(2026, 0, 2),
+		lastUsedAt: Date.UTC(2026, 5, 6),
+		prf: {
+			credWithUV: bytesToBase64(new Uint8Array(32).fill(1)),
+			credWithoutUV: bytesToBase64(new Uint8Array(32).fill(2)),
+		},
+		fido2Extensions: { credBlob: "AQ" },
+		...over,
+	};
+};
+
+describe("toKdbxEntries: passkeys", () => {
+	let passkey: PasskeyCredential;
+	beforeAll(async () => {
+		passkey = await makePasskey();
+	});
+	const withPasskey = (...passkeys: PasskeyCredential[]) => login({ passkeys });
+
+	// Exactly the attributes KeePassXC's BrowserService writes, so KeePassXC signs in with it.
+	it("writes a passkey as KeePassXC's own attributes on its login", async () => {
+		const e = withPasskey(passkey);
+		expect(value(e, "Password")).toBe("pw");
+		expect(value(e, "KPEX_PASSKEY_CREDENTIAL_ID")).toBe("--__AQ");
+		expect(value(e, "KPEX_PASSKEY_USER_HANDLE")).toBe("b2N0b2NhdC1pZA");
+		expect(value(e, "KPEX_PASSKEY_RELYING_PARTY")).toBe("github.com");
+		expect(value(e, "KPEX_PASSKEY_USERNAME")).toBe("octocat");
+		expect(value(e, "KPEX_PASSKEY_FLAG_BE")).toBe("1");
+		expect(value(e, "KPEX_PASSKEY_FLAG_BS")).toBe("1");
+		expect(value(e, "KPEX_PASSKEY_PRIVATE_KEY_PEM")).toMatch(
+			/^-----BEGIN PRIVATE KEY-----\n[A-Za-z0-9+/=\n]+\n-----END PRIVATE KEY-----\n$/,
+		);
+	});
+
+	it("protects what KeePassXC protects, and Bramble's own details", async () => {
+		const e = withPasskey(passkey);
+		for (const key of [
+			"KPEX_PASSKEY_CREDENTIAL_ID",
+			"KPEX_PASSKEY_PRIVATE_KEY_PEM",
+			"KPEX_PASSKEY_USER_HANDLE",
+			"KPEX_PASSKEY_BRAMBLE",
+		]) {
+			expect(isProtected(e, key), key).toBe(true);
+		}
+		expect(isProtected(e, "KPEX_PASSKEY_RELYING_PARTY")).toBe(false);
+		expect(isProtected(e, "KPEX_PASSKEY_USERNAME")).toBe(false);
+	});
+
+	it("writes the stored private key, as the PKCS#8 KeePassXC loads", async () => {
+		const pem = value(withPasskey(passkey), "KPEX_PASSKEY_PRIVATE_KEY_PEM") ?? "";
+		const back = await fakePasskeyImportPkcs8(pemToStandardBase64(pem));
+		expect(back.privateKey).toBe(passkey.privateKey);
+		expect(back.publicKeyCose).toBe(passkey.publicKeyCose);
+	});
+
+	it("writes an Ed25519 key in KeePassXC's own layout", async () => {
+		// The seed of the throwaway key the KeePassXC import tests use.
+		const pem = `-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIOOO0h6TPWiDuKE/5iLREORnBCswBsTNmP6RRAqHpA6z
+-----END PRIVATE KEY-----
+`;
+		const seed = bytesToBase64(base64ToBytes(pemToStandardBase64(pem)).slice(16));
+		const e = withPasskey({ ...passkey, alg: -8, privateKey: seed });
+		expect(value(e, "KPEX_PASSKEY_PRIVATE_KEY_PEM")).toBe(pem);
+	});
+
+	// KeePassXC keeps one passkey per entry, so a second one needs an entry of its own. Appended
+	// after every vault entry, so the n-th entry written is still the n-th entry given.
+	it("gives each further passkey an entry of its own, after every vault entry", async () => {
+		const second = await makePasskey({
+			credentialId: bytesToBase64(Uint8Array.of(9, 9, 9)),
+			userName: "octocat-work",
+		});
+		const card: EntryData = {
+			type: "card",
+			name: "Personal Visa",
+			cardholderName: "Jane Q. Doe",
+			number: "4111111111111111",
+			expMonth: "8",
+			expYear: "2027",
+			cvv: "123",
+		};
+		const out = toKdbxEntries([withPasskey(passkey, second), card]);
+		const get = (i: number, key: string) => out[i]?.strings.find((s) => s.key === key)?.value;
+		expect(out).toHaveLength(3);
+		expect(get(0, "KPEX_PASSKEY_CREDENTIAL_ID")).toBe("--__AQ");
+		expect(get(1, "Title")).toBe("Personal Visa");
+		expect(get(2, "Title")).toBe("GitHub");
+		expect(get(2, "UserName")).toBe("octocat-work");
+		expect(get(2, "URL")).toBe("https://github.com");
+		expect(get(2, "KPEX_PASSKEY_CREDENTIAL_ID")).toBe("CQkJ");
+		// The login's password stays on the login; a passkey's entry holds the passkey alone.
+		expect(get(2, "Password")).toBeUndefined();
+	});
+
+	it("refuses a passkey whose key it can't write, naming its entry", async () => {
+		const e = withPasskey({ ...passkey, privateKey: bytesToBase64(new Uint8Array(3)) });
+		expect(() => toKdbxEntries([e])).toThrow(UnexportablePasskeyError);
+		expect(() => toKdbxEntries([e])).toThrow(/GitHub/);
+	});
+
+	it("brings a passkey back into Bramble exactly as it was", async () => {
+		const back = await roundTrip(withPasskey(passkey), testParserContext);
+		expect(back.type === "login" && back.passkeys).toEqual([passkey]);
+		expect(back.customFields?.some((f) => f.key.startsWith("KPEX_"))).toBeFalsy();
+	});
+
+	it("brings a further passkey back as a login of its own", async () => {
+		const second = await makePasskey({ credentialId: bytesToBase64(Uint8Array.of(9, 9, 9)) });
+		const [first, own] = await roundTripAll([withPasskey(passkey, second)], testParserContext);
+		expect(first?.type === "login" && first.passkeys).toEqual([passkey]);
+		expect(own?.type === "login" && own.passkeys).toEqual([second]);
 	});
 });
 
@@ -294,6 +440,33 @@ describe("toKdbxExport", () => {
 			{ key: "Title", value: "Attachments", protected: false },
 		]);
 		expect(out.files.map((f) => f.entry)).toEqual([1, 1, 0]);
+	});
+
+	it("keeps attachments on their entries when passkeys add entries", async () => {
+		const passkey = await makePasskey();
+		const second = await makePasskey({ credentialId: bytesToBase64(Uint8Array.of(9, 9, 9)) });
+		const github: EntryData & { id: string } = {
+			id: "e1",
+			type: "login",
+			name: "GitHub",
+			urls: [],
+			username: "u",
+			password: "p",
+			passkeys: [passkey, second],
+		};
+		const out = await toKdbxExport(
+			[github, login("e2", "Deed")],
+			[fileRecord({ id: "f1", entryId: "e2" }), fileRecord({ id: "f2", entryId: "gone" })],
+			"Attachments",
+			named(),
+		);
+		expect(out.entries.map((e) => e.strings.find((s) => s.key === "Title")?.value)).toEqual([
+			"GitHub",
+			"Deed",
+			"GitHub",
+			"Attachments",
+		]);
+		expect(out.files.map((f) => f.entry)).toEqual([1, 3]);
 	});
 
 	it("adds no extra entry when every attachment has one", async () => {

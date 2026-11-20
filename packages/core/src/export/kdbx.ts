@@ -13,9 +13,14 @@
 // natural KeePass home for them would be the recycle-bin group, but this writer emits a
 // flat entry list (the KDBX writer takes entries, not groups), and an archived entry is not
 // deleted anyway. So the state rides as a field, on the same terms as the type label.
+//
+// Passkeys go in as KeePassXC stores them (see import/keepass-passkey.ts), so KeePassXC signs in
+// with them. KeePassXC holds one passkey per entry: a login's first sits on the login, and each
+// further one gets an entry of its own.
 
 import type { KdbxSaveEntry, KdbxSaveFile } from "../adapters/crypto";
-import type { EntryData } from "../hooks/useVault";
+import type { EntryData, LoginEntryData, PasskeyCredential } from "../hooks/useVault";
+import { keepassPasskeyAttributes } from "../import/keepass-passkey";
 import type { FileRecord } from "../sync";
 import { parseTotp } from "../util/totp";
 import type { FileMeta } from "../vault/file-mutations";
@@ -69,16 +74,35 @@ function addTotp(f: Fields, totp: string): void {
 	else f.add("TOTP Seed", totp, true);
 }
 
-function toFields(e: EntryData): Pair[] {
-	const f = new Fields();
-	f.add("Title", e.name);
-	f.add("Notes", e.notes);
+/** A stored passkey whose key has no PKCS#8 form. Only a damaged passkey has one. */
+export class UnexportablePasskeyError extends Error {
+	constructor(readonly entryName: string) {
+		super(`a passkey on "${entryName}" has a key that can't be written`);
+		this.name = "UnexportablePasskeyError";
+	}
+}
+
+function addPasskey(f: Fields, p: PasskeyCredential, entryName: string): void {
+	const attributes = keepassPasskeyAttributes(p);
+	if (!attributes) throw new UnexportablePasskeyError(entryName);
+	for (const a of attributes) f.add(a.key, a.value, a.protected);
+}
+
+/** Tags and the archived state, which a login's further passkeys share with it. */
+function addLabels(f: Fields, e: EntryData): void {
 	// KeePass has a first-class Tags element and the Rust writer lifts this pair into it,
 	// so tags land in a KeePass client's own tag column, not a custom field. Comma-joined
 	// is KeePass's own separator.
 	if (e.tags?.length) f.add("Tags", e.tags.join(","));
 	// ISO 8601 rather than epoch ms: a human reading the field in KeePass should see a date.
 	if (e.archivedAt !== undefined) f.add("Archived", new Date(e.archivedAt).toISOString());
+}
+
+function toFields(e: EntryData): Pair[] {
+	const f = new Fields();
+	f.add("Title", e.name);
+	f.add("Notes", e.notes);
+	addLabels(f, e);
 
 	if (e.type === "login") {
 		f.add("UserName", e.username);
@@ -89,6 +113,8 @@ function toFields(e: EntryData): Pair[] {
 		f.add("URL", first);
 		for (const [i, u] of rest.entries()) f.add(`URL ${i + 2}`, u);
 		if (e.totp) addTotp(f, e.totp);
+		const [passkey] = e.passkeys ?? [];
+		if (passkey) addPasskey(f, passkey, e.name);
 	} else if (e.type === "card") {
 		f.add("Cardholder Name", e.cardholderName);
 		f.add("Number", e.number, true);
@@ -107,13 +133,33 @@ function toFields(e: EntryData): Pair[] {
 	return f.done();
 }
 
-/** Map decrypted vault entries to the String pairs the KDBX writer expects. */
-export function toKdbxEntries(entries: readonly EntryData[]): KdbxSaveEntry[] {
-	return entries.map((e) => ({ strings: toFields(e) }));
+/** A login's further passkey, as KeePassXC files one: titled, with its account and site. */
+function passkeyEntryFields(e: LoginEntryData, p: PasskeyCredential): Pair[] {
+	const f = new Fields();
+	f.add("Title", e.name);
+	addLabels(f, e);
+	f.add("UserName", p.userName);
+	f.add("URL", `https://${p.rpId}`);
+	addPasskey(f, p, e.name);
+	return f.done();
 }
 
 /**
- * A whole vault's KeePass export: its entries, and every attachment on the entry it belongs to.
+ * Map decrypted vault entries to the KeePass entries the KDBX writer expects. The n-th entry
+ * written is the n-th one given; after them comes one for each passkey past a login's first.
+ */
+export function toKdbxEntries(entries: readonly EntryData[]): KdbxSaveEntry[] {
+	const out = entries.map((e) => ({ strings: toFields(e) }));
+	for (const e of entries) {
+		if (e.type !== "login") continue;
+		for (const p of e.passkeys?.slice(1) ?? []) out.push({ strings: passkeyEntryFields(e, p) });
+	}
+	return out;
+}
+
+/**
+ * A whole vault's KeePass export: its entries and passkeys, and every attachment on the entry it
+ * belongs to.
  * One whose entry is gone (deleted on another device before the file's record caught up) goes
  * on one extra entry titled `looseTitle`, rather than not at all.
  */

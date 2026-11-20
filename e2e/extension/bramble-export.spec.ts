@@ -15,8 +15,8 @@ import { createVault, openPopup, optionsUrl, STRONG_PW } from "./helpers";
 // a real file in the browser and opened it again, so a mismatch between the Rust field names and
 // the TS interface would have gone unnoticed until a user hit it.
 //
-// The passkey fixture is deliberate. Carrying passkeys is the reason this format exists rather
-// than the KDBX export, so a round trip that quietly dropped them would otherwise still pass.
+// The passkey fixture is deliberate: a round trip that quietly dropped them would otherwise
+// still pass.
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const PASSKEY_FIXTURE = path.resolve(
@@ -103,10 +103,7 @@ test("exports a selection as a .bramble the app can read back", async ({
 	await expect(back.getByRole("heading", { name: /Imported 7 items/i })).toBeVisible();
 });
 
-test("the round trip carries passkeys, which the KDBX export cannot", async ({
-	context,
-	extensionId,
-}) => {
+test("the round trip carries passkeys", async ({ context, extensionId }) => {
 	const setup = await context.newPage();
 	await createVault(setup, extensionId);
 	await seedEntries(setup, extensionId);

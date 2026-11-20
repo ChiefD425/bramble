@@ -1,6 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { base64ToBytes, base64UrlToBase64, base64UrlToBytes, bytesToBase64 } from "../util/bytes";
-import { pkcs8FromScalar } from "./passkey-key";
+import {
+	base64ToBytes,
+	base64UrlToBase64,
+	base64UrlToBytes,
+	bytesToBase64,
+	bytesToBase64Url,
+} from "../util/bytes";
+import { COSE_EDDSA, COSE_ES256 } from "../vault/passkey";
+import { pkcs8FromKey, pkcs8FromScalar, pkcs8Pem } from "./passkey-key";
 import { fakePasskeyImportPkcs8 } from "./test-crypto";
 
 // The vault stores the bare 32-byte P-256 scalar (core-rust `secret.to_bytes()`), while CXF
@@ -64,5 +71,48 @@ describe("what we export survives a real import", () => {
 		const cose = base64ToBytes(material.publicKeyCose);
 		expect([...cose.slice(0, 7)]).toEqual([0xa5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01]);
 		expect(cose).toHaveLength(77);
+	});
+});
+
+describe("pkcs8FromKey", () => {
+	// RFC 8410's v1 layout, the one KeePassXC writes: keepass-passkeys-real.kdbx, which KeePassXC
+	// itself saved, opens with this same 16-byte header. This throwaway key is the one the KeePassXC
+	// import tests use.
+	const KEEPASSXC_ED25519 = "MC4CAQAwBQYDK2VwBCIEIOOO0h6TPWiDuKE/5iLREORnBCswBsTNmP6RRAqHpA6z";
+	const seed = bytesToBase64(base64ToBytes(KEEPASSXC_ED25519).slice(16));
+
+	it("wraps an Ed25519 seed byte for byte as KeePassXC stores the key", () => {
+		expect(bytesToBase64(pkcs8FromKey(COSE_EDDSA, seed) ?? new Uint8Array())).toBe(
+			KEEPASSXC_ED25519,
+		);
+	});
+
+	it("gives an Ed25519 key WebCrypto reads back as the same seed", async () => {
+		const der = pkcs8FromKey(COSE_EDDSA, seed) ?? new Uint8Array();
+		const key = await crypto.subtle.importKey("pkcs8", der as BufferSource, "Ed25519", true, [
+			"sign",
+		]);
+		const jwk = await crypto.subtle.exportKey("jwk", key);
+		expect(bytesToBase64(base64UrlToBytes(jwk.d ?? ""))).toBe(seed);
+	});
+
+	it("wraps a P-256 scalar as the CXF export does", () => {
+		const der = pkcs8FromKey(COSE_ES256, scalar) ?? new Uint8Array();
+		expect(bytesToBase64Url(der)).toBe(pkcs8FromScalar(scalar));
+	});
+
+	it("refuses an algorithm it has no layout for, and a key of the wrong size", () => {
+		expect(pkcs8FromKey(-257, scalar)).toBeNull();
+		expect(pkcs8FromKey(COSE_EDDSA, bytesToBase64(new Uint8Array(31)))).toBeNull();
+		expect(pkcs8FromKey(COSE_ES256, "not base64 !!")).toBeNull();
+	});
+});
+
+describe("pkcs8Pem", () => {
+	it("lays the key out as KeePassXC does: 64-character lines and a closing newline", () => {
+		const b64 = "A".repeat(64) + "B".repeat(28);
+		expect(pkcs8Pem(b64)).toBe(
+			`-----BEGIN PRIVATE KEY-----\n${"A".repeat(64)}\n${"B".repeat(28)}\n-----END PRIVATE KEY-----\n`,
+		);
 	});
 });

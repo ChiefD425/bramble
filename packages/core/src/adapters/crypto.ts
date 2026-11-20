@@ -260,7 +260,7 @@ export interface CryptoAdapter {
 	/**
 	 * Seal `entriesJson` into a portable vault under a key generated for that file alone,
 	 * leaving the session VEK untouched. The caller frames the result as a VLT1 blob.
-	 * Unlike `saveKdbx` this is lossless, so it is the export that carries passkeys.
+	 * Unlike `saveKdbx` this is lossless: entries keep their type and every field as stored.
 	 *
 	 * Optional, like `saveKdbx`: a platform opts in once its binding layer exposes the
 	 * core calls, and the UI gates on their presence rather than showing a broken action.
