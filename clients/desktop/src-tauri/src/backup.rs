@@ -27,6 +27,7 @@ use tauri::ipc::{InvokeBody, Request};
 use vault_crypto::sigv4::{sign_s3, S3Credentials, SignRequest};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
+use crate::oauth::{self, Provider, TokenCache};
 use crate::secure_store;
 
 type Res<T> = Result<T, String>;
@@ -60,6 +61,14 @@ pub enum AuthSpec {
     },
     /// Basic auth with credentials supplied by the caller (no credential store on this machine).
     BasicInline { username: String, password: String },
+    /// Google Drive or Dropbox: a bearer minted here from the stored refresh token.
+    OAuth { provider: Provider },
+    /// The same, with the refresh token supplied by the caller (no credential store).
+    OAuthInline {
+        provider: Provider,
+        #[serde(rename = "refreshToken")]
+        refresh_token: String,
+    },
 }
 
 impl AuthSpec {
@@ -67,7 +76,10 @@ impl AuthSpec {
     /// origin pin applies. An inline secret is the caller's own and needs no pin: it already had
     /// the credential before it called.
     fn uses_stored_secret(&self) -> bool {
-        matches!(self, AuthSpec::S3 { .. } | AuthSpec::Basic)
+        matches!(
+            self,
+            AuthSpec::S3 { .. } | AuthSpec::Basic | AuthSpec::OAuth { .. }
+        )
     }
 }
 
@@ -109,7 +121,11 @@ struct StoredCreds {
 /// addresses many paths under one origin.
 fn origin_of(url: &reqwest::Url) -> String {
     match url.port() {
-        Some(port) => format!("{}://{}:{port}", url.scheme(), url.host_str().unwrap_or_default()),
+        Some(port) => format!(
+            "{}://{}:{port}",
+            url.scheme(),
+            url.host_str().unwrap_or_default()
+        ),
         None => format!("{}://{}", url.scheme(), url.host_str().unwrap_or_default()),
     }
 }
@@ -142,6 +158,9 @@ enum Resolved {
 /// before it called, so pinning it would restrict nothing that is not already lost.
 fn resolve(auth: &AuthSpec, stored_json: Option<&str>, url: &reqwest::Url) -> Res<Resolved> {
     match auth {
+        AuthSpec::OAuth { .. } | AuthSpec::OAuthInline { .. } => {
+            return Err("an OAuth request takes a bearer, not a signature".into())
+        }
         AuthSpec::S3Inline {
             region,
             access_key_id,
@@ -260,6 +279,110 @@ fn prepare(
             Ok((url, out))
         }
     }
+}
+
+/// A stored OAuth target's secret: which provider it is for, and the refresh token.
+#[derive(Deserialize, Zeroize, ZeroizeOnDrop)]
+struct OAuthSecrets {
+    #[zeroize(skip)]
+    provider: Provider,
+    #[serde(rename = "refreshToken")]
+    refresh_token: String,
+}
+
+/// The provider and refresh token for an OAuth request, after the checks a stored secret gets:
+/// the URL must be one of the provider's own API origins (hard-coded, never the caller's), and a
+/// stored token must be that provider's. `None` for any other kind of auth.
+fn oauth_refresh(
+    auth: &AuthSpec,
+    stored_json: Option<&str>,
+    url: &reqwest::Url,
+) -> Res<Option<(Provider, Zeroizing<String>)>> {
+    let (provider, inline) = match auth {
+        AuthSpec::OAuth { provider } => (*provider, None),
+        AuthSpec::OAuthInline {
+            provider,
+            refresh_token,
+        } => (*provider, Some(refresh_token)),
+        _ => return Ok(None),
+    };
+    let allowed = oauth::meta(provider).api_origins;
+    let origin = origin_of(url);
+    if !allowed.contains(&origin.as_str()) {
+        return Err(format!(
+            "refusing to authenticate a request to {origin}: this target's credentials are only for {}",
+            allowed.join(", ")
+        ));
+    }
+    if let Some(token) = inline {
+        return Ok(Some((provider, Zeroizing::new(token.clone()))));
+    }
+    let stored: StoredCreds =
+        serde_json::from_str(stored_json.ok_or("no stored credentials for this backup target")?)
+            .map_err(|e| format!("stored backup credentials unreadable: {e}"))?;
+    let secrets: OAuthSecrets = serde_json::from_value(stored.secrets)
+        .map_err(|e| format!("stored sign-in unreadable: {e}"))?;
+    if secrets.provider != provider {
+        return Err(format!(
+            "refusing to authenticate a request for {provider:?}: these credentials are for {:?}",
+            secrets.provider
+        ));
+    }
+    Ok(Some((
+        provider,
+        Zeroizing::new(secrets.refresh_token.clone()),
+    )))
+}
+
+fn with_bearer(mut headers: Vec<(String, String)>, token: &str) -> Vec<(String, String)> {
+    headers.push(("Authorization".to_string(), format!("Bearer {token}")));
+    headers
+}
+
+/// Why this auth can't stream an upload, if it can't. S3 signs its body, so it goes up in parts.
+fn stream_refusal(auth: &AuthSpec) -> Option<&'static str> {
+    matches!(auth, AuthSpec::S3 { .. } | AuthSpec::S3Inline { .. })
+        .then_some("S3 uploads go up in parts")
+}
+
+fn token_url(p: Provider) -> String {
+    oauth::meta(p).token_url.to_string()
+}
+
+/// Where a target's access token is cached: its credential account, or for an inline token
+/// (no credential store) the target alone.
+fn cache_key(auth: &AuthSpec, vault_id: &str, target_id: &str) -> String {
+    match auth {
+        AuthSpec::OAuthInline { .. } => format!("inline:{target_id}"),
+        _ => account(vault_id, target_id),
+    }
+}
+
+/// A request's final URL and headers: a bearer for OAuth, otherwise signed by `prepare`. `fresh`
+/// mints a new token rather than reuse the cached one.
+#[allow(clippy::too_many_arguments)]
+async fn authenticate(
+    auth: &AuthSpec,
+    stored_json: Option<&str>,
+    method: &str,
+    url: &str,
+    headers: Vec<(String, String)>,
+    body: &[u8],
+    key: &str,
+    fresh: bool,
+) -> Res<(reqwest::Url, Vec<(String, String)>)> {
+    let parsed = reqwest::Url::parse(url).map_err(|e| format!("backup url: {e}"))?;
+    if let Some((provider, refresh)) = oauth_refresh(auth, stored_json, &parsed)? {
+        let cache = TokenCache::global();
+        if fresh {
+            cache.evict(key);
+        }
+        let token = cache
+            .bearer(key, provider, &token_url(provider), &refresh)
+            .await?;
+        return Ok((parsed, with_bearer(headers, &token)));
+    }
+    prepare(auth, stored_json, method, url, headers, body, &amz_date())
 }
 
 /// Event the main window listens for to evaluate every vault's schedule.
@@ -412,8 +535,8 @@ pub async fn backup_stream_open(
     if window.label() != crate::lifetime::MAIN {
         return Err("backups run from the main window only".into());
     }
-    if matches!(auth, AuthSpec::S3 { .. } | AuthSpec::S3Inline { .. }) {
-        return Err("S3 uploads go up in parts".into());
+    if let Some(why) = stream_refusal(&auth) {
+        return Err(why.into());
     }
     let stored = if auth.uses_stored_secret() {
         Some(
@@ -423,15 +546,19 @@ pub async fn backup_stream_open(
     } else {
         None
     };
-    let (url, headers) = prepare(
+    // Always a fresh token: a streamed upload's reply comes back through `stream.rs`, which has
+    // no way to evict one the provider refused.
+    let (url, headers) = authenticate(
         &auth,
         stored.as_deref(),
         &method,
         &url,
         headers.into_iter().collect(),
         &[],
-        &amz_date(),
-    )?;
+        &cache_key(&auth, &vault_id, &target_id),
+        true,
+    )
+    .await?;
     Ok(crate::stream::open_http(method, url, headers, size))
 }
 
@@ -459,19 +586,27 @@ async fn send(window: &tauri::Window, p: SendParams, body: Vec<u8>) -> Res<HttpR
     } else {
         None
     };
-    let (url, headers) = prepare(
+    let key = cache_key(&p.auth, &p.vault_id, &p.target_id);
+    let (url, headers) = authenticate(
         &p.auth,
         stored.as_deref(),
         &p.method,
         &p.url,
         p.headers.into_iter().collect(),
         &body,
-        &amz_date(),
-    )?;
+        &key,
+        false,
+    )
+    .await?;
 
     // The upload timeout rather than the API one: this is a vault backup over someone's home
     // connection, and it runs with nobody watching.
-    crate::net::send(&p.method, url, headers, body, crate::net::UPLOAD_TIMEOUT).await
+    let reply = crate::net::send(&p.method, url, headers, body, crate::net::UPLOAD_TIMEOUT).await?;
+    // The provider refused the cached token: the caller's retry gets a fresh one.
+    if reply.status == 401 {
+        TokenCache::global().evict(&key);
+    }
+    Ok(reply)
 }
 
 #[cfg(test)]
@@ -537,9 +672,9 @@ mod tests {
                 region: "us-east-1".into(),
             },
             Some(
-            stored(
-                "https://minio.example.com",
-                r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
+                stored(
+                    "https://minio.example.com",
+                    r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
                 )
                 .as_str(),
             ),
@@ -556,9 +691,9 @@ mod tests {
                 region: "us-east-1".into(),
             },
             Some(
-            stored(
-                "https://minio.example.com:9000",
-                r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
+                stored(
+                    "https://minio.example.com:9000",
+                    r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
                 )
                 .as_str(),
             ),
@@ -583,9 +718,9 @@ mod tests {
         let (url, headers) = prepare(
             &AuthSpec::Basic,
             Some(
-            stored(
-                "http://localhost:8080",
-                r#"{"username":"admin","password":"Bramble-test-123"}"#,
+                stored(
+                    "http://localhost:8080",
+                    r#"{"username":"admin","password":"Bramble-test-123"}"#,
                 )
                 .as_str(),
             ),
@@ -625,21 +760,144 @@ mod tests {
     // The attack this whole arrangement exists to stop: the webview names the URL, so without a
     // pin it could ask for the credential to be attached to a request at its own server and read
     // it straight out of the log. Refusing to hand the secret back is not enough on its own.
+    fn gdrive_stored() -> String {
+        stored(
+            "oauth:gdrive",
+            r#"{"provider":"gdrive","refreshToken":"RT"}"#,
+        )
+    }
+
+    #[test]
+    fn oauth_requests_get_a_bearer_and_an_untouched_url() {
+        let url = reqwest::Url::parse("https://www.googleapis.com/drive/v3/files?q=x").unwrap();
+        let auth = AuthSpec::OAuth {
+            provider: Provider::Gdrive,
+        };
+        let (provider, refresh) = oauth_refresh(&auth, Some(&gdrive_stored()), &url)
+            .unwrap()
+            .unwrap();
+        assert_eq!(provider, Provider::Gdrive);
+        assert_eq!(*refresh, "RT");
+        let headers = with_bearer(vec![("Depth".into(), "1".into())], "AT");
+        assert_eq!(header(&headers, "Authorization"), "Bearer AT");
+        assert_eq!(header(&headers, "Depth"), "1");
+        assert!(oauth_refresh(&AuthSpec::Basic, None, &url)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn an_oauth_token_is_refused_off_its_provider() {
+        let auth = AuthSpec::OAuth {
+            provider: Provider::Gdrive,
+        };
+        for url in [
+            "https://attacker.example/collect",
+            "https://www.googleapis.com.attacker.example/x",
+            "http://www.googleapis.com/x",
+            "https://api.dropboxapi.com/2/files/list_folder",
+        ] {
+            let url = reqwest::Url::parse(url).unwrap();
+            let err = oauth_refresh(&auth, Some(&gdrive_stored()), &url).unwrap_err();
+            assert!(err.contains("refusing"), "{url}: {err}");
+        }
+        let inline = AuthSpec::OAuthInline {
+            provider: Provider::Gdrive,
+            refresh_token: "RT".into(),
+        };
+        let url = reqwest::Url::parse("https://attacker.example/x").unwrap();
+        assert!(oauth_refresh(&inline, None, &url)
+            .unwrap_err()
+            .contains("refusing"));
+    }
+
+    #[test]
+    fn a_stored_token_for_another_provider_is_refused() {
+        let url = reqwest::Url::parse("https://www.googleapis.com/drive/v3/files").unwrap();
+        let dropbox = stored(
+            "oauth:dropbox",
+            r#"{"provider":"dropbox","refreshToken":"RT"}"#,
+        );
+        let err = oauth_refresh(
+            &AuthSpec::OAuth {
+                provider: Provider::Gdrive,
+            },
+            Some(&dropbox),
+            &url,
+        )
+        .unwrap_err();
+        assert!(err.contains("refusing"), "{err}");
+    }
+
+    #[test]
+    fn oauth_auth_reads_the_json_the_webview_sends() {
+        let a: AuthSpec = serde_json::from_str(r#"{"kind":"oAuth","provider":"gdrive"}"#).unwrap();
+        assert!(matches!(
+            a,
+            AuthSpec::OAuth {
+                provider: Provider::Gdrive
+            }
+        ));
+        let b: AuthSpec = serde_json::from_str(
+            r#"{"kind":"oAuthInline","provider":"dropbox","refreshToken":"RT"}"#,
+        )
+        .unwrap();
+        assert!(
+            matches!(b, AuthSpec::OAuthInline { provider: Provider::Dropbox, ref refresh_token } if refresh_token == "RT")
+        );
+    }
+
+    #[test]
+    fn oauth_streams_are_allowed() {
+        assert!(stream_refusal(&AuthSpec::OAuth {
+            provider: Provider::Gdrive
+        })
+        .is_none());
+        assert!(stream_refusal(&AuthSpec::Basic).is_none());
+        assert!(stream_refusal(&AuthSpec::S3 { region: "r".into() }).is_some());
+    }
+
+    #[test]
+    fn oauth_is_never_signed_as_basic() {
+        let err = prepare(
+            &AuthSpec::OAuth {
+                provider: Provider::Gdrive,
+            },
+            Some(&gdrive_stored()),
+            "GET",
+            "https://www.googleapis.com/drive/v3/files",
+            vec![],
+            b"",
+            STAMP,
+        )
+        .unwrap_err();
+        assert!(err.contains("bearer"), "{err}");
+    }
+
     #[test]
     fn a_credential_is_refused_for_any_origin_but_its_own() {
         for (label, url) in [
             ("attacker host", "https://attacker.example/collect"),
             ("same host, other scheme", "http://cloud.example.com/dav/"),
-            ("same host, other port", "https://cloud.example.com:8443/dav/"),
-            ("subdomain", "https://cloud.example.com.attacker.example/dav/"),
-            ("userinfo trick", "https://cloud.example.com@attacker.example/dav/"),
+            (
+                "same host, other port",
+                "https://cloud.example.com:8443/dav/",
+            ),
+            (
+                "subdomain",
+                "https://cloud.example.com.attacker.example/dav/",
+            ),
+            (
+                "userinfo trick",
+                "https://cloud.example.com@attacker.example/dav/",
+            ),
         ] {
             let err = prepare(
                 &AuthSpec::Basic,
                 Some(
-            stored(
-                    "https://cloud.example.com",
-                    r#"{"username":"admin","password":"pw"}"#,
+                    stored(
+                        "https://cloud.example.com",
+                        r#"{"username":"admin","password":"pw"}"#,
                     )
                     .as_str(),
                 ),
@@ -664,9 +922,9 @@ mod tests {
                 prepare(
                     &AuthSpec::Basic,
                     Some(
-            stored(
-                        "https://cloud.example.com",
-                        r#"{"username":"admin","password":"pw"}"#,
+                        stored(
+                            "https://cloud.example.com",
+                            r#"{"username":"admin","password":"pw"}"#,
                         )
                         .as_str(),
                     ),
