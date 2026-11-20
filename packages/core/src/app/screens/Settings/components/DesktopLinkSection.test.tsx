@@ -378,7 +378,9 @@ describe("when both sides have entries", () => {
 	it("hides nothing when the vaults stay separate", async () => {
 		twoVaults();
 		await choose(/keep them separate/i);
-		await waitFor(() => expect(h.steps).toContain("join"));
+		// Its last step: asked any earlier, the answer says nothing, and the rest of the flow would
+		// land in the next test's steps.
+		await waitFor(() => expect(h.steps).toContain("attach:joined"));
 		expect(h.steps).not.toContain("hide");
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
@@ -431,6 +433,9 @@ describe("when both sides have entries", () => {
 		await waitFor(() => expect(h.steps.slice(0, 3)).toEqual(["join", "attach:joined", "import"]));
 		expect(h.imported).toHaveLength(2);
 		expect(h.imported?.[0]).not.toHaveProperty("id");
+		// Let the flow finish: its hide comes after a hash and a disk read, and would otherwise
+		// land in the next test's steps.
+		await waitFor(() => expect(h.steps).toContain("hide"));
 	});
 
 	it("keeps them separate by copying nothing", async () => {
