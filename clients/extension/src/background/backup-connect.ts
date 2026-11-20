@@ -6,7 +6,9 @@
 // context awaiting the result. The background survives that, and a keepalive holds it
 // across the (possibly minutes-long, 2FA) sign-in. The resulting refresh token is
 // VEK-wrapped via the offscreen host and persisted as a backup target, so it shows up
-// whenever the popup is next opened. See docs/cloud-storage-backups.md.
+// whenever the popup is next opened. A provider whose client takes only loopback redirects
+// (Google Drive) signs in through oauth-redirect.ts instead: a loopback launchWebAuthFlow on
+// Firefox, a tab on Chromium. See docs/cloud-storage-backups.md.
 
 import {
 	type BackupTargetConfig,
@@ -21,6 +23,13 @@ import {
 } from "@core/backup/oauth";
 import { api } from "../platform-api";
 import { extensionStorage } from "../storage";
+import {
+	captureRedirectFromTab,
+	isGeckoRedirect,
+	loopbackRedirectUri,
+	randomPort,
+	type TabsLike,
+} from "./oauth-redirect";
 import { sendToOffscreen } from "./offscreen-client";
 import { extensionOnly, type MessageEnvelope, on } from "./router";
 import { getActiveVaultId, vaultLocked } from "./session";
@@ -56,7 +65,12 @@ async function connectOAuth(message: {
 	if (vaultLocked()) return { ok: false, error: "Unlock Bramble first, then connect." };
 
 	const meta = OAUTH_PROVIDERS[providerId];
-	const redirectUri = api.identity.getRedirectURL();
+	const identityRedirect = api.identity.getRedirectURL();
+	const redirectUri = meta.loopbackRedirect
+		? loopbackRedirectUri(identityRedirect, randomPort())
+		: identityRedirect;
+	// Chromium's launchWebAuthFlow can't return to a loopback, so that sign-in runs in a tab.
+	const inTab = meta.loopbackRedirect === true && !isGeckoRedirect(identityRedirect);
 	const pkce = await generatePkce();
 	const state = crypto.randomUUID();
 
@@ -74,7 +88,9 @@ async function connectOAuth(message: {
 	const stop = keepAlive();
 	let redirect: string | undefined;
 	try {
-		redirect = await api.identity.launchWebAuthFlow({ url: url.toString(), interactive: true });
+		redirect = inTab
+			? await captureRedirectFromTab(api.tabs as unknown as TabsLike, url.toString(), redirectUri)
+			: await api.identity.launchWebAuthFlow({ url: url.toString(), interactive: true });
 	} catch (e) {
 		return { ok: false, error: `Sign-in was cancelled or failed: ${(e as Error).message}` };
 	} finally {

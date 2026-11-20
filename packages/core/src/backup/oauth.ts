@@ -20,6 +20,9 @@ export interface OAuthProviderMeta {
 	/** Sent with the code exchange and every refresh. Absent for a public client (Dropbox). An
 	 * installed app's secret is not a secret, so Google allows shipping its Desktop client's. */
 	clientSecret?: string;
+	/** The client accepts only loopback redirects (Google's Desktop app type), not the
+	 * extension's own identity URL. */
+	loopbackRedirect?: boolean;
 }
 
 // Public app keys, safe to ship in the client (PKCE, no secret). Registered by the
@@ -48,6 +51,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProviderId, OAuthProviderMeta> = {
 		tokenUrl: "https://oauth2.googleapis.com/token",
 		clientId: GDRIVE_CLIENT_ID,
 		clientSecret: atob(GDRIVE_CLIENT_SECRET_B64),
+		loopbackRedirect: true,
 		// Only the files Bramble creates. Non-sensitive, so no Google security assessment.
 		scopes: ["https://www.googleapis.com/auth/drive.file"],
 		// Google returns a refresh token only for offline access, and only on a fresh consent.
