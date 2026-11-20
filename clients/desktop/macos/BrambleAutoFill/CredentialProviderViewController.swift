@@ -6,6 +6,7 @@
 
 import AppKit
 import AuthenticationServices
+import Combine
 import LocalAuthentication
 import os
 import Security
@@ -62,6 +63,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 	private var unlock: UnlockModel?
 	// Prompted once the view is on screen: before that, LocalAuthentication has nothing to sit over.
 	private var pendingTouchId = false
+	private var unlockResize: AnyCancellable?
 
 	// Sized from the start: the host presents this modally and waits, and a view it cannot lay
 	// out reads as a frozen browser.
@@ -185,6 +187,11 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 			onCancel: { [weak self] in self?.cancel(.userCanceled) })
 		unlock = model
 		show(UnlockView(model: model))
+		// An error line makes the view taller than the sheet, which would clip it top and bottom.
+		// objectWillChange fires before the change, so measure on the next turn.
+		unlockResize = model.objectWillChange.sink { [weak self] in
+			DispatchQueue.main.async { self?.fitToContent() }
+		}
 		if model.canTouchId {
 			pendingTouchId = true
 			if view.window != nil { DispatchQueue.main.async { self.promptTouchIdIfPending() } }
@@ -483,6 +490,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 	}
 
 	private func show<V: View>(_ content: V) {
+		unlockResize = nil
 		for child in children {
 			child.view.removeFromSuperview()
 			child.removeFromParent()
@@ -492,7 +500,12 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		hosting.view.frame = view.bounds
 		hosting.view.autoresizingMask = [.width, .height]
 		view.addSubview(hosting.view)
-		preferredContentSize = hosting.view.fittingSize
+		fitToContent()
+	}
+
+	private func fitToContent() {
+		guard let size = children.first?.view.fittingSize, size != preferredContentSize else { return }
+		preferredContentSize = size
 	}
 
 	private func cancel(_ code: ASExtensionError.Code) {
