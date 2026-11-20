@@ -25,6 +25,7 @@ mod menu;
 #[cfg(target_os = "linux")]
 mod native_webrtc;
 mod net;
+mod oauth;
 #[cfg(target_os = "macos")]
 mod otpauth;
 mod pairing;
