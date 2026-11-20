@@ -12,6 +12,7 @@ import {
 	clearBackoff,
 	credsAreOsHeld,
 	FOREIGN_CREDS_ERROR,
+	forAuthenticatingTransport,
 	keyVaultIdFor,
 	migrateBackupTargetsToVaults,
 	type TargetCreds,
@@ -278,10 +279,10 @@ export function useBackup() {
 	const connectOAuth = useCallback(
 		async (oauthId: OAuthProviderId, opts?: { targetId?: string }) => {
 			if (!shell.connectBackupOAuth) throw new Error("One-click sign-in isn't available here.");
-			await shell.connectBackupOAuth(oauthId, opts);
+			await shell.connectBackupOAuth(oauthId, { ...opts, vaultId: vaultId ?? undefined });
 			await reload();
 		},
-		[shell, reload],
+		[shell, reload, vaultId],
 	);
 
 	const removeTarget = useCallback(
@@ -360,13 +361,13 @@ export function useBackup() {
 						// it signs here with the secret in hand and only the sending goes native.
 						// The extension answers yes, gets undefined, and simply fetches.
 						const providerCfg = toProviderConfig(t, secrets);
-						const bt = createTarget(
-							providerCfg,
-							(credsAreOsHeld(creds) && vaultId
+						const shellTransport =
+							credsAreOsHeld(creds) && vaultId
 								? backupCreds?.transport(vaultId, t)
-								: backupCreds?.transportWithSecrets(t, secrets)) ??
-								(http ? signingTransport(providerCfg, http) : undefined),
-						);
+								: backupCreds?.transportWithSecrets(t, secrets);
+						const bt = shellTransport
+							? createTarget(forAuthenticatingTransport(providerCfg), shellTransport)
+							: createTarget(providerCfg, http ? signingTransport(providerCfg, http) : undefined);
 						const prefix = targetPrefixFor(t, vaultId ?? "", isDefault);
 						await runBackup(bt, body, {
 							fingerprint: plan.fingerprint,

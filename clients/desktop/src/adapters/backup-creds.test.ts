@@ -20,6 +20,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const { desktopBackupCreds } = await import("./backup-creds");
+const { createTarget } = await import("@core/backup");
+const { forAuthenticatingTransport, toProviderConfig } = await import("@core/backup/config");
 
 const target = {
 	id: "t1",
@@ -42,6 +44,46 @@ function decodeParams(header: string): Record<string, unknown> {
 	const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
 	return JSON.parse(new TextDecoder().decode(bytes));
 }
+
+describe("desktop OAuth targets", () => {
+	const gdrive = {
+		id: "g1",
+		providerId: "gdrive",
+		provider: "gdrive",
+		frequency: "daily",
+		keep: 3,
+		creds: { wrap: "os" },
+	} as unknown as BackupTargetConfig;
+	const authOf = (i: number) => (h.calls[i]!.args as { auth: unknown }).auth;
+
+	it("a stored Google Drive target authenticates as oAuth with its provider", async () => {
+		await desktopBackupCreds
+			.transport?.("v1", gdrive)
+			.send({ method: "GET", url: "https://www.googleapis.com/x" });
+		expect(authOf(0)).toEqual({ kind: "oAuth", provider: "gdrive" });
+	});
+
+	it("an unwrapped refresh token goes inline", async () => {
+		await desktopBackupCreds
+			.transportWithSecrets?.(gdrive, { refreshToken: "RT" })
+			.send({ method: "GET", url: "https://www.googleapis.com/x" });
+		expect(authOf(0)).toEqual({ kind: "oAuthInline", provider: "gdrive", refreshToken: "RT" });
+	});
+
+	it("a locked vault's target uploads with no token from the webview", async () => {
+		// The runner's path for an OS-held target: no secrets in hand, the shell authenticates.
+		const cfg = forAuthenticatingTransport(
+			toProviderConfig(gdrive, { username: "", password: "" }),
+		);
+		await createTarget(cfg, desktopBackupCreds.transport?.("v1", gdrive)).list("bramble/");
+		expect(h.calls.length).toBeGreaterThan(0);
+		for (const c of h.calls) {
+			const headers = (c.args as { headers?: Record<string, string> }).headers ?? {};
+			expect(Object.keys(headers).map((k) => k.toLowerCase())).not.toContain("authorization");
+			expect((c.args as { url: string }).url).not.toContain("oauth2.googleapis.com");
+		}
+	});
+});
 
 describe("desktop backup transport", () => {
 	it("returns the shell's response headers, by every path", async () => {

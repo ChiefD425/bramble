@@ -31,6 +31,7 @@ import {
 	stopEnrollInvite,
 	stopSync,
 } from "../sync/transport";
+import { connectBackupOAuth } from "./backup-connect";
 import { consumePendingPasskeys } from "./pending-passkeys";
 import { desktopStorage } from "./storage";
 import { streamInto } from "./stream";
@@ -59,6 +60,9 @@ export function registerOpenSetup(fn: (screen?: OptionsScreen) => void): void {
 
 export const desktopShell: ShellAdapter = {
 	appName: "Bramble",
+
+	// Google Drive and Dropbox: signed in from Rust, which keeps the refresh token.
+	connectBackupOAuth,
 
 	// The webview's user agent describes WKWebView, so sniffing it named this app "Browser on
 	// Mac": wrong, and indistinguishable from a real browser in the device list.

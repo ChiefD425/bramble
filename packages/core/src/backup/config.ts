@@ -178,6 +178,16 @@ export function toProviderConfig(cfg: BackupTargetConfig, secrets: BackupSecrets
 }
 
 /**
+ * A config for a transport that authenticates itself (the desktop's, in Rust): an OAuth target's
+ * tokens are left out, so the target neither mints its own nor adds a second Authorization.
+ */
+export function forAuthenticatingTransport(cfg: ProviderConfig): ProviderConfig {
+	if (cfg.kind !== "dropbox" && cfg.kind !== "gdrive") return cfg;
+	const { refreshToken: _r, accessToken: _a, ...rest } = cfg;
+	return rest;
+}
+
+/**
  * The folder backups live under, else "bramble". This is the user's own folder field:
  * `prefix` on S3, `path` on WebDAV (where it used to be baked into the base URL, which
  * nested snapshots one level deeper than the user asked for). Dropbox and Google Drive are

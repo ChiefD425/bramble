@@ -8,6 +8,7 @@ import {
 	backupPrefix,
 	backupTargetsKeyFor,
 	clearBackoff,
+	forAuthenticatingTransport,
 	isBackupTargetsKey,
 	migrateBackupTargetsToVaults,
 	normalizeS3,
@@ -171,6 +172,27 @@ describe("toProviderConfig", () => {
 			username: "admin",
 			password: "pw",
 		});
+	});
+
+	it("leaves an OAuth token out of a config whose transport authenticates", () => {
+		expect(
+			forAuthenticatingTransport({
+				kind: "gdrive",
+				refreshToken: "RT",
+				accessToken: "AT",
+				path: "W",
+			}),
+		).toEqual({ kind: "gdrive", path: "W" });
+		expect(forAuthenticatingTransport({ kind: "dropbox", refreshToken: "RT" })).toEqual({
+			kind: "dropbox",
+		});
+		const webdav = {
+			kind: "webdav" as const,
+			serverUrl: "https://d/",
+			username: "u",
+			password: "p",
+		};
+		expect(forAuthenticatingTransport(webdav)).toBe(webdav);
 	});
 
 	it("gives a Google Drive target its refresh token and subfolder", () => {

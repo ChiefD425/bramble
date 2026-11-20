@@ -19,6 +19,7 @@ import {
 	type BackupSecrets,
 	type BackupTargetConfig,
 	backupTargetsKeyFor,
+	forAuthenticatingTransport,
 	keyVaultIdFor,
 	metaListCache,
 	migrateBackupTargetsToVaults,
@@ -122,7 +123,9 @@ export async function runDueBackups(): Promise<void> {
 					// either way. Stored credentials stay in the shell; a vault-wrapped one (no
 					// credential store on this machine) is passed in with the request.
 					const target = createTarget(
-						toProviderConfig(t, secrets ?? { username: "", password: "" }),
+						forAuthenticatingTransport(
+							toProviderConfig(t, secrets ?? { username: "", password: "" }),
+						),
 						secrets === null
 							? desktopBackupCreds.transport(vaultId, t)
 							: desktopBackupCreds.transportWithSecrets(t, secrets),

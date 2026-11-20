@@ -172,7 +172,10 @@ export interface ShellAdapter {
 	 * still ends up with a saved target (visible on reopen). Extension only; absent on mobile, which
 	 * keeps the OAuth tiles "coming soon". See docs/cloud-storage-backups.md.
 	 */
-	connectBackupOAuth?(providerId: string, opts?: { targetId?: string }): Promise<void>;
+	connectBackupOAuth?(
+		providerId: string,
+		opts?: { targetId?: string; vaultId?: string },
+	): Promise<void>;
 	/** Apply the page-autofill switch to open tabs now (extension only; paired with the autofillToggle
 	 * capability). Persisting the pref is the caller's job; the background reads it per query anyway,
 	 * so this only exists to drop a dropdown that is already on screen. */

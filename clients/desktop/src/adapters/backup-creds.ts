@@ -15,13 +15,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { base64Json } from "./files";
 import { streamInto } from "./stream";
 
+const isOAuth = (provider: BackupTargetConfig["provider"]): provider is "dropbox" | "gdrive" =>
+	provider === "dropbox" || provider === "gdrive";
+
 /** Which stored secret the shell should apply, decided by the provider kind. */
-function authFor(target: BackupTargetConfig): { kind: "s3"; region: string } | { kind: "basic" } {
-	return target.provider === "s3" ? { kind: "s3", region: target.region ?? "" } : { kind: "basic" };
+function authFor(target: BackupTargetConfig) {
+	if (target.provider === "s3") return { kind: "s3" as const, region: target.region ?? "" };
+	if (isOAuth(target.provider)) return { kind: "oAuth" as const, provider: target.provider };
+	return { kind: "basic" as const };
 }
 
 /** The same, for a secret the caller unwrapped from the vault (no credential store here). */
 function inlineAuthFor(target: BackupTargetConfig, secrets: BackupSecrets) {
+	if (isOAuth(target.provider)) {
+		const s = secrets as { refreshToken: string };
+		return {
+			kind: "oAuthInline" as const,
+			provider: target.provider,
+			refreshToken: s.refreshToken,
+		};
+	}
 	if (target.provider === "s3") {
 		const s = secrets as { accessKeyId: string; secretAccessKey: string };
 		return {
