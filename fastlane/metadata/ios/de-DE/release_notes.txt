@@ -1,11 +1,10 @@
 Neu in dieser Version:
 
-- Die Suche durchsucht auch Notizen und zeigt Treffer im Namen zuerst an.
-- Nach dem Sperren der App gelangen Sie beim Entsperren zurück zum vorherigen Bildschirm, inklusive Ihrer Suche und Position in der Liste.
-- Die Tresorliste merkt sich die gewählte Sortierreihenfolge.
-- Das Synchronisierungsprotokoll zeigt, wann jeder Eintrag stattfand und um welches Gerät es sich handelt. Unter „Einstellungen > Synchronisierung“ gibt es die Schaltfläche „Jetzt synchronisieren“.
-- Die App informiert Sie, wenn eine neuere Version verfügbar ist.
-- Die Synchronisierung startet, sobald das erste von Ihnen eingeladene Gerät beitritt.
-- Geräte verbinden sich zuverlässiger für die Synchronisierung.
+- Wenn AutoFill für ein Registrierungsformular kein Login hat, wählen Sie „Neues Login“, um eines mit einem generierten Passwort zu erstellen und es in einem Schritt auszufüllen.
+- Sortieren Sie Ihren Tresor nach „Letzte Aktivitäten“: der jeweils letzte Zeitpunkt, zu dem Sie einen Eintrag verwendet, hinzugefügt oder bearbeitet haben.
+- Ein angezeigtes Passwort zeigt die Position jedes Zeichens, für Websites, die zum Beispiel nach dem 3. und 7. Zeichen fragen.
+- In 1Password archivierte Einträge bleiben beim Import archiviert.
+- Aus 1Password übernommene Logins behalten ihre ursprünglichen Datumsangaben.
+- Bramble ist jetzt auf Bengalisch verfügbar.
 
 Kein Konto, keine Cloud. Alles bleibt auf Ihren Geräten.

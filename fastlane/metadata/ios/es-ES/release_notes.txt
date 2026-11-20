@@ -1,11 +1,10 @@
-Novedades en esta versión:
+Novedades de esta versión:
 
-- La búsqueda también revisa las notas y muestra primero las coincidencias por nombre.
-- Cuando la app se bloquea, al desbloquearla se vuelve a la pantalla en la que estaba, con la búsqueda y la posición en la lista.
-- La lista de la bóveda recuerda el orden de clasificación elegido.
-- El registro de sincronización muestra cuándo se produjo cada línea y a qué dispositivo corresponde. Configuración > Sincronización incluye un botón Sincronizar ahora.
-- La app avisa cuando está disponible una versión más reciente.
-- La sincronización comienza en cuanto se une el primer dispositivo invitado.
-- Los dispositivos se conectan para sincronizarse de forma más fiable.
+- Cuando el autocompletado no tenga ninguna credencial para un formulario de registro, elija Nueva credencial para crear una con una contraseña generada y rellénela en un solo paso.
+- Ordene su bóveda por Actividad reciente: la fecha más reciente en la que usó, añadió o editó cada elemento.
+- Una contraseña revelada muestra la posición de cada carácter, para los sitios que piden, por ejemplo, el tercero y el séptimo.
+- Los elementos que archivó en 1Password permanecen archivados al importarlos.
+- Los inicios de sesión transferidos desde 1Password conservan sus fechas originales.
+- Bramble ya está disponible en bengalí.
 
 Sin cuenta, sin nube. Todo permanece en sus dispositivos.
