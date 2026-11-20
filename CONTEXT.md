@@ -32,8 +32,8 @@ module-level concepts that name good seams.
 - **Combined version**: what combining siblings that changed different parts writes
   (`core/sync/combine.ts`): a pure function of the siblings it replaces, stamped
   `~merge:<hash>`, so every device that combines the same set writes the same version.
-  The rules are a wire protocol, versioned by `COMBINE_RULES_VERSION`. Switched off by
-  `COMBINE_CONCURRENT_EDITS` until most devices record part stamps.
+  The rules are a wire protocol, versioned by `COMBINE_RULES_VERSION`. On since release
+  B2 (`COMBINE_CONCURRENT_EDITS`).
 - **EntryMutations** — the module (`core/vault/entry-mutations.ts`) that owns every
   local change to VaultEntries: add, import (bulk, one write), update, delete
   (single or bulk), archive/restore. Each mutation is a transition

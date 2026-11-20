@@ -31,11 +31,8 @@ import type { EntriesPayload } from "./entries-payload";
 import { compareHlc, type Hlc } from "./hlc";
 import { mergeEntriesPayload } from "./vault-merge";
 
-/** Release B2 sets this to true, once most devices record part stamps. */
-const SHIPPED_ON = false;
-/** Whether combining runs. A test build turns it on with VITE_COMBINE_CONCURRENT_EDITS=1. */
-export const COMBINE_CONCURRENT_EDITS =
-	SHIPPED_ON || import.meta.env.VITE_COMBINE_CONCURRENT_EDITS === "1";
+/** Whether combining runs (release B2). Off, siblings stay a conflict, as in Phase A. */
+export const COMBINE_CONCURRENT_EDITS = true;
 /** The combine rules' version; a newer one's result descends from an older one's. */
 export const COMBINE_RULES_VERSION = 1;
 

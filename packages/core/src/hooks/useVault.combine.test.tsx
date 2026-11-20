@@ -11,13 +11,8 @@ import type { Entry } from "./useVault";
 
 afterEach(cleanup);
 
-// Loading with combining on (release B2): siblings that changed different parts open as one
-// entry, and the combined version is written back so every device converges on it.
-
-vi.mock("../sync/combine", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../sync/combine")>()),
-	COMBINE_CONCURRENT_EDITS: true,
-}));
+// Loading combines: siblings that changed different parts open as one entry, and the combined
+// version is written back so every device converges on it.
 
 vi.mock("../vault-format", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../vault-format")>()),

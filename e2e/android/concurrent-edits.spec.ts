@@ -17,15 +17,11 @@ import { adbReverse, attachApp, expect, stopApp, test } from "./fixtures";
 // as one peer: the native crypto core, the Android storage adapter and the WebView's WebRTC, which
 // a browser-hosted mobile app doesn't run (docs/sync-conflicts.md).
 //
-// COMBINE_CONCURRENT_EDITS=1 expects combining, for a device build and an extension build made
-// with VITE_COMBINE_CONCURRENT_EDITS=1 (EXTENSION_DIR=dist-chromium-combine); otherwise conflicts.
-//
 // The phone is kept apart by force-stopping the app while the extension edits and locks (locking
 // stops the extension's sync), then relaunching and editing it while the extension is still
 // locked. This MUTATES the device: it joins a throwaway vault, deleted at the end; a failure
 // part-way leaves it behind to clear by hand. The device's other vaults stay locked throughout.
 
-const COMBINING = process.env.COMBINE_CONCURRENT_EDITS === "1";
 // A click the WebView never lets through should fail here, not wait out the whole test.
 test.use({ actionTimeout: 30_000 });
 const RELAY = "ws://localhost:7400";
@@ -134,8 +130,7 @@ test("concurrent edits between the extension and the app on a device", async () 
 		const both = () => [inviter!.page, app.page];
 		await test.step("different fields, made apart", async () => {
 			await editApart(APART, { username: "from-the-laptop" }, { notes: "from the phone" });
-			if (COMBINING) await expectCombined(both(), APART, ["from-the-laptop", "from the phone"]);
-			else await expectConflict(both(), APART);
+			await expectCombined(both(), APART, ["from-the-laptop", "from the phone"]);
 		});
 
 		await test.step("the same field, made apart, then resolved", async () => {
@@ -163,8 +158,7 @@ test("concurrent edits between the extension and the app on a device", async () 
 			await expect(watcher.getByText("from the phone")).toBeVisible({ timeout: 90_000 });
 			await watcher.close();
 			await saveForm(ext.page, { username: "from-the-laptop" });
-			if (COMBINING) await expectCombined(both(), FORM, ["from-the-laptop", "from the phone"]);
-			else await expectConflict(both(), FORM);
+			await expectCombined(both(), FORM, ["from-the-laptop", "from the phone"]);
 		});
 	} finally {
 		// Remove only the vault this test joined; it is the active one.

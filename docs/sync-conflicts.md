@@ -1,6 +1,6 @@
 # Sync conflicts: keep every edit, then merge fields (plan)
 
-**Status:** Phase A built 2026-10-23 (all targets share the core; not yet device-tested, and the new UI strings await translation). The website's sync copy still describes last-writer-wins, on purpose: it deploys on every push, so it changes when a release with Phase A ships. Phase B built 2026-10-24 (B1: part stamps recorded; combining switched off by `COMBINE_CONCURRENT_EDITS` until most devices run it; not yet device-tested). Flipping the constant (B2) is a separate release, with the README and site copy.
+**Status:** Phase A built 2026-10-23 and B1 2026-10-24; both shipped on every target 2026-10-25. B2 switched combining on (`COMBINE_CONCURRENT_EDITS = true`) 2026-11-19, with the README and site copy, and ships in the next release. Not yet device-tested.
 
 Today two devices that edit the same entry before they sync lose one edit whole and say nothing
 (see "Conflict loser" in [p2p-sync.md](p2p-sync.md)). This plan fixes that in two phases:
@@ -420,11 +420,11 @@ combining at sync time, not at display time, is what gets the combined password 
 1. **B1**: every writer records `partStamps`, `itemStamps` and `partStampsAt` (core mutations,
    resolutions, the extension's corner prompt and passkey placement). The combine code ships
    too, switched off by a constant (`COMBINE_CONCURRENT_EDITS = false`); tests run it on.
-2. **B2**: flip the constant once most devices write part stamps. Nothing else changes in code:
-   the final review's B2 blockers were fixed in B1. The README and site copy ("never compares
-   plaintext", "you choose between both versions") change in that release. Until then CI also
-   runs the two-peer sync suite with combining on (`pnpm test:e2e:sync:combine`, built with
-   `VITE_COMBINE_CONCURRENT_EDITS=1`), so B2's behaviour is tested on every push.
+2. **B2** (2026-11-19, about four weeks after B1 shipped): the constant flipped. Nothing else
+   changed in code: the final review's B2 blockers were fixed in B1. The README and site copy
+   ("never compares plaintext", "you choose between both versions") changed with it. Until then
+   CI ran the two-peer sync suite a second time with combining on; that run went with the flip,
+   since the ordinary suite now combines.
 
 ### Edge cases (checked against the rules above)
 

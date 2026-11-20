@@ -23,11 +23,8 @@ import {
 } from "./fixtures";
 
 // Two devices editing one login before they sync (docs/sync-conflicts.md), through the real UI of
-// both peers. The same spec runs with combining off (`pnpm test:e2e:sync`, what ships until B2)
-// and on (`pnpm test:e2e:sync:combine`): edits to different fields conflict with it off and
-// combine with it on; edits to the same field conflict either way.
+// both peers. Edits to different fields combine; edits to the same field conflict.
 
-const COMBINING = process.env.COMBINE_CONCURRENT_EDITS === "1";
 const LOCAL_RELAY_HOST = "localhost:7400";
 const NAME = "Shared login";
 
@@ -107,8 +104,7 @@ test("edits to different fields made apart", async ({ ext, mobile }) => {
 	await pairWithSharedLogin(ext, mobile);
 	await editApart(ext, mobile, { username: "from-the-laptop" }, { notes: "from the phone" });
 	const both = [ext.page, mobile.page];
-	if (COMBINING) await expectCombined(both, NAME, ["from-the-laptop", "from the phone"]);
-	else await expectConflict(both, NAME);
+	await expectCombined(both, NAME, ["from-the-laptop", "from the phone"]);
 });
 
 test("edits to the same field made apart conflict, and resolving on one settles both", async ({
@@ -145,6 +141,5 @@ test("an edit form saved after a change synced in doesn't overwrite it", async (
 
 	await saveForm(ext.page, { username: "from-the-laptop" });
 	const both = [ext.page, mobile.page];
-	if (COMBINING) await expectCombined(both, NAME, ["from-the-laptop", "from the phone"]);
-	else await expectConflict(both, NAME);
+	await expectCombined(both, NAME, ["from-the-laptop", "from the phone"]);
 });

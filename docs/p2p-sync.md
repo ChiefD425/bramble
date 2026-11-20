@@ -441,10 +441,10 @@ Separately, each incoming entry that would win is test-decrypted inside the cryp
 confirm it opens under this vault's key, and only the yes/no verdict comes out (`admit` in
 `apply-remote.ts`; see [sync-vault-pinning-and-quarantine.md](sync-vault-pinning-and-quarantine.md)).
 
-(Field-level merge, where concurrent edits to *different fields* of one entry both survive,
-would require unwrapping DEKs and reconciling plaintext fields. That is the only variant that
-exposes secrets during merge, and it is **deferred**. Entry-level is the v1 choice partly for
-this reason.)
+(Combining concurrent edits to *different parts* of one entry, Phase B of
+[sync-conflicts.md](sync-conflicts.md), does unwrap the siblings' DEKs and compare plaintext, on
+the syncing device under its own key, never in the relay or the transport. It runs only on
+versions the stamp-only merge already kept, and anything it can't combine stays a conflict.)
 
 ### What actually authorises a join
 
@@ -506,10 +506,10 @@ versions and keep one or both. A resolution is a write superseding every version
 clears the conflict wherever it syncs. Until every device in a group runs a build with this,
 an older build's edit still wins LWW-style.
 
-**Built, switched off (Phase B):** every write records which write last changed each part of
-the entry, and siblings that changed different parts combine into one version during sync and
-on load, inside the crypto core. It stays off (`COMBINE_CONCURRENT_EDITS`) until most devices
-record part stamps; until then concurrent edits stay a conflict as above.
+**Combining (Phase B):** every write records which write last changed each part of the entry,
+and siblings that changed different parts combine into one version during sync and on load.
+Only siblings that changed the same part, or that can't be combined safely, stay a conflict as
+above. On since release B2 (`COMBINE_CONCURRENT_EDITS`).
 
 Not to be confused with the **password changelog** ([password-changelog.md](password-changelog.md)),
 which is already built: that keeps superseded passwords from *local* rotations inside the entry
@@ -543,10 +543,9 @@ plaintext, and a conflict loser still drops its rows like any other edit.
   whose candidates (especially the TCP/TLS variants that beat a UDP-blocking VPN) are gathered and
   checked *last*, so the first cross-network connect may need a retry before it lands — not a failure.
   Same-network / same-machine peers connect instantly.
-- **Concurrent edits are kept, not merged, for now.** Both versions of a same-entry conflict
-  are kept and shown to the user (see "Conflict loser"). Combining edits to different parts is
-  built but switched off until most devices record part stamps (Phase B of
-  [sync-conflicts.md](sync-conflicts.md)).
+- **Edits to the same part of an entry aren't merged.** Concurrent edits to different parts
+  combine, but when both changed the same part, both versions are kept and shown to the user
+  (see "Conflict loser").
 
 ## Device management & revocation
 
