@@ -43,8 +43,9 @@ Frontmatter (schema in `src/content.config.ts`):
 - `order`: position among the section's articles of the same kind.
 - `keywords`: words people search for that the text doesn't use, and the exact error messages
   the article covers.
-- `updatedDate`, and `draft: true` to show an article in `pnpm dev` only (e.g. until the
-  release it describes ships).
+- `updatedDate`, and `draft: true` to show an article in `pnpm dev` only.
+- `since: "<commit>"` (and `sinceOn`) to publish an article once its release is out; see
+  [Text that waits for a release](#text-that-waits-for-a-release).
 
 Components, usable without an import:
 
@@ -53,6 +54,41 @@ Components, usable without an import:
   `extension`, `desktop`. The reader's choice is remembered across pages.
 - `<Video src="/docs/videos/x.mp4" title="..." poster="..." caption="..." />` for self-hosted
   video. Files go in `public/docs/videos/` (Cloudflare Pages caps a file at 25 MiB).
+
+### Text that waits for a release
+
+Articles describe what users have. For a change that isn't released yet, write the new text now,
+next to the old, and name the commit the change landed in:
+
+```mdx
+| Passkeys | <Since commit="8edb1d72">Yes</Since><Until commit="8edb1d72">No</Until> |
+
+<Rollout commit="8edb1d72">Passkeys go with the file</Rollout>
+```
+
+- `<Since commit="...">`: shown once a release containing the commit is out on every target in
+  `on`. `<Until commit="...">`: shown until then.
+- `<Rollout commit="...">`: a paragraph shown only while some targets have the change and others
+  don't, followed by where it is and who gets it next ("in the Chrome extension 1.42.0 and later.
+  The desktop app gets it in its next update.").
+- `on`: `all` (the default), or any of `chromium`, `firefox`, `desktop`, `android`, `ios`,
+  separated by commas or spaces. Where a page differs per app, like a table column per app, gate
+  each app's part on its own target.
+- A whole new article: `since: "<commit>"` in the frontmatter (and `sinceOn` for `on`) instead of
+  `draft: true`. Quote the hash: YAML reads some as numbers.
+
+Released means a release tag (`1.41.0-chromium`, `0.20.0-desktop`, `1.27.0-build...-ios`)
+contains the commit, so there is no list to keep. Every finished release workflow redeploys the
+site, which is when the text switches, and the article's "Updated" date moves to that release.
+A tag marks what we sent: Chrome Web Store, Firefox and App Store review can hold an update back
+for days, and an iOS tag is a TestFlight upload, so the text can switch before every user has
+the update.
+
+Gates can't nest or hold a heading (the table of contents would still list it). The build fails
+on a commit the history doesn't have, which is what a rebase before pushing turns the hash into,
+and on a shallow clone. `pnpm docs:gates` lists every gate and where it stands, and the deploy
+prints the same list in its job summary. Once one has shipped everywhere, unwrap it: keep the
+`Since` text, delete the `Until` and `Rollout`.
 
 Numbered lists render as steps. Search runs in the browser over `/docs/search.json`, built from
 the articles, with [MiniSearch](https://lucaong.github.io/minisearch/) (typo tolerant); the

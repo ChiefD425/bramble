@@ -1,0 +1,22 @@
+---
+// Shown only while some targets in `on` have a release containing `commit` and others don't:
+// the text, then where it already is and who gets it next. See src/doc-gates.ts.
+import { gateStatus, rolloutNote, shows } from "@/doc-gates";
+
+interface Props {
+	commit: string;
+	/** `all` (the default), or targets separated by commas or spaces. */
+	on?: string;
+}
+
+const { commit, on } = Astro.props;
+const status = gateStatus(commit, on);
+---
+
+{
+	shows("Rollout", status.state) && (
+		<p>
+			<slot /> {rolloutNote(status)}
+		</p>
+	)
+}

@@ -13,7 +13,7 @@ import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
 import { Badge } from "@/components/starwind/badge";
 import { LINKS } from "@/consts";
-import { DOC_KINDS, type Doc, docHref, sectionOf } from "@/docs";
+import { DOC_KINDS, type Doc, docHref, sectionOf, updatedOn } from "@/docs";
 import Layout from "@/layouts/Layout.astro";
 import { formatPostDate } from "@/posts";
 import "@/styles/prose.css";
@@ -26,7 +26,8 @@ interface Props {
 }
 
 const { doc, docs, headings } = Astro.props;
-const { title, description, kind, updatedDate } = doc.data;
+const { title, description, kind } = doc.data;
+const updatedDate = updatedOn(doc);
 const section = sectionOf(doc);
 const at = docs.findIndex((d) => d.id === doc.id);
 const prev = docs[at - 1];

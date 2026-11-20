@@ -2,6 +2,9 @@
 import { render } from "astro:content";
 import Callout from "@/components/docs/Callout.astro";
 import PlatformTabs from "@/components/docs/PlatformTabs.astro";
+import Rollout from "@/components/docs/Rollout.astro";
+import Since from "@/components/docs/Since.astro";
+import Until from "@/components/docs/Until.astro";
 import Video from "@/components/docs/Video.astro";
 import { getDocs } from "@/docs";
 import DocsLayout from "@/layouts/DocsLayout.astro";
@@ -16,5 +19,5 @@ const { Content, headings } = await render(doc);
 ---
 
 <DocsLayout doc={doc} docs={docs} headings={headings}>
-	<Content components={{ Callout, PlatformTabs, Video }} />
+	<Content components={{ Callout, PlatformTabs, Rollout, Since, Until, Video }} />
 </DocsLayout>

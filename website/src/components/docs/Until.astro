@@ -1,0 +1,15 @@
+---
+// Text shown until a release containing `commit` is out on every target in `on`.
+// See src/doc-gates.ts.
+import { gateStatus, shows } from "@/doc-gates";
+
+interface Props {
+	commit: string;
+	/** `all` (the default), or targets separated by commas or spaces. */
+	on?: string;
+}
+
+const { commit, on } = Astro.props;
+---
+
+{shows("Until", gateStatus(commit, on).state) && <slot />}

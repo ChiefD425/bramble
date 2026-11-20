@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { gateStatus, resolveGates } from "@/doc-gates";
 import { DOC_KINDS, docHref, getDocs, sectionOf } from "@/docs";
 import type { SearchDoc } from "@/scripts/docs-search";
 
@@ -27,7 +28,8 @@ function plainText(mdx: string) {
 export const GET: APIRoute = async () => {
 	const docs = await getDocs();
 	const index: SearchDoc[] = docs.map((doc) => {
-		const body = doc.body ?? "";
+		// Only the text a reader sees, so a search doesn't match what a release replaced.
+		const body = resolveGates(doc.body ?? "", gateStatus, doc.id);
 		return {
 			href: docHref(doc),
 			title: doc.data.title,

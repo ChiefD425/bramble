@@ -32,6 +32,16 @@ const docs = defineCollection({
 		updatedDate: z.coerce.date(),
 		/** Shown by `astro dev` only, left out of the build. */
 		draft: z.boolean().default(false),
+		/**
+		 * Publish once a release containing this commit is out on every target in `sinceOn`
+		 * (README, "Text that waits for a release"). Quote it: YAML reads some hashes as numbers.
+		 */
+		since: z
+			.string()
+			.regex(/^[0-9a-f]{7,40}$/, "since takes a commit hash")
+			.optional(),
+		/** The targets `since` waits for: `all` (the default), or a comma-separated list. */
+		sinceOn: z.string().optional(),
 	}),
 });
 
