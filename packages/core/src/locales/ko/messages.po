@@ -3434,8 +3434,12 @@ msgid "Show value"
 msgstr "값 표시"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
-msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
-msgstr "로그인하면 Bramble은 {name}에 있는 자체 앱 폴더에 암호화된 백업을 저장합니다. 오직 암호문만 업로드되므로 {name}에서는 보관함의 어떤 내용도 읽을 수 없습니다."
+#~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+#~ msgstr "로그인하면 Bramble은 {name}에 있는 자체 앱 폴더에 암호화된 백업을 저장합니다. 오직 암호문만 업로드되므로 {name}에서는 보관함의 어떤 내용도 읽을 수 없습니다."
+
+#: packages/core/src/app/screens/Settings/components/BackupSection.tsx
+msgid "Sign in and Bramble stores encrypted backups in its own {name} folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+msgstr "로그인하면 Bramble이 자체 {name} 폴더에 암호화된 백업을 저장합니다. 업로드되는 것은 암호문뿐이므로 {name}에서는 보관함의 어떤 내용도 읽을 수 없습니다."
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Sites you've muted"

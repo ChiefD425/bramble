@@ -35,7 +35,7 @@ const DROPBOX_CLIENT_ID = "z3dojxeco2znshq";
 // secret prefix don't flag it; it hides nothing. Empty keeps the tile "coming soon".
 const GDRIVE_CLIENT_ID =
 	"1077151297851-7gnnuc2hur3u1jmtuntisn6f8gvhncc4.apps.googleusercontent.com";
-const GDRIVE_CLIENT_SECRET_B64 = "";
+const GDRIVE_CLIENT_SECRET_B64 = "R09DU1BYLUpJYzhuMm1GR3hCc3hOdEpaY3BSZl9wV255dWc=";
 
 export const OAUTH_PROVIDERS: Record<OAuthProviderId, OAuthProviderMeta> = {
 	dropbox: {

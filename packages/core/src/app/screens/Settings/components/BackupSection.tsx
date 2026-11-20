@@ -350,8 +350,8 @@ function OneClickPanel({
 		<>
 			<p className="text-xs text-muted-foreground">
 				<Trans>
-					Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext
-					is uploaded, so {name} can't read anything in your vault.
+					Sign in and Bramble stores encrypted backups in its own {name} folder. Only ciphertext is
+					uploaded, so {name} can't read anything in your vault.
 				</Trans>
 			</p>
 			{error && (

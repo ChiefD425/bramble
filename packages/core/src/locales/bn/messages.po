@@ -3747,8 +3747,12 @@ msgid "Show value"
 msgstr "মান দেখান"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
-msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
-msgstr "সাইন ইন করলে Bramble তার নিজের {name} অ্যাপ ফোল্ডারে এনক্রিপ্ট করা ব্যাকআপ রাখে। শুধু এনক্রিপ্ট করা ডেটা আপলোড হয়, তাই {name} আপনার ভল্টের কিছুই পড়তে পারে না।"
+#~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+#~ msgstr "সাইন ইন করলে Bramble তার নিজের {name} অ্যাপ ফোল্ডারে এনক্রিপ্ট করা ব্যাকআপ রাখে। শুধু এনক্রিপ্ট করা ডেটা আপলোড হয়, তাই {name} আপনার ভল্টের কিছুই পড়তে পারে না।"
+
+#: packages/core/src/app/screens/Settings/components/BackupSection.tsx
+msgid "Sign in and Bramble stores encrypted backups in its own {name} folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+msgstr "সাইন ইন করুন এবং Bramble তার নিজস্ব {name} ফোল্ডারে এনক্রিপ্ট করা ব্যাকআপ সংরক্ষণ করে। শুধুমাত্র সাইফারটেক্সট আপলোড করা হয়, তাই {name} আপনার ভল্টের কিছুই পড়তে পারে না।"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Sites you've muted"

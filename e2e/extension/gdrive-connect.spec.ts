@@ -1,6 +1,6 @@
 import type { Worker } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { backgroundWorker, createVault, expectUnlocked, openPopup } from "./helpers";
+import { backgroundWorker, createVault, expectUnlocked, gotoBackups, openPopup } from "./helpers";
 
 // Google Drive sign-in on Chromium. Google's Desktop app client only redirects to a loopback, and
 // Chromium's launchWebAuthFlow can't return to one, so the consent page opens in a tab and the
@@ -96,6 +96,7 @@ test("connects Google Drive by catching the loopback redirect in a tab", async (
 	expect(form.get("code")).toBe("AUTH-CODE");
 	expect(form.get("redirect_uri")).toBe(p.get("redirect_uri"));
 	expect(form.get("code_verifier")).toBeTruthy();
+	expect(form.get("client_secret")).toMatch(/^GOCSPX-/);
 
 	// The consent tab is gone, and the vault has a gdrive target holding no plaintext token.
 	await expect.poll(() => tab.isClosed()).toBe(true);
@@ -132,4 +133,15 @@ test("a closed consent tab cancels the connect and saves nothing", async ({
 		return Object.entries(all).filter(([k]) => k.startsWith("backup.targets:"));
 	});
 	expect(stored.flatMap(([, v]) => v as unknown[])).toHaveLength(0);
+});
+
+test("the Google Drive tile offers one-click sign-in", async ({ context, extensionId }) => {
+	const page = await context.newPage();
+	await createVault(page, extensionId);
+	await openPopup(page, extensionId);
+	await expectUnlocked(page);
+	await gotoBackups(page);
+	await page.getByRole("button", { name: /Google Drive/ }).click();
+	await expect(page.getByRole("button", { name: "Connect Google Drive" })).toBeEnabled();
+	await expect(page.getByText(/its own Google Drive folder/)).toBeVisible();
 });

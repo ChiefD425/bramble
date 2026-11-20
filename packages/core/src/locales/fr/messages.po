@@ -3767,8 +3767,12 @@ msgid "Show value"
 msgstr "Afficher la valeur"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
-msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
-msgstr "Connectez-vous et Bramble stocke les sauvegardes chiffrées dans son propre dossier d'application {name}. Seul le texte chiffré est téléchargé, {name} ne peut donc rien lire dans votre coffre."
+#~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+#~ msgstr "Connectez-vous et Bramble stocke les sauvegardes chiffrées dans son propre dossier d'application {name}. Seul le texte chiffré est téléchargé, {name} ne peut donc rien lire dans votre coffre."
+
+#: packages/core/src/app/screens/Settings/components/BackupSection.tsx
+msgid "Sign in and Bramble stores encrypted backups in its own {name} folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
+msgstr "Connectez-vous et Bramble stocke des sauvegardes chiffrées dans son propre dossier {name}. Seul le texte chiffré est envoyé, donc {name} ne peut rien lire dans votre coffre."
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Sites you've muted"
