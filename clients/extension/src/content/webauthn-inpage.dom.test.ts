@@ -36,6 +36,18 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+describe("webauthn-inpage and a create that asks for a security key", () => {
+	it("leaves it to the native authenticator", async () => {
+		const native = await install();
+		const publicKey = {
+			...createOptions.publicKey,
+			authenticatorSelection: { authenticatorAttachment: "cross-platform" },
+		};
+		await navigator.credentials.create({ publicKey } as CredentialCreationOptions);
+		expect(native.create).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe("webauthn-inpage when the bridge never answers", () => {
 	it("fails a create instead of handing it to the native authenticator", async () => {
 		const native = await install();
