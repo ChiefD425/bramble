@@ -149,6 +149,12 @@ export interface ShellAdapter {
 	 */
 	onNavigateRequest?(callback: (href: string) => void): () => void;
 	/**
+	 * Detached window only: another view popped out while this window was open. `callback` returns
+	 * true when this window now shows the handed-over route, false to have a new window open for
+	 * it. Returns an unsubscribe.
+	 */
+	onPopOutReuse?(callback: (handoff: PopOutHandoff) => boolean): () => void;
+	/**
 	 * Subscribe to the host putting this window away WITHOUT unloading it (the desktop closing to
 	 * the tray, mobile going to the background), so it reopens with its state intact. Revealed
 	 * secrets are masked again here. Absent where closing unloads the page (extension). Returns an

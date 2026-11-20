@@ -40,19 +40,24 @@ async function targetLastOpenedVault(): Promise<void> {
 	} catch {}
 }
 
-/** Focus the tracked pop-out window if it is still open. Returns false when there is none:
- * the id was never stored, or the window was closed while the worker slept (windows.get
- * rejects), in which case the caller should open a fresh one. */
-async function focusExistingPopout(): Promise<boolean> {
+/** The tracked pop-out window, if it is still open. Undefined when there is none: the id was
+ * never stored, or the window was closed while the worker slept (windows.get rejects). */
+async function trackedPopout(): Promise<chrome.windows.Window | undefined> {
 	const stored = await api.storage.session.get(POPOUT_WINDOW_KEY);
 	const id = stored[POPOUT_WINDOW_KEY];
-	if (typeof id !== "number") return false;
+	if (typeof id !== "number") return undefined;
 	const win = await api.windows.get(id).catch(() => undefined);
-	if (win?.id === undefined) return false;
-	const update: chrome.windows.UpdateInfo = { focused: true };
-	if (win.state === "minimized") update.state = "normal"; // un-minimize; don't touch other states
-	await api.windows.update(win.id, update).catch(() => undefined);
-	return true;
+	return win?.id === undefined ? undefined : win;
+}
+
+/** Ask the open pop-out to show the handed-over route. False when it declines (it holds a form,
+ * or is on another vault) or doesn't answer. */
+async function reusePopout(windowId: number, handoff: { path?: string }): Promise<boolean> {
+	if (handoff.path === undefined) return false;
+	const res = (await api.runtime
+		.sendMessage({ type: "POPOUT_REUSE", payload: { windowId, handoff } })
+		.catch(() => undefined)) as { data?: unknown } | undefined;
+	return res?.data === true;
 }
 
 const WIDTH = 500;
@@ -117,12 +122,18 @@ async function popoutOpen(
 	const handoff: { draft?: unknown; path?: string } | undefined = newLogin
 		? { path: "/vault/new/login" }
 		: payload?.handoff;
-	// Single instance: focus an already-open pop-out instead of spawning a duplicate. A request
+	// Single instance: reuse an already-open pop-out instead of spawning a duplicate. A request
 	// carrying an in-flight draft is the exception - the open window consumed its boot handoff
-	// once, so focusing it would silently drop the new draft (which can hold a plaintext
-	// password). Route-only / unlock-request pop-outs have nothing to lose, so they dedupe.
-	if (!newLogin && handoff?.draft === undefined && (await focusExistingPopout())) {
-		return { ok: true };
+	// once, so reusing it would silently drop the new draft (which can hold a plaintext
+	// password). A route moves the open window there, if it agrees; else a new window opens.
+	if (!newLogin && handoff?.draft === undefined) {
+		const open = await trackedPopout();
+		if (open?.id !== undefined && (!handoff || (await reusePopout(open.id, handoff)))) {
+			const update: chrome.windows.UpdateInfo = { focused: true };
+			if (open.state === "minimized") update.state = "normal"; // un-minimize; leave other states
+			await api.windows.update(open.id, update).catch(() => undefined);
+			return { ok: true };
+		}
 	}
 	if (payload?.reason === "unlock") await targetLastOpenedVault();
 

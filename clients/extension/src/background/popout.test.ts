@@ -163,18 +163,50 @@ describe("POPOUT_OPEN", () => {
 		});
 	});
 
-	it("focuses (does not duplicate) a route-only handoff with no draft", async () => {
-		const bg = await loadBackground();
-		await bg.send(
-			{ type: "POPOUT_OPEN", payload: { handoff: { path: "/vault" } } },
-			pageSender("example.com", 4),
-		);
-		expect(bg.state.windowsCreated).toHaveLength(1);
-		await bg.send(
-			{ type: "POPOUT_OPEN", payload: { handoff: { path: "/settings" } } },
-			pageSender("example.com", 4),
-		);
-		expect(bg.state.windowsCreated).toHaveLength(1); // route-only: safe to focus existing
+	describe("a route-only handoff while a pop-out is open", () => {
+		/** Open a pop-out (window 999), then pop out `/settings?tab=backups` with the open window
+		 * answering `answer`. */
+		async function popOutAgain(answer: unknown) {
+			const bg = await loadBackground();
+			await bg.send(
+				{ type: "POPOUT_OPEN", payload: { handoff: { path: "/vault/e1" } } },
+				pageSender("example.com", 4),
+			);
+			const send = bg.chrome.runtime.sendMessage;
+			const asked = vi.fn();
+			bg.chrome.runtime.sendMessage = vi.fn(async (msg: { type?: string; payload?: unknown }) => {
+				if (msg?.type !== "POPOUT_REUSE") return send(msg);
+				asked(msg.payload);
+				return answer;
+			});
+			await bg.send(
+				{ type: "POPOUT_OPEN", payload: { handoff: { path: "/settings?tab=backups" } } },
+				pageSender("example.com", 4),
+			);
+			return { bg, asked };
+		}
+
+		it("moves the open window to the route instead of opening another", async () => {
+			const { bg, asked } = await popOutAgain({ ok: true, data: true });
+			expect(asked).toHaveBeenCalledWith({
+				windowId: 999,
+				handoff: { path: "/settings?tab=backups" },
+			});
+			expect(bg.state.windowsCreated).toHaveLength(1);
+			expect(bg.chrome.windows.update).toHaveBeenCalledWith(
+				999,
+				expect.objectContaining({ focused: true }),
+			);
+		});
+
+		it.each([
+			["declines (it holds a form)", { ok: true, data: false }],
+			["doesn't answer", undefined],
+		])("opens a new window on the route when the open one %s", async (_why, answer) => {
+			const { bg } = await popOutAgain(answer);
+			expect(bg.state.windowsCreated).toHaveLength(2);
+			expect(bg.state.session[HANDOFF_KEY]).toEqual({ path: "/settings?tab=backups" });
+		});
 	});
 });
 

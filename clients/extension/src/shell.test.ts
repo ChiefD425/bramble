@@ -5,10 +5,14 @@ afterEach(() => {
 	vi.resetModules();
 });
 
+// An https stand-in: Node's URL gives chrome-extension:// the origin "null".
+const EXT_ORIGIN = "https://extension.example";
+const getURL = (path: string) => `${EXT_ORIGIN}/${path}`;
+
 /** The popup's shell with the active tab on `url`. */
 async function shellOnTab(url: string) {
 	vi.stubGlobal("chrome", {
-		runtime: { getManifest: () => ({ name: "Bramble", version: "0.0.0" }) },
+		runtime: { getManifest: () => ({ name: "Bramble", version: "0.0.0" }), getURL },
 		tabs: { query: vi.fn(async () => [{ url }]) },
 	});
 	return (await import("./shell")).extensionShell;
@@ -38,7 +42,7 @@ describe("launchLogin", () => {
 		const open = vi.fn();
 		vi.stubGlobal("window", { open });
 		vi.stubGlobal("chrome", {
-			runtime: { getManifest: () => ({ name: "Bramble", version: "0.0.0" }), sendMessage },
+			runtime: { getManifest: () => ({ name: "Bramble", version: "0.0.0" }), getURL, sendMessage },
 		});
 		return { shell: (await import("./shell")).extensionShell, open };
 	}
@@ -77,6 +81,7 @@ describe("sync now and the sync log", () => {
 		vi.stubGlobal("chrome", {
 			runtime: {
 				getManifest: () => ({ name: "Bramble", version: "0.0.0" }),
+				getURL,
 				sendMessage,
 				onMessage: {
 					addListener: (cb: (msg: unknown) => void) => listeners.push(cb),
@@ -109,5 +114,59 @@ describe("sync now and the sync log", () => {
 		for (const cb of listeners)
 			cb({ type: "SYNC_STATUS", payload: { status: "relay connected", at: 1_000 } });
 		expect(seen).toEqual([["relay connected", 1_000]]);
+	});
+});
+
+describe("onPopOutReuse (another view pops out while this window is open)", () => {
+	type Listener = (msg: unknown, sender: unknown, respond: (r: unknown) => void) => unknown;
+	const FROM_BACKGROUND = { origin: EXT_ORIGIN };
+	const handoff = { path: "/settings?tab=backups" };
+
+	async function detachedWindow(id: number) {
+		const listeners: Listener[] = [];
+		vi.stubGlobal("window", { location: { search: "?detached=1" } });
+		vi.stubGlobal("chrome", {
+			runtime: {
+				getManifest: () => ({ name: "Bramble", version: "0.0.0" }),
+				getURL,
+				onMessage: {
+					addListener: (cb: Listener) => listeners.push(cb),
+					removeListener: () => {},
+				},
+			},
+			windows: { getCurrent: vi.fn(async () => ({ id })) },
+		});
+		const shell = (await import("./shell")).extensionShell;
+		const callback = vi.fn(() => true);
+		shell.onPopOutReuse?.(callback);
+		// The window's own id arrives asynchronously.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const deliver = (msg: unknown, sender: unknown = FROM_BACKGROUND) => {
+			const respond = vi.fn();
+			listeners[0]?.(msg, sender, respond);
+			return respond;
+		};
+		return { callback, deliver };
+	}
+
+	it("answers for its own window", async () => {
+		const { callback, deliver } = await detachedWindow(999);
+		const respond = deliver({ type: "POPOUT_REUSE", payload: { windowId: 999, handoff } });
+		expect(callback).toHaveBeenCalledWith(handoff);
+		expect(respond).toHaveBeenCalledWith({ ok: true, data: true });
+	});
+
+	it("stays out of a request for another window", async () => {
+		const { callback, deliver } = await detachedWindow(999);
+		const respond = deliver({ type: "POPOUT_REUSE", payload: { windowId: 5, handoff } });
+		expect(callback).not.toHaveBeenCalled();
+		expect(respond).not.toHaveBeenCalled();
+	});
+
+	it("ignores a content script", async () => {
+		const { callback, deliver } = await detachedWindow(999);
+		const page = { origin: "https://example.com", tab: { id: 4 } };
+		deliver({ type: "POPOUT_REUSE", payload: { windowId: 999, handoff } }, page);
+		expect(callback).not.toHaveBeenCalled();
 	});
 });

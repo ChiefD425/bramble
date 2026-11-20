@@ -1,4 +1,12 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from "react";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+} from "react";
 import { useCan, usePlatform } from "../../context/PlatformContext";
 import { useVaultRegistry } from "../../hooks/useVaultRegistry";
 import type { AppRouter } from "../router";
@@ -60,6 +68,21 @@ export function PopOutProvider({
 		[router, shell, activeId],
 	);
 	const popOut = useCallback(() => popOutWith(draftGetterRef.current?.()), [popOutWith]);
+
+	// Reused for another view's pop-out: show its route, unless that would drop a form here or
+	// the request is for another vault, in which case a new window opens instead.
+	const activeIdRef = useRef(activeId);
+	activeIdRef.current = activeId;
+	useEffect(
+		() =>
+			shell.onPopOutReuse?.((handoff) => {
+				if (draftGetterRef.current || handoff.draft !== undefined) return false;
+				if (handoff.vaultId !== activeIdRef.current) return false;
+				void router.navigate({ href: handoff.path });
+				return true;
+			}),
+		[shell, router],
+	);
 
 	const value = useMemo<PopOutContextValue>(
 		() => ({

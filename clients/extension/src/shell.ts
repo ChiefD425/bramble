@@ -11,6 +11,7 @@ import { reconcileDefaultPasswordManager, setDefaultPasswordManager } from "./br
 import { effectivePort, hostnameMatches } from "./dedupe";
 import { pageBehind } from "./normal-window";
 import { api } from "./platform-api";
+import { isExtensionSender } from "./sender";
 import { ACTIVE_VAULT_SESSION_KEY } from "./session-keys";
 import {
 	PendingEnrollApprovalSchema,
@@ -168,6 +169,30 @@ export const extensionShell: ShellAdapter = {
 			| { ok: boolean; data?: PopOutHandoff | null }
 			| undefined;
 		return res?.data ?? null;
+	},
+	onPopOutReuse(callback) {
+		if (!this.isDetached()) return () => {};
+		// The background names the window it means; every extension page hears the message.
+		let ownId: number | undefined;
+		void api.windows
+			.getCurrent()
+			.then((w) => {
+				ownId = w.id;
+			})
+			.catch(() => {});
+		const handler = (
+			msg: { type?: string; payload?: { windowId?: unknown; handoff?: PopOutHandoff } } | undefined,
+			sender: chrome.runtime.MessageSender,
+			sendResponse: (response: unknown) => void,
+		) => {
+			if (msg?.type !== "POPOUT_REUSE" || !isExtensionSender(sender)) return false;
+			const handoff = msg.payload?.handoff;
+			if (ownId === undefined || msg.payload?.windowId !== ownId || !handoff) return false;
+			sendResponse({ ok: true, data: callback(handoff) });
+			return false;
+		};
+		api.runtime.onMessage.addListener(handler);
+		return () => api.runtime.onMessage.removeListener(handler);
 	},
 	async reportPasskeyVerification(id: string, verified: boolean) {
 		const res = (await api.runtime.sendMessage({
