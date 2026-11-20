@@ -66,6 +66,16 @@ const DROPBOX: ProviderMeta = ProviderMeta {
     port: Some(53682),
 };
 
+impl Provider {
+    /// The id the webview and the stored record use.
+    pub fn id(self) -> &'static str {
+        match self {
+            Provider::Gdrive => "gdrive",
+            Provider::Dropbox => "dropbox",
+        }
+    }
+}
+
 pub fn meta(p: Provider) -> &'static ProviderMeta {
     match p {
         Provider::Gdrive => &GDRIVE,
@@ -115,14 +125,24 @@ type Res<T> = Result<T, String>;
 /// A listener for the provider's redirect, and the redirect URI that names it.
 pub async fn bind(p: Provider) -> Res<(TcpListener, String)> {
     let fixed = meta(p).port;
-    let listener = TcpListener::bind(("127.0.0.1", fixed.unwrap_or(0)))
-        .await
-        .map_err(|e| match fixed {
-            Some(port) if e.kind() == std::io::ErrorKind::AddrInUse => {
-                format!("Port {port} is in use. Close the app using it, then connect again.")
+    // A fixed port is retried briefly: a sign-in this one just replaced may still be letting go.
+    let mut attempts = 0;
+    let listener = loop {
+        match TcpListener::bind(("127.0.0.1", fixed.unwrap_or(0))).await {
+            Ok(listener) => break listener,
+            Err(e) if fixed.is_some() && e.kind() == std::io::ErrorKind::AddrInUse => {
+                attempts += 1;
+                if attempts >= 5 {
+                    let port = fixed.unwrap_or_default();
+                    return Err(format!(
+                        "Port {port} is in use. Close the app using it, then connect again."
+                    ));
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
             }
-            _ => format!("sign-in listener: {e}"),
-        })?;
+            Err(e) => return Err(format!("sign-in listener: {e}")),
+        }
+    };
     let port = listener
         .local_addr()
         .map_err(|e| format!("sign-in listener: {e}"))?
@@ -325,7 +345,75 @@ impl TokenCache {
 }
 
 #[cfg(test)]
+pub(crate) mod test_support {
+    /// Send one GET to the listener and return the response text.
+    pub async fn get(addr: &str, target: &str) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut s = tokio::net::TcpStream::connect(addr).await.unwrap();
+        s.write_all(format!("GET {target} HTTP/1.1\r\nHost: x\r\n\r\n").as_bytes())
+            .await
+            .unwrap();
+        let mut out = String::new();
+        s.read_to_string(&mut out).await.unwrap();
+        out
+    }
+
+    /// A token endpoint that answers each request with the next canned reply and records the
+    /// form bodies it was sent.
+    pub fn fake_token_server(
+        replies: Vec<(u16, &'static str)>,
+    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/token", listener.local_addr().unwrap());
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let record = seen.clone();
+        std::thread::spawn(move || {
+            for (status, body) in replies {
+                let Ok((mut s, _)) = listener.accept() else {
+                    return;
+                };
+                let mut buf = Vec::new();
+                let mut chunk = [0u8; 4096];
+                loop {
+                    let n = s.read(&mut chunk).unwrap();
+                    buf.extend_from_slice(&chunk[..n]);
+                    let text = String::from_utf8_lossy(&buf).to_string();
+                    if let Some(end) = text.find("\r\n\r\n") {
+                        let len = text[..end]
+                            .lines()
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(|v| v.trim().parse::<usize>().unwrap())
+                            })
+                            .unwrap_or(0);
+                        if buf.len() >= end + 4 + len {
+                            record
+                                .lock()
+                                .unwrap()
+                                .push(text[end + 4..end + 4 + len].to_string());
+                            break;
+                        }
+                    }
+                    if n == 0 {
+                        break;
+                    }
+                }
+                let reply = format!(
+                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                s.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        (url, seen)
+    }
+}
+
+#[cfg(test)]
 mod tests {
+    use super::test_support::{fake_token_server, get};
     use super::*;
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use sha2::{Digest, Sha256};
@@ -390,18 +478,6 @@ mod tests {
 
     fn block_on<F: std::future::Future>(f: F) -> F::Output {
         tauri::async_runtime::block_on(f)
-    }
-
-    /// Send one GET to the listener and return the response text.
-    async fn get(addr: &str, target: &str) -> String {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        let mut s = tokio::net::TcpStream::connect(addr).await.unwrap();
-        s.write_all(format!("GET {target} HTTP/1.1\r\nHost: x\r\n\r\n").as_bytes())
-            .await
-            .unwrap();
-        let mut out = String::new();
-        s.read_to_string(&mut out).await.unwrap();
-        out
     }
 
     fn addr_of(redirect: &str) -> String {
@@ -497,58 +573,6 @@ mod tests {
                 Ok(_) => panic!("bind should fail while 53682 is held: {held:?}"),
             }
         });
-    }
-
-    /// A token endpoint that answers each request with the next canned reply and records the
-    /// form bodies it was sent.
-    fn fake_token_server(
-        replies: Vec<(u16, &'static str)>,
-    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
-        use std::io::{Read, Write};
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/token", listener.local_addr().unwrap());
-        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let record = seen.clone();
-        std::thread::spawn(move || {
-            for (status, body) in replies {
-                let Ok((mut s, _)) = listener.accept() else {
-                    return;
-                };
-                let mut buf = Vec::new();
-                let mut chunk = [0u8; 4096];
-                loop {
-                    let n = s.read(&mut chunk).unwrap();
-                    buf.extend_from_slice(&chunk[..n]);
-                    let text = String::from_utf8_lossy(&buf).to_string();
-                    if let Some(end) = text.find("\r\n\r\n") {
-                        let len = text[..end]
-                            .lines()
-                            .find_map(|l| {
-                                l.to_ascii_lowercase()
-                                    .strip_prefix("content-length:")
-                                    .map(|v| v.trim().parse::<usize>().unwrap())
-                            })
-                            .unwrap_or(0);
-                        if buf.len() >= end + 4 + len {
-                            record
-                                .lock()
-                                .unwrap()
-                                .push(text[end + 4..end + 4 + len].to_string());
-                            break;
-                        }
-                    }
-                    if n == 0 {
-                        break;
-                    }
-                }
-                let reply = format!(
-                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                    body.len()
-                );
-                s.write_all(reply.as_bytes()).unwrap();
-            }
-        });
-        (url, seen)
     }
 
     fn form(body: &str) -> HashMap<String, String> {

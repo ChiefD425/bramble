@@ -368,6 +368,7 @@ pub fn run() {
             backup::backup_send,
             backup::backup_send_raw,
             backup::backup_stream_open,
+            backup::backup_oauth_connect,
             stream::shell_export_open,
             stream::stream_write,
             stream::stream_finish,

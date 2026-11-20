@@ -346,7 +346,133 @@ fn stream_refusal(auth: &AuthSpec) -> Option<&'static str> {
 }
 
 fn token_url(p: Provider) -> String {
+    // Debug builds only, for the desktop e2e's fake token endpoint.
+    #[cfg(debug_assertions)]
+    if let Ok(url) = std::env::var("BRAMBLE_E2E_OAUTH_TOKEN_URL") {
+        return url;
+    }
     oauth::meta(p).token_url.to_string()
+}
+
+/// What a sign-in left behind: kept in the credential store, or, with none, handed back once for
+/// the webview to seal under the vault key (the same fallback S3 and WebDAV credentials take).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthConnected {
+    pub stored: bool,
+    pub refresh_token: Option<String>,
+}
+
+fn finish_connect(
+    tier: secure_store::Tier,
+    provider: Provider,
+    refresh: &str,
+    write: impl FnOnce(String) -> Res<()>,
+) -> Res<OAuthConnected> {
+    if tier == secure_store::Tier::None {
+        return Ok(OAuthConnected {
+            stored: false,
+            refresh_token: Some(refresh.to_string()),
+        });
+    }
+    let record = Zeroizing::new(
+        serde_json::json!({
+            "origin": format!("oauth:{}", provider.id()),
+            "secrets": { "provider": provider.id(), "refreshToken": refresh },
+        })
+        .to_string(),
+    );
+    write(record.to_string())?;
+    Ok(OAuthConnected {
+        stored: true,
+        refresh_token: None,
+    })
+}
+
+async fn sign_in<F>(
+    provider: Provider,
+    token_url: String,
+    open: F,
+    wait: std::time::Duration,
+) -> Res<Zeroizing<String>>
+where
+    F: FnOnce(String) -> Res<()>,
+{
+    let (listener, redirect) = oauth::bind(provider).await?;
+    let (verifier, challenge) = oauth::pkce();
+    let state = oauth::random_state();
+    open(oauth::authorize_url(
+        provider, &redirect, &challenge, &state,
+    ))?;
+    let code = oauth::await_code(listener, &state, wait).await?;
+    oauth::exchange(provider, &token_url, &code, &verifier, &redirect).await
+}
+
+/// Run a sign-in, replacing any still pending in `pending`: one abandoned in the browser would
+/// otherwise hold its listener (and Dropbox's fixed port) until it timed out.
+async fn connect_with<F>(
+    pending: &std::sync::Mutex<Option<tokio::task::AbortHandle>>,
+    provider: Provider,
+    token_url: String,
+    open: F,
+    wait: std::time::Duration,
+) -> Res<Zeroizing<String>>
+where
+    F: FnOnce(String) -> Res<()> + Send + 'static,
+{
+    if let Some(previous) = pending.lock().unwrap().take() {
+        previous.abort();
+    }
+    let task = tauri::async_runtime::spawn(sign_in(provider, token_url, open, wait));
+    *pending.lock().unwrap() = Some(task.inner().abort_handle());
+    task.await
+        .map_err(|_| "Sign-in was replaced by a newer one.".to_string())?
+}
+
+/// The sign-in a newer one replaces.
+static PENDING_SIGN_IN: std::sync::Mutex<Option<tokio::task::AbortHandle>> =
+    std::sync::Mutex::new(None);
+
+/// Sign in to a one-click provider in the system browser and keep the refresh token here. It
+/// reaches the webview only on a machine with no credential store. Main window only.
+#[tauri::command]
+pub async fn backup_oauth_connect(
+    window: tauri::Window,
+    vault_id: String,
+    target_id: String,
+    provider: Provider,
+) -> Res<OAuthConnected> {
+    if window.label() != crate::lifetime::MAIN {
+        return Err("backups run from the main window only".into());
+    }
+    use tauri::Manager;
+    let app = window.app_handle().clone();
+    let open = move |url: String| -> Res<()> {
+        // Debug builds only: the desktop e2e reads the consent URL instead of a browser opening.
+        #[cfg(debug_assertions)]
+        if let Ok(path) = std::env::var("BRAMBLE_E2E_OAUTH_URL_FILE") {
+            return std::fs::write(path, url).map_err(|e| format!("sign-in url: {e}"));
+        }
+        use tauri_plugin_opener::OpenerExt;
+        app.opener()
+            .open_url(url, None::<&str>)
+            .map_err(|e| format!("open the browser: {e}"))
+    };
+    let refresh = connect_with(
+        &PENDING_SIGN_IN,
+        provider,
+        token_url(provider),
+        open,
+        std::time::Duration::from_secs(600),
+    )
+    .await?;
+    let key = account(&vault_id, &target_id);
+    let connected = finish_connect(secure_store::tier(), provider, &refresh, |json| {
+        secure_store::write(&key, &json)
+    })?;
+    // A reconnect replaces the token, so the old one's access token goes too.
+    TokenCache::global().evict(&key);
+    Ok(connected)
 }
 
 /// Where a target's access token is cached: its credential account, or for an inline token
@@ -872,6 +998,115 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.contains("bearer"), "{err}");
+    }
+
+    /// An `open` that plays the provider: sends the browser back with `code` for the URL's state.
+    fn redirecting(code: &'static str) -> impl FnOnce(String) -> Res<()> + Send + 'static {
+        move |url: String| {
+            let url = reqwest::Url::parse(&url).unwrap();
+            let q: HashMap<String, String> = url.query_pairs().into_owned().collect();
+            let addr = q["redirect_uri"]
+                .trim_start_matches("http://")
+                .trim_end_matches('/')
+                .to_string();
+            let target = format!("/?state={}&code={code}", q["state"]);
+            tauri::async_runtime::spawn(async move {
+                crate::oauth::test_support::get(&addr, &target).await
+            });
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn connect_with_returns_the_refresh_token() {
+        let (token_url, seen) = crate::oauth::test_support::fake_token_server(vec![(
+            200,
+            r#"{"access_token":"AT","refresh_token":"RT"}"#,
+        )]);
+        let pending = std::sync::Mutex::new(None);
+        let refresh = tauri::async_runtime::block_on(connect_with(
+            &pending,
+            Provider::Gdrive,
+            token_url,
+            redirecting("C9"),
+            std::time::Duration::from_secs(5),
+        ))
+        .unwrap();
+        assert_eq!(*refresh, "RT");
+        assert!(seen.lock().unwrap()[0].contains("code=C9"));
+    }
+
+    #[test]
+    fn a_second_connect_replaces_the_first() {
+        let (token_url, _) = crate::oauth::test_support::fake_token_server(vec![(
+            200,
+            r#"{"access_token":"AT","refresh_token":"RT2"}"#,
+        )]);
+        let pending = std::sync::Arc::new(std::sync::Mutex::new(None));
+        tauri::async_runtime::block_on(async {
+            let first_pending = pending.clone();
+            let first = tauri::async_runtime::spawn(async move {
+                connect_with(
+                    &first_pending,
+                    Provider::Gdrive,
+                    "http://127.0.0.1:9/".into(),
+                    |_| Ok(()),
+                    std::time::Duration::from_secs(30),
+                )
+                .await
+            });
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            let second = connect_with(
+                &pending,
+                Provider::Gdrive,
+                token_url,
+                redirecting("C"),
+                std::time::Duration::from_secs(5),
+            )
+            .await;
+            assert_eq!(*second.unwrap(), "RT2");
+            let err = first.await.unwrap().unwrap_err();
+            assert!(err.contains("replaced"), "{err}");
+        });
+    }
+
+    #[test]
+    fn a_busy_dropbox_port_fails_fast() {
+        let _held = std::net::TcpListener::bind(("127.0.0.1", 53682));
+        let pending = std::sync::Mutex::new(None);
+        let started = std::time::Instant::now();
+        let err = tauri::async_runtime::block_on(connect_with(
+            &pending,
+            Provider::Dropbox,
+            "http://127.0.0.1:9/".into(),
+            |_| Ok(()),
+            std::time::Duration::from_secs(30),
+        ))
+        .unwrap_err();
+        assert!(err.contains("Port 53682 is in use"), "{err}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    }
+
+    #[test]
+    fn a_connect_is_kept_by_the_keychain_or_handed_back_without_one() {
+        let mut written = None;
+        let kept = finish_connect(secure_store::Tier::Os, Provider::Gdrive, "RT", |json| {
+            written = Some(json);
+            Ok(())
+        })
+        .unwrap();
+        assert!(kept.stored && kept.refresh_token.is_none());
+        let record: serde_json::Value = serde_json::from_str(&written.unwrap()).unwrap();
+        assert_eq!(record["origin"], "oauth:gdrive");
+        assert_eq!(record["secrets"]["provider"], "gdrive");
+        assert_eq!(record["secrets"]["refreshToken"], "RT");
+
+        let handed = finish_connect(secure_store::Tier::None, Provider::Gdrive, "RT", |_| {
+            panic!("nothing to write without a credential store")
+        })
+        .unwrap();
+        assert!(!handed.stored);
+        assert_eq!(handed.refresh_token.as_deref(), Some("RT"));
     }
 
     #[test]
