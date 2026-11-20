@@ -58,7 +58,7 @@ Every backup is encrypted. It opens only with the master password your vault had
 | Backup file | Yes | Yes | Yes |
 | Cloud backups | Yes | Yes | Yes |
 | Cloud backups run | While unlocked | When you open Bramble | On schedule, even locked |
-| <Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive sign-in</Since><Until commit="48521e2d" on="chromium firefox">Dropbox sign-in</Until> | Yes | No | No |
+| <Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive sign-in</Since><Until commit="48521e2d" on="chromium firefox">Dropbox sign-in</Until> | Yes | No | <Since commit="7ffd7aa5" on="desktop">Yes</Since><Until commit="7ffd7aa5" on="desktop">No</Until> |
 | Export as KeePass | Yes | Yes | Yes |
 
 Everything is under **Settings → Backups**.
@@ -82,7 +82,7 @@ Choose **Back up now** to make one straight away.
 
 | Provider | Setup |
 | --- | --- |
-| Dropbox<Since commit="48521e2d" on="chromium firefox">, Google Drive</Since> | Sign in with one click. Browser extension only.<Since commit="48521e2d" on="chromium firefox"> Google Drive backups go in a **Bramble** folder in My Drive.</Since> |
+| Dropbox<Since commit="48521e2d" on="chromium firefox">, Google Drive</Since> | Sign in with one click. <Since commit="7ffd7aa5" on="desktop">Browser extension and desktop app.</Since><Until commit="7ffd7aa5" on="desktop">Browser extension only.</Until><Since commit="48521e2d" on="chromium firefox"> Google Drive backups go in a **Bramble** folder in My Drive.</Since> |
 | Backblaze B2, Cloudflare R2, Storj, Wasabi, other S3 | An access key for a bucket |
 | Nextcloud, pCloud, Fastmail, other WebDAV | Your WebDAV address and an app password |
 

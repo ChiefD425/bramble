@@ -1097,7 +1097,8 @@ Decided November 2026. **Status:** the extension's one-click path is built (Chro
 green against a faked Google) and was verified by hand against a real Drive on Chrome and
 Firefox on 2026-11-20. Google still has the client in Testing, so
 only listed test users can sign in until brand verification and "In production". The user's
-own client, desktop and mobile are not built; there the tile shows "coming soon".
+own client and mobile are not built; there the tile shows "coming soon". Desktop (Google Drive
+and Dropbox) is built on `feat/desktop-oauth-backups`; see "Desktop" below.
 
 Two ways to connect, one code path: a one-click tile on
 **Bramble's own client**, and the **user's own client** under Advanced. Both use a Google
@@ -1177,9 +1178,22 @@ S3 secret (VEK-wrapped, or in the OS store on desktop).
 - **Per platform.** The extension signs in through `background/oauth-redirect.ts` (the loopback
   variants above), chosen at runtime from `identity.getRedirectURL()`: allizom.org is Gecko.
   Chromium's tab is read through `tabs.onUpdated`, which `<all_urls>` covers, so no new
-  permission. Desktop and mobile wait on OAuth connect there
-  (`connectBackupOAuth` is extension-only today); desktop mints access tokens in Rust, since
-  its credentials never enter the webview. That same work brings Dropbox to desktop and mobile.
+  permission. Mobile waits on OAuth connect there.
+- **Desktop** (Google Drive and Dropbox). Rust runs the whole sign-in (`oauth.rs`): PKCE, a
+  `127.0.0.1` listener, the consent page in the system browser, the exchange. The refresh token
+  goes straight into the credential store under the target's `backup.creds:` account, which the
+  webview can neither read nor write; it reaches the webview only on a machine with no
+  credential store, to be sealed under the vault key as S3 and WebDAV secrets are there.
+  `AuthSpec::OAuth` mints and caches access tokens in Rust and sends a bearer only to the
+  provider's own API origins, hard-coded in Rust with the client ID and secret (a test checks
+  they match `@core/backup/oauth`). The targets run with no token of their own
+  (`forAuthenticatingTransport`) and retry a 401 once, after Rust drops the refused token. So a
+  vault backs up on schedule while locked, which the extension can't. Rust replies now carry
+  headers, for Drive's `Location`. A newer sign-in replaces one abandoned in the browser, and
+  one left alone fails after ten minutes.
+- **Dropbox's port is fixed.** Dropbox matches a loopback redirect's port, so desktop signs in on
+  `http://127.0.0.1:53682/`, registered (with `http://localhost:53682/`) in the Dropbox App
+  Console. Google takes any port. A busy 53682 fails with a message naming it.
 
 ## Folder targets (desktop and iOS)
 

@@ -56,6 +56,8 @@ keywords:
   - Unlock Bramble first, then connect
   - No response from Bramble's background
   - One-click sign-in for Dropbox is coming in a future update
+  - Sign-in timed out
+  - Port 53682 is in use
   - Coming soon
   - Interrupted
   - Not backed up
@@ -110,13 +112,13 @@ A key that can upload but can't list or delete still backs up. Bramble just can'
 
 ## One-click sign-in
 
-<Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive work</Since><Until commit="48521e2d" on="chromium firefox">Dropbox works</Until> only in the browser extension.
+<Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive work</Since><Until commit="48521e2d" on="chromium firefox">Dropbox works</Until><Until commit="7ffd7aa5" on="desktop"> only</Until> in the browser extension<Since commit="7ffd7aa5" on="desktop"> and the desktop app</Since>.
 
 | Message | What to do |
 | --- | --- |
-| One-click sign-in for Dropbox is coming in a future update. | You're in the phone or desktop app. Connect it from the browser extension, or pick another provider here. |
+| One-click sign-in for Dropbox is coming in a future update. | You're in the phone<Until commit="7ffd7aa5" on="desktop"> or desktop</Until> app. Connect it from the browser extension, or pick another provider here. |
 | Unlock Bramble first, then connect. | Unlock your vault, then choose **Connect Dropbox**<Since commit="48521e2d" on="chromium firefox"> or **Connect Google Drive**</Since> again. |
-| Sign-in was cancelled or failed | The sign-in window<Since commit="48521e2d" on="chromium firefox"> or tab</Since> closed before you finished. Choose **Connect** again and finish signing in. |
+| Sign-in was cancelled or failed<Since commit="7ffd7aa5" on="desktop">, Sign-in timed out, Port 53682 is in use</Since> | The sign-in window<Since commit="48521e2d" on="chromium firefox"> or tab</Since> closed before you finished. Choose **Connect** again and finish signing in.<Since commit="7ffd7aa5" on="desktop"> In the desktop app your browser opens to sign in; when it says you can close the tab, go back to Bramble. Dropbox signs in through port 53682, so close any app using it.</Since> |
 | Dropbox<Since commit="48521e2d" on="chromium firefox"> or Google</Since> shows an error while you sign in | Try again later, or pick another provider. |
 | Couldn't refresh access (…). Reconnect the account. | Bramble lost access, for example after you removed it from Dropbox's connected apps<Since commit="48521e2d" on="chromium firefox"> or your Google account's third-party connections</Since>. Choose **Reconnect** on the card. |
 | Dropbox upload failed (…)<Since commit="48521e2d" on="chromium firefox">, Google Drive upload failed (…)</Since> | The text in brackets is the provider's reason. `insufficient_space` means your Dropbox is full.<Since commit="48521e2d" on="chromium firefox"> "The user's Drive storage quota has been exceeded" means your Google Drive is full.</Since> |
