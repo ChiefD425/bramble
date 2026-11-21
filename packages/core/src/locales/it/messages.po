@@ -423,6 +423,11 @@ msgstr "Aggiungere un tag"
 msgid "Add a vault"
 msgstr "Aggiungi un vault"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+#: packages/core/src/app/screens/Settings/components/DataSection.tsx
+msgid "Add an encrypted .bramble backup or export to this vault. Entries you already have aren't added twice."
+msgstr "Aggiunga un backup .bramble crittografato o un file di esportazione .bramble crittografato a questo vault. Le voci già presenti non vengono aggiunte due volte."
+
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Add another device"
 msgstr "Aggiungi un altro dispositivo"
@@ -465,12 +470,12 @@ msgid "Add URL"
 msgstr "Aggiungi URL"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
-msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
-msgstr "Aggiungere il contenuto di un backup a questo archivio. Le voci già presenti non vengono aggiunte due volte."
+#~ msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
+#~ msgstr "Aggiungere il contenuto di un backup a questo archivio. Le voci già presenti non vengono aggiunte due volte."
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
-msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
-msgstr "Aggiungere il contenuto di un backup .bramble crittografato a questo archivio. Le voci già presenti non vengono aggiunte due volte."
+#~ msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+#~ msgstr "Aggiungere il contenuto di un backup .bramble crittografato a questo archivio. Le voci già presenti non vengono aggiunte due volte."
 
 #: packages/core/src/app/screens/Settings/components/BrowserUnlockKeysSection.tsx
 msgid "Added {added}"

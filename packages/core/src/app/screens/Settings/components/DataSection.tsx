@@ -63,7 +63,7 @@ export function DataSection() {
 				<Row
 					icon={<ArchiveRestore className="w-4 h-4 text-primary" />}
 					title={t`Import a backup`}
-					subtitle={t`Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice.`}
+					subtitle={t`Add an encrypted .bramble backup or export to this vault. Entries you already have aren't added twice.`}
 				>
 					<Button
 						variant="secondary"
@@ -113,7 +113,13 @@ export function DataSection() {
 					title={t`Import from another manager`}
 					subtitle={t`Bring entries in from 1Password, Bitwarden, KeePass, Proton Pass, Apple or Google`}
 				>
-					<Button variant="secondary" size="sm" onClick={() => void shell.openSetup("import")}>
+					{/* Both groups render a button reading "Import", told apart by their aria-labels. */}
+					<Button
+						variant="secondary"
+						size="sm"
+						aria-label={t`Import from another manager`}
+						onClick={() => void shell.openSetup("import")}
+					>
 						<Trans>Import</Trans>
 					</Button>
 				</Row>

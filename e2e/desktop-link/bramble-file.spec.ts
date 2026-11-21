@@ -21,14 +21,17 @@ test.use({ ownApp: true });
 /** Not DESKTOP_PW, so a file sealed under the master password can't pass. */
 const FILE_PW = "Br8-dsk-p0rt-Qk3-vT9";
 
-/** Settings > Backups > Import, and `bytes` picked on the card titled `provider`. The card's input
- * is hidden and opens the system panel, so the file is set on it as a pick would set it. */
+/** Settings > Backups > Import, and `bytes` picked on the card titled `provider`. A .bramble has
+ * its own row, "Import a backup"; every other format is under "Import from another manager". The
+ * card's input is hidden and opens the system panel, so the file is set on it as a pick would set
+ * it. */
 async function desktopPickImportFile(provider: string, name: string, bytes: Buffer) {
+	const row = provider === "Bramble (.bramble)" ? "Import a backup" : "Import from another manager";
 	await desk(`
 		await front();
 		await click(/^Settings$/);
 		await click(/^Backups$/);
-		await click(/^Import$/);
+		await click(new RegExp("^" + ${JSON.stringify(row)} + "$"));
 		const card = await waitFor(() =>
 			[...document.querySelectorAll("label")].find(
 				(l) => l.querySelector("p")?.textContent === ${JSON.stringify(provider)},

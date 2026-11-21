@@ -28,8 +28,14 @@ const PASSKEY_FIXTURE = path.resolve(
  * file password and the master password cannot pass. */
 const FILE_PW = "Br8-mbL-p0rt-Qk3-vT9";
 
-async function pickImportFile(page: Page, extensionId: string, provider: RegExp, file: string) {
-	await page.goto(`${optionsUrl(extensionId)}?screen=import`);
+async function pickImportFile(
+	page: Page,
+	extensionId: string,
+	provider: RegExp,
+	file: string,
+	screen = "import",
+) {
+	await page.goto(`${optionsUrl(extensionId)}?screen=${screen}`);
 	const card = page.locator("label").filter({ hasText: provider }).first();
 	await expect(card).toBeVisible();
 	await card.locator('input[type="file"]').setInputFiles(file);
@@ -64,9 +70,10 @@ async function exportSelection(popup: Page, password: string, confirm = password
 	return { out, download, modal };
 }
 
-/** Feed a .bramble to the import flow and submit `password` at the credential step. */
+/** Feed a .bramble to Settings' "Import a backup" flow and submit `password` at the credential
+ * step. */
 async function openBrambleFile(page: Page, extensionId: string, file: string, password: string) {
-	await pickImportFile(page, extensionId, /Bramble/, file);
+	await pickImportFile(page, extensionId, /Bramble/, file, "import-backup");
 	await page.locator('input[type="password"]').first().fill(password);
 	await page.getByRole("button", { name: /Open database/i }).click();
 }

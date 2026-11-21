@@ -80,8 +80,8 @@ export const IMPORT_PROVIDERS: readonly ImportProviderInfo[] = [
 	{
 		// Bramble's own format, so it is the only file import that keeps passkeys and
 		// password history. An export is sealed under the password chosen for it, a backup
-		// under its vault's master password; both merge. Second because it is the best file
-		// route where the user has one.
+		// under its vault's master password; both merge. Offered only on the "Import a backup"
+		// screen, never beside the other managers.
 		id: "bramble",
 		label: "Bramble (.bramble)",
 		blurb: "A Bramble export or backup, merged into this vault, passkeys included",

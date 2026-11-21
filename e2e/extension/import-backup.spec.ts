@@ -107,6 +107,7 @@ test("Settings' Import a backup brings back what this vault lost, and nothing tw
 	await expect(page).toHaveURL(/screen=import-backup/);
 	// Only the .bramble route here, not the other managers.
 	await expect(page.getByText("Bitwarden")).toHaveCount(0);
+	await expect(page.getByText("Bramble (.bramble)")).toBeVisible();
 	await openBackup(page, backup);
 	await expect(page.getByText(/1 items ready to import/i)).toBeVisible();
 	await page.getByRole("button", { name: /Import 1 items/i }).click();
@@ -127,4 +128,20 @@ test("Settings' Import a backup brings back what this vault lost, and nothing tw
 	await expect(again.getByText(/already in your vault/i)).toBeVisible();
 	await expect(again.getByText(/items ready to import/i)).toBeHidden();
 	expect(await vaultCount(context)).toBe(1);
+});
+
+// One way in for a .bramble: the other managers' screen doesn't offer it a second time.
+test("Import from another manager leaves .bramble files to Import a backup", async ({
+	context,
+	extensionId,
+}) => {
+	const popup = await openExampleLogin(context, extensionId);
+	await popup.getByRole("button", { name: "Go to vault" }).click();
+	await gotoBackups(popup);
+	const opening = context.waitForEvent("page");
+	await popup.getByRole("button", { name: "Import from another manager" }).click();
+	const page = await opening;
+	await expect(page).toHaveURL(/screen=import$/);
+	await expect(page.getByText("Bitwarden")).toBeVisible();
+	await expect(page.getByText("Bramble (.bramble)")).toHaveCount(0);
 });

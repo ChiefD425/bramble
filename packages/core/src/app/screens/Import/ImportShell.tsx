@@ -43,8 +43,8 @@ const MAX_IMPORT_FILE_BYTES = MAX_IMPORT_FILE_MB * 1024 * 1024;
 
 /** Import wizard: pick a provider, parse/decrypt the file, preview, then write into the vault.
  * `onClose` (single-window hosts like mobile) returns to the app; the extension opens import
- * in its own tab and passes nothing. `backupOnly` offers just the .bramble route, for
- * Settings' "Import a backup". */
+ * in its own tab and passes nothing. `backupOnly` is Settings' "Import a backup": the .bramble
+ * route, which the plain import screen leaves out. */
 export function ImportShell({
 	onClose,
 	backupOnly = false,
@@ -110,8 +110,9 @@ export function ImportShell({
 	// device can't transfer, the card says why instead of disappearing.
 	const availability = useExchangeAvailability();
 	const exchangeBlocked = exchangeBlockedReason(availability);
+	// A .bramble comes in only through Settings' "Import a backup", so it isn't offered twice.
 	const providers = IMPORT_PROVIDERS.filter((p) =>
-		backupOnly ? p.id === "bramble" : !p.viaSystem || exchange,
+		backupOnly ? p.id === "bramble" : p.id !== "bramble" && (!p.viaSystem || exchange),
 	);
 
 	// The OS opens this screen only because a transfer is already in flight, so claim it and
@@ -663,7 +664,7 @@ export function ImportShell({
 			<Header
 				subtitle={
 					backupOnly
-						? t`Add what's in a backup to this vault. Entries you already have aren't added twice.`
+						? t`Add an encrypted .bramble backup or export to this vault. Entries you already have aren't added twice.`
 						: t`Bring your logins, cards and notes over from another manager`
 				}
 			/>
