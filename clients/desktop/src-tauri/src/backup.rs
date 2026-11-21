@@ -46,7 +46,12 @@ fn account(vault_id: &str, target_id: &str) -> String {
 /// vault key and the webview unwraps them per run, exactly as the extension does. The request
 /// still has to be sent from here, because the webview cannot reach a provider at all.
 #[derive(Deserialize, Clone)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+// `rename_all` names the variants only; the inline variants' fields arrive camelCase too.
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum AuthSpec {
     /// S3-compatible: SigV4, signed here with the stored secret.
     S3 { region: String },
@@ -109,7 +114,11 @@ struct StoredCreds {
 /// addresses many paths under one origin.
 fn origin_of(url: &reqwest::Url) -> String {
     match url.port() {
-        Some(port) => format!("{}://{}:{port}", url.scheme(), url.host_str().unwrap_or_default()),
+        Some(port) => format!(
+            "{}://{}:{port}",
+            url.scheme(),
+            url.host_str().unwrap_or_default()
+        ),
         None => format!("{}://{}", url.scheme(), url.host_str().unwrap_or_default()),
     }
 }
@@ -537,9 +546,9 @@ mod tests {
                 region: "us-east-1".into(),
             },
             Some(
-            stored(
-                "https://minio.example.com",
-                r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
+                stored(
+                    "https://minio.example.com",
+                    r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
                 )
                 .as_str(),
             ),
@@ -556,9 +565,9 @@ mod tests {
                 region: "us-east-1".into(),
             },
             Some(
-            stored(
-                "https://minio.example.com:9000",
-                r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
+                stored(
+                    "https://minio.example.com:9000",
+                    r#"{"accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
                 )
                 .as_str(),
             ),
@@ -583,9 +592,9 @@ mod tests {
         let (url, headers) = prepare(
             &AuthSpec::Basic,
             Some(
-            stored(
-                "http://localhost:8080",
-                r#"{"username":"admin","password":"Bramble-test-123"}"#,
+                stored(
+                    "http://localhost:8080",
+                    r#"{"username":"admin","password":"Bramble-test-123"}"#,
                 )
                 .as_str(),
             ),
@@ -630,16 +639,25 @@ mod tests {
         for (label, url) in [
             ("attacker host", "https://attacker.example/collect"),
             ("same host, other scheme", "http://cloud.example.com/dav/"),
-            ("same host, other port", "https://cloud.example.com:8443/dav/"),
-            ("subdomain", "https://cloud.example.com.attacker.example/dav/"),
-            ("userinfo trick", "https://cloud.example.com@attacker.example/dav/"),
+            (
+                "same host, other port",
+                "https://cloud.example.com:8443/dav/",
+            ),
+            (
+                "subdomain",
+                "https://cloud.example.com.attacker.example/dav/",
+            ),
+            (
+                "userinfo trick",
+                "https://cloud.example.com@attacker.example/dav/",
+            ),
         ] {
             let err = prepare(
                 &AuthSpec::Basic,
                 Some(
-            stored(
-                    "https://cloud.example.com",
-                    r#"{"username":"admin","password":"pw"}"#,
+                    stored(
+                        "https://cloud.example.com",
+                        r#"{"username":"admin","password":"pw"}"#,
                     )
                     .as_str(),
                 ),
@@ -664,9 +682,9 @@ mod tests {
                 prepare(
                     &AuthSpec::Basic,
                     Some(
-            stored(
-                        "https://cloud.example.com",
-                        r#"{"username":"admin","password":"pw"}"#,
+                        stored(
+                            "https://cloud.example.com",
+                            r#"{"username":"admin","password":"pw"}"#,
                         )
                         .as_str(),
                     ),
@@ -685,6 +703,25 @@ mod tests {
     // The no-credential-store fallback: the caller passes the secret it already unwrapped from the
     // vault, so there is nothing for a pin to protect, but the request must still be sent from
     // here because the webview cannot reach a provider.
+    /// The exact shape `clients/desktop/src/adapters/backup-creds.ts` sends on a machine with no
+    /// credential store. Field names are camelCase there, as everywhere on the webview side.
+    #[test]
+    fn inline_credentials_read_the_json_the_webview_sends() {
+        let s3: AuthSpec = serde_json::from_str(
+            r#"{"kind":"s3Inline","region":"us-east-1","accessKeyId":"AKIA","secretAccessKey":"secret"}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            s3,
+            AuthSpec::S3Inline { ref access_key_id, ref secret_access_key, .. }
+                if access_key_id == "AKIA" && secret_access_key == "secret"
+        ));
+        let basic: AuthSpec =
+            serde_json::from_str(r#"{"kind":"basicInline","username":"u","password":"p"}"#)
+                .unwrap();
+        assert!(matches!(basic, AuthSpec::BasicInline { .. }));
+    }
+
     #[test]
     fn inline_credentials_need_no_pin_and_still_authenticate() {
         let (_, headers) = prepare(
