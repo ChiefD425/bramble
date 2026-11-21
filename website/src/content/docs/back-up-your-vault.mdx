@@ -35,6 +35,8 @@ keywords:
   - Export a backup
   - Import a backup
   - Restore from backup
+  - merge a backup
+  - That's a full vault backup
   - Back up now
   - Start at login
   - Export as KeePass
@@ -104,10 +106,10 @@ An unchanged vault isn't uploaded again. Set up cloud backups on the desktop app
 
 ## Restore a backup
 
-Restoring adds the backup as a new vault. Nothing on your device is replaced.
+Restoring adds the backup as a new vault. Nothing on your device is replaced.<Since commit="bd1ff900"> To add what's in a backup to the vault you have open instead, open **Settings → Backups** and choose **Import** next to **Import a backup**. Choose the file and enter the backup's master password. Entries you already have aren't added twice, and attachments come too.</Since>
 
 1. Get the .bramble file: one you saved, or one downloaded from your cloud storage.
-2. On a new device, choose **Restore from backup** when you set up Bramble. If you already have a vault, open **Settings → Backups** and choose **Restore** next to **Import a backup**.
+2. On a new device, choose **Restore from backup** when you set up Bramble. If you already have a vault, <Since commit="bd1ff900">lock it, choose **Create another vault**, then the **Restore from backup** tab</Since><Until commit="bd1ff900">open **Settings → Backups** and choose **Restore** next to **Import a backup**</Until>.
 3. Choose the file, enter the backup's master password, and choose **Restore vault**.
 
 <Callout type="note" title="Backups need a master password">
