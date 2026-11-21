@@ -40,7 +40,7 @@ keywords:
   - Those passwords don't match.
   - Couldn't write the file.
   - is damaged, so it can't be exported
-updatedDate: 2026-11-07
+updatedDate: 2026-11-21
 ---
 
 Every export Bramble makes is encrypted. A backup opens with your master password, and every other file with a password you pick for it. Bramble doesn't export plain-text CSV or JSON.
@@ -60,7 +60,7 @@ Every export Bramble makes is encrypted. A backup opens with your master passwor
 | --- | --- | --- | --- |
 | Logins, cards, notes and SSH keys | Yes | Yes | Yes |
 | 2FA codes | Yes | Yes | Yes |
-| Passkeys | Yes | <Since commit="8edb1d72">Yes</Since><Until commit="8edb1d72">No</Until> | Yes |
+| Passkeys | Yes | Yes | Yes |
 | Attachments | Yes | Yes | No |
 | Password history | Yes | No | Yes |
 | Opens with | Your master password | A password you pick | A password you pick |
@@ -93,10 +93,8 @@ KeePass has only one kind of entry, so a few things change on the way:
 - Cards, notes and SSH keys become entries, with their details in extra fields.
 - A login with several websites keeps the first under URL, and the rest as URL 2, URL 3 and so on.
 - Archived entries are included, marked with an Archived field.
-- <Since commit="8edb1d72">Passkeys go in the way KeePassXC stores them, so KeePassXC can sign in with them. A login with several passkeys gets an extra entry for each one after the first.</Since><Until commit="8edb1d72">Passkeys are left out. Keep a backup for those.</Until>
+- Passkeys go in the way KeePassXC stores them, so KeePassXC can sign in with them. A login with several passkeys gets an extra entry for each one after the first.
 - Password history is left out. Keep a backup for that.
-
-<Rollout commit="8edb1d72">Passkeys go with the file</Rollout>
 
 ### Need a CSV file?
 
@@ -111,7 +109,7 @@ Use this to move some entries to another vault.
 3. Open **Actions** and choose **Export selection**.
 4. Pick a password for the file and choose **Export**.
 
-To bring the entries into another vault, <Since commit="7e5387e7">open **Settings → Backups** in that vault and choose **Import** next to **Import a backup**</Since><Until commit="7e5387e7">[import the file](/docs/import-passwords) and choose **Bramble (.bramble)**</Until>.
+To bring the entries into another vault, open **Settings → Backups** in that vault and choose **Import** next to **Import a backup**.
 
 ## Send to another app (iPhone)
 

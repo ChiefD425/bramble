@@ -46,7 +46,7 @@ keywords:
   - backup not running
   - where are my backups
   - is sync a backup
-updatedDate: 2026-11-07
+updatedDate: 2026-11-21
 ---
 
 Sync keeps your devices in step, but it isn't a backup: delete an entry and it's gone from every device. A backup is a copy you can go back to.
@@ -60,7 +60,7 @@ Every backup is encrypted. It opens only with the master password your vault had
 | Backup file | Yes | Yes | Yes |
 | Cloud backups | Yes | Yes | Yes |
 | Cloud backups run | While unlocked | When you open Bramble | On schedule, even locked |
-| <Since commit="48521e2d" on="chromium firefox">Dropbox and Google Drive sign-in</Since><Until commit="48521e2d" on="chromium firefox">Dropbox sign-in</Until> | Yes | No | <Since commit="7ffd7aa5" on="desktop">Yes</Since><Until commit="7ffd7aa5" on="desktop">No</Until> |
+| Dropbox and Google Drive sign-in | Yes | No | Yes |
 | Export as KeePass | Yes | Yes | Yes |
 
 Everything is under **Settings → Backups**.
@@ -84,11 +84,11 @@ Choose **Back up now** to make one straight away.
 
 | Provider | Setup |
 | --- | --- |
-| Dropbox<Since commit="48521e2d" on="chromium firefox">, Google Drive</Since> | Sign in with one click. <Since commit="7ffd7aa5" on="desktop">Browser extension and desktop app.</Since><Until commit="7ffd7aa5" on="desktop">Browser extension only.</Until><Since commit="48521e2d" on="chromium firefox"> Google Drive backups go in a **Bramble** folder in My Drive.</Since> |
+| Dropbox, Google Drive | Sign in with one click. Browser extension and desktop app. Google Drive backups go in a **Bramble** folder in My Drive. |
 | Backblaze B2, Cloudflare R2, Storj, Wasabi, other S3 | An access key for a bucket |
 | Nextcloud, pCloud, Fastmail, other WebDAV | Your WebDAV address and an app password |
 
-<Since commit="48521e2d" on="chromium firefox">iCloud Drive and Proton Drive</Since><Until commit="48521e2d" on="chromium firefox">Google Drive, iCloud Drive and Proton Drive</Until> aren't built in. [Save a backup file](#save-a-backup-file) there instead.
+iCloud Drive and Proton Drive aren't built in. [Save a backup file](#save-a-backup-file) there instead.
 
 <Callout type="tip" title="Limit what Bramble can reach">
 For S3, make a key for that one bucket that can upload and list, but not delete. A WebDAV app password reaches every file in the account, so a separate account just for backups is safest.
@@ -106,10 +106,10 @@ An unchanged vault isn't uploaded again. Set up cloud backups on the desktop app
 
 ## Restore a backup
 
-Restoring adds the backup as a new vault. Nothing on your device is replaced.<Since commit="bd1ff900"> To add what's in a backup to the vault you have open instead, open **Settings → Backups** and choose **Import** next to **Import a backup**. Choose the file and enter the backup's master password. Entries you already have aren't added twice, and attachments come too.</Since>
+Restoring adds the backup as a new vault. Nothing on your device is replaced. To add what's in a backup to the vault you have open instead, open **Settings → Backups** and choose **Import** next to **Import a backup**. Choose the file and enter the backup's master password. Entries you already have aren't added twice, and attachments come too.
 
 1. Get the .bramble file: one you saved, or one downloaded from your cloud storage.
-2. On a new device, choose **Restore from backup** when you set up Bramble. If you already have a vault, <Since commit="bd1ff900">lock it, choose **Create another vault**, then the **Restore from backup** tab</Since><Until commit="bd1ff900">open **Settings → Backups** and choose **Restore** next to **Import a backup**</Until>.
+2. On a new device, choose **Restore from backup** when you set up Bramble. If you already have a vault, lock it, choose **Create another vault**, then the **Restore from backup** tab.
 3. Choose the file, enter the backup's master password, and choose **Restore vault**.
 
 <Callout type="note" title="Backups need a master password">
