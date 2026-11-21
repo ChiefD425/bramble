@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 /// The App Group the app and the extension share; read back with `codesign -d --entitlements`.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 const GROUP: &str = "BHGR3PP64J.group.app.bramble.desktop";
-const MIRROR_FILE: &str = "autofill.json";
+/// One copy per vault, `<vaultId>.json`, so the sheet can open any vault opened here.
+const COPIES_DIR: &str = "autofill";
+/// The single copy builds before per-vault copies kept. The first write removes it.
+const LEGACY_MIRROR_FILE: &str = "autofill.json";
 /// Passkeys the extension created, VEK-encrypted, for the app to merge into the vault.
 const PENDING_FILE: &str = "pending-passkeys.json";
 
@@ -39,6 +42,28 @@ pub struct Mirror {
     pub one_time_code_identities: Vec<CodeIdentity>,
     #[serde(default, skip_serializing)]
     pub passkey_identities: Vec<PasskeyIdentity>,
+    /// The vaults the app lists. A copy of any other vault is pruned; empty prunes nothing.
+    #[serde(default, skip_serializing)]
+    pub listed_vault_ids: Vec<String>,
+}
+
+/// A copy on disk: the mirror, plus what the sheet reads before it unlocks.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Copy<'a> {
+    #[serde(flatten)]
+    mirror: &'a Mirror,
+    passkey_credential_ids: Vec<&'a str>,
+    written_at: u64,
+}
+
+/// What a write changed besides the vault's own copy.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub struct Written {
+    /// The single copy from before was there, so its untagged identities are still in the store.
+    pub legacy_removed: bool,
+    /// Vaults whose copies went because the app no longer lists them.
+    pub pruned: Vec<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -106,10 +131,34 @@ fn path_group_dir() -> Option<PathBuf> {
     })
 }
 
-fn write_mirror(dir: &Path, mirror: &Mirror) -> Result<(), String> {
-    fs::create_dir_all(dir).map_err(|e| format!("group container: {e}"))?;
-    let tmp = dir.join(format!("{MIRROR_FILE}.tmp"));
-    let body = serde_json::to_vec(mirror).map_err(|e| format!("encode mirror: {e}"))?;
+fn copy_path(dir: &Path, vault_id: &str) -> Result<PathBuf, String> {
+    crate::storage::ops::validate_vault_id(vault_id)?;
+    Ok(dir.join(COPIES_DIR).join(format!("{vault_id}.json")))
+}
+
+fn remove_if_present(path: &Path) -> Result<bool, String> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(format!("remove {}: {e}", path.display())),
+    }
+}
+
+fn write_mirror(dir: &Path, mirror: &Mirror, now_ms: u64) -> Result<Written, String> {
+    let path = copy_path(dir, &mirror.vault_id)?;
+    let copies = dir.join(COPIES_DIR);
+    fs::create_dir_all(&copies).map_err(|e| format!("group container: {e}"))?;
+    let copy = Copy {
+        mirror,
+        passkey_credential_ids: mirror
+            .passkey_identities
+            .iter()
+            .map(|p| p.credential_id.as_str())
+            .collect(),
+        written_at: now_ms,
+    };
+    let tmp = copies.join(format!("{}.json.tmp", mirror.vault_id));
+    let body = serde_json::to_vec(&copy).map_err(|e| format!("encode mirror: {e}"))?;
     fs::write(&tmp, body).map_err(|e| format!("write mirror: {e}"))?;
     #[cfg(unix)]
     {
@@ -117,14 +166,42 @@ fn write_mirror(dir: &Path, mirror: &Mirror) -> Result<(), String> {
         fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600))
             .map_err(|e| format!("restrict mirror: {e}"))?;
     }
-    fs::rename(&tmp, dir.join(MIRROR_FILE)).map_err(|e| format!("write mirror: {e}"))
+    fs::rename(&tmp, &path).map_err(|e| format!("write mirror: {e}"))?;
+    let legacy_removed = remove_if_present(&dir.join(LEGACY_MIRROR_FILE))?;
+    let pruned = if mirror.listed_vault_ids.is_empty() {
+        Vec::new()
+    } else {
+        prune(&copies, mirror)?
+    };
+    Ok(Written {
+        legacy_removed,
+        pruned,
+    })
 }
 
-fn clear_mirror(dir: &Path) -> Result<(), String> {
-    match fs::remove_file(dir.join(MIRROR_FILE)) {
-        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(format!("clear mirror: {e}")),
-        _ => Ok(()),
+/// Remove the copies of vaults the app no longer lists, keeping the one just written.
+fn prune(copies: &Path, mirror: &Mirror) -> Result<Vec<String>, String> {
+    let mut pruned = Vec::new();
+    for entry in fs::read_dir(copies).map_err(|e| format!("list copies: {e}"))? {
+        let path = entry.map_err(|e| format!("list copies: {e}"))?.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(id) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if id == mirror.vault_id || mirror.listed_vault_ids.iter().any(|v| v == id) {
+            continue;
+        }
+        remove_if_present(&path)?;
+        pruned.push(id.to_string());
     }
+    pruned.sort();
+    Ok(pruned)
+}
+
+fn clear_mirror(dir: &Path, vault_id: &str) -> Result<(), String> {
+    remove_if_present(&copy_path(dir, vault_id)?).map(|_| ())
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -189,7 +266,11 @@ pub fn autofill_provider_set(mirror: Mirror) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let dir = group_dir().ok_or("no home directory")?;
-        write_mirror(&dir, &mirror)?;
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        write_mirror(&dir, &mirror, now_ms)?;
         store::replace(&mirror);
     }
     #[cfg(not(target_os = "macos"))]
@@ -197,14 +278,16 @@ pub fn autofill_provider_set(mirror: Mirror) -> Result<(), String> {
     Ok(())
 }
 
-/// The vault is gone: its mirror and identities go with it, or they outlive it as an openable copy.
+/// The vault is gone: its copy and identities go with it, or they outlive it as an openable copy.
 #[tauri::command(async)]
-pub fn autofill_provider_clear() -> Result<(), String> {
+pub fn autofill_provider_clear(vault_id: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        clear_mirror(&group_dir().ok_or("no home directory")?)?;
+        clear_mirror(&group_dir().ok_or("no home directory")?, &vault_id)?;
         store::replace(&Mirror::default());
     }
+    #[cfg(not(target_os = "macos"))]
+    let _ = vault_id;
     Ok(())
 }
 
@@ -367,44 +450,101 @@ mod tests {
         .unwrap()
     }
 
+    fn mirror_for(vault_id: &str, listed: &[&str]) -> Mirror {
+        let mut m = mirror();
+        m.vault_id = vault_id.into();
+        m.listed_vault_ids = listed.iter().map(|s| s.to_string()).collect();
+        m
+    }
+
     #[test]
-    fn writes_the_mirror_atomically_into_the_group_container() {
+    fn writes_each_vault_to_its_own_copy() {
         let dir = tempfile::tempdir().unwrap();
         let group = dir.path().join("group");
-        write_mirror(&group, &mirror()).unwrap();
+        write_mirror(&group, &mirror_for("v1", &[]), 1000).unwrap();
+        write_mirror(&group, &mirror_for("v2", &[]), 2000).unwrap();
+        let copy = group.join(COPIES_DIR).join("v1.json");
+        assert!(group.join(COPIES_DIR).join("v2.json").exists());
         let written: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(group.join(MIRROR_FILE)).unwrap()).unwrap();
+            serde_json::from_slice(&std::fs::read(&copy).unwrap()).unwrap();
         assert_eq!(written["ciphertext"], "CT");
         assert_eq!(written["vaultId"], "v1");
         assert_eq!(written["vaultName"], "Personal");
         assert_eq!(written["passkeyCiphertext"], "PCT");
         assert_eq!(written["slot"]["saltB64"], "s");
+        assert_eq!(written["passkeyCredentialIds"], serde_json::json!(["Y2lk"]));
+        assert_eq!(written["writtenAt"], 1000);
         // Identities go to the OS store, never to disk.
         assert!(written.get("identities").is_none());
         assert!(written.get("passkeyIdentities").is_none());
-        let names: Vec<_> = std::fs::read_dir(&group)
+        assert!(written.get("listedVaultIds").is_none());
+        let names: Vec<_> = std::fs::read_dir(group.join(COPIES_DIR))
             .unwrap()
-            .map(|e| e.unwrap().file_name())
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
             .collect();
-        assert_eq!(names, vec![std::ffi::OsString::from(MIRROR_FILE)]);
+        let mut names = names;
+        names.sort();
+        assert_eq!(names, vec!["v1.json", "v2.json"]);
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(group.join(MIRROR_FILE))
-                .unwrap()
-                .permissions()
-                .mode();
+            let mode = std::fs::metadata(&copy).unwrap().permissions().mode();
             assert_eq!(mode & 0o777, 0o600);
         }
     }
 
     #[test]
-    fn clearing_removes_the_mirror() {
+    fn the_first_write_removes_the_single_copy() {
         let dir = tempfile::tempdir().unwrap();
-        write_mirror(dir.path(), &mirror()).unwrap();
-        clear_mirror(dir.path()).unwrap();
-        assert!(!dir.path().join(MIRROR_FILE).exists());
-        clear_mirror(dir.path()).unwrap();
+        std::fs::write(dir.path().join(LEGACY_MIRROR_FILE), "{}").unwrap();
+        let first = write_mirror(dir.path(), &mirror_for("v1", &[]), 1).unwrap();
+        assert!(first.legacy_removed);
+        assert!(!dir.path().join(LEGACY_MIRROR_FILE).exists());
+        let second = write_mirror(dir.path(), &mirror_for("v1", &[]), 2).unwrap();
+        assert!(!second.legacy_removed);
+    }
+
+    #[test]
+    fn prunes_copies_of_vaults_no_longer_listed() {
+        let dir = tempfile::tempdir().unwrap();
+        write_mirror(dir.path(), &mirror_for("v1", &[]), 1).unwrap();
+        write_mirror(dir.path(), &mirror_for("v2", &[]), 2).unwrap();
+        let written = write_mirror(dir.path(), &mirror_for("v1", &["v1"]), 3).unwrap();
+        assert_eq!(written.pruned, vec!["v2".to_string()]);
+        assert!(!dir.path().join(COPIES_DIR).join("v2.json").exists());
+        assert!(dir.path().join(COPIES_DIR).join("v1.json").exists());
+    }
+
+    // A registry that could not be read must not cost every other vault its copy.
+    #[test]
+    fn an_empty_vault_list_prunes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        write_mirror(dir.path(), &mirror_for("v1", &[]), 1).unwrap();
+        write_mirror(dir.path(), &mirror_for("v2", &[]), 2).unwrap();
+        let written = write_mirror(dir.path(), &mirror_for("v1", &[]), 3).unwrap();
+        assert!(written.pruned.is_empty());
+        assert!(dir.path().join(COPIES_DIR).join("v2.json").exists());
+    }
+
+    #[test]
+    fn clearing_removes_only_that_vault() {
+        let dir = tempfile::tempdir().unwrap();
+        write_mirror(dir.path(), &mirror_for("v1", &[]), 1).unwrap();
+        write_mirror(dir.path(), &mirror_for("v2", &[]), 2).unwrap();
+        clear_mirror(dir.path(), "v1").unwrap();
+        assert!(!dir.path().join(COPIES_DIR).join("v1.json").exists());
+        assert!(dir.path().join(COPIES_DIR).join("v2.json").exists());
+        clear_mirror(dir.path(), "v1").unwrap();
+    }
+
+    #[test]
+    fn rejects_a_vault_id_that_is_not_an_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let group = dir.path().join("group");
+        assert!(write_mirror(&group, &mirror_for("../x", &[]), 1).is_err());
+        assert!(clear_mirror(&group, "../x").is_err());
+        assert!(!group.join("x.json").exists());
+        assert!(!dir.path().join("x.json").exists());
     }
 
     #[test]
