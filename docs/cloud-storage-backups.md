@@ -265,10 +265,10 @@ unchanged. An archive's inner vault is written as the vault, then each attachmen
 put into that vault's own store (see "Backups with attachments").
 
 Restore never overwrites a vault: with none on the device the backup becomes the first
-one and is unlocked; otherwise it is added as a new vault, left locked. It is not the
-same path as importing a portable vault, which merges entries into the open vault, and
-Import turns a full backup away and points at Restore. That split is deliberate: a user
-recovering from a backup wants exactly the state in the file, as its own vault.
+one and is unlocked; otherwise it is added as a new vault, left locked. It is reached from
+vault setup (first run, or Add vault). From inside a vault, a backup is *imported* instead,
+which merges its entries and attachments into the open vault (Settings → Import a backup,
+or the Bramble card in Import). See encrypted-import.md, "Importing a full backup".
 
 The decisions live in `core/backup/restore.ts` rather than in the screen, so they are
 tested: `readPickedBackup` classifies the file, and `commitRestore` runs once the password

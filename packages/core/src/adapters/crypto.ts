@@ -268,6 +268,12 @@ export interface CryptoAdapter {
 	sealPortableVault?(input: SealPortableVaultInput): Promise<PortableVaultBlob>;
 	/** Open one. Resolves null for a wrong password, rejects for a corrupt file. */
 	openPortableVault?(input: OpenPortableVaultInput): Promise<string | null>;
+	/**
+	 * Open a full vault backup to merge into this vault: each entry's plaintext, and each
+	 * attachment's key wrapped again under this vault's VEK, so its sealed bytes are copied over
+	 * as they are. The backup's key never becomes the session key. Null for a wrong password.
+	 */
+	openVaultBackup?(input: OpenVaultBackupInput): Promise<OpenedVaultBackup | null>;
 }
 
 export interface SealPortableVaultInput {
@@ -281,4 +287,21 @@ export interface OpenPortableVaultInput {
 	password: string;
 	file: PortableVaultBlob;
 	magicVersion: Uint8Array;
+}
+
+/** A file's key as its record holds it, wrapped under a vault key. */
+export interface WrappedFileKey {
+	wrappedFek: string;
+	fekIv: string;
+}
+
+export interface OpenVaultBackupInput extends OpenPortableVaultInput {
+	entries: EncryptedPayload[];
+	files: WrappedFileKey[];
+}
+
+/** In the order passed in; an item that would not open is null. */
+export interface OpenedVaultBackup {
+	entries: (string | null)[];
+	files: (WrappedFileKey | null)[];
 }

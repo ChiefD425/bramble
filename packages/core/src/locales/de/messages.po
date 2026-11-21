@@ -23,6 +23,11 @@ msgstr "...und noch {0} weitere"
 msgid "{0, plural, one {# attachment in the backup file was damaged and wasn't restored. The vault still lists it.} other {# attachments in the backup file were damaged and weren't restored. The vault still lists them.}}"
 msgstr "{0, plural, one {# Anhang in der Sicherungsdatei war beschädigt und wurde nicht wiederhergestellt. Der Tresor listet ihn weiterhin auf.} other {# Anhänge in der Sicherungsdatei waren beschädigt und wurden nicht wiederhergestellt. Der Tresor listet sie weiterhin auf.}}"
 
+#. placeholder {0}: result.leftOut.attachments
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# attachment in this backup can't be read, so it's left out.} other {# attachments in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {# Anhang in diesem Backup kann nicht gelesen werden und wird daher ausgelassen.} other {# Anhänge in diesem Backup können nicht gelesen werden und werden daher ausgelassen.}}"
+
 #. placeholder {0}: outcome.restored
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "{0, plural, one {# attachment restored with it.} other {# attachments restored with it.}}"
@@ -47,6 +52,11 @@ msgstr "{0, plural, one {# Gerät hat seinen Roster-Eintrag noch nicht signiert.
 #: packages/core/src/app/bulk-actions/export.tsx
 msgid "{0, plural, one {# entry goes into the file, with its passkeys and history.} other {# entries go into the file, with their passkeys and history.}}"
 msgstr "{0, plural, one {# Eintrag wird in die Datei geschrieben, mit seinen Passkeys und seinem Verlauf.} other {# Einträge werden in die Datei geschrieben, mit ihren Passkeys und ihrem Verlauf.}}"
+
+#. placeholder {0}: result.leftOut.items
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# item in this backup can't be read, so it's left out.} other {# items in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {# Eintrag in diesem Backup kann nicht gelesen werden und wird daher ausgelassen.} other {# Einträge in diesem Backup können nicht gelesen werden und werden daher ausgelassen.}}"
 
 #. placeholder {0}: ids.length
 #: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
@@ -454,6 +464,14 @@ msgstr "Fügen Sie die Websites hinzu, die diese Anmeldung abdeckt. Lassen Sie d
 msgid "Add URL"
 msgstr "URL hinzufügen"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
+msgstr "Fügen Sie den Inhalt eines Backups zu diesem Tresor hinzu. Bereits vorhandene Einträge werden nicht doppelt hinzugefügt."
+
+#: packages/core/src/app/screens/Settings/components/DataSection.tsx
+msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+msgstr "Fügen Sie den Inhalt eines verschlüsselten .bramble-Backups zu diesem Tresor hinzu. Bereits vorhandene Einträge werden nicht doppelt hinzugefügt."
+
 #: packages/core/src/app/screens/Settings/components/BrowserUnlockKeysSection.tsx
 msgid "Added {added}"
 msgstr "Hinzugefügt am {added}"
@@ -548,6 +566,10 @@ msgstr "Ein App-Passwort hat Zugriff auf jede Datei im Konto, nicht nur auf dies
 #: packages/core/src/hooks/useVault.tsx
 msgid "An attachment hasn't reached this device yet, so the export would be missing it. Try again once it has."
 msgstr "Ein Anhang ist noch nicht auf diesem Gerät angekommen, daher würde er im Export fehlen. Versuchen Sie es erneut, sobald er da ist."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault."
+msgstr "Ein Anhang in diesem Backup ist beschädigt, daher wurde nichts importiert. Sie können es weiterhin als separaten Tresor wiederherstellen."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "An endpoint that returns your own ICE servers as JSON. Defaults to the relay's."
@@ -3006,9 +3028,12 @@ msgid "Password changed {0}"
 msgstr "Passwort geändert {0}"
 
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
-#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Password for the file"
 msgstr "Passwort für die Datei"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Password for the file (a backup's is its master password)"
+msgstr "Passwort für die Datei (das Passwort eines Backups ist dessen Master-Passwort)"
 
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Password found in a known data breach"
@@ -3354,7 +3379,6 @@ msgstr "Durch das Zurücksetzen wird Ihr alter Code ungültig."
 
 #: packages/core/src/app/bulk-actions/archive.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
-#: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Restore"
 msgstr "Wiederherstellen"
 
@@ -3369,8 +3393,8 @@ msgid "Restore a backup"
 msgstr "Ein Backup wiederherstellen"
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
-msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
-msgstr "Stellen Sie eine verschlüsselte .bramble-Sicherung wieder her. Sie wird als neuer Tresor hinzugefügt, daher wird hier nichts ersetzt."
+#~ msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
+#~ msgstr "Stellen Sie eine verschlüsselte .bramble-Sicherung wieder her. Sie wird als neuer Tresor hinzugefügt, daher wird hier nichts ersetzt."
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
 #~ msgid "Restore an encrypted .bramble backup. This replaces the vault on this device."
@@ -4052,8 +4076,8 @@ msgid "That year is outside the range cards use."
 msgstr "Dieses Jahr liegt außerhalb des für Karten gültigen Bereichs."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
-msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
-msgstr "Das ist eine vollständige Sicherung des Tresors. Stellen Sie sie stattdessen wieder her: Sie wird als neuer Tresor hinzugefügt, und hier wird nichts geändert."
+#~ msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
+#~ msgstr "Das ist eine vollständige Sicherung des Tresors. Stellen Sie sie stattdessen wieder her: Sie wird als neuer Tresor hinzugefügt, und hier wird nichts geändert."
 
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 msgid "The browser was not linked."
@@ -4196,6 +4220,10 @@ msgid "They're in your vault now. For your safety, delete the export file you ju
 msgstr "Sie befinden sich nun in Ihrem Tresor. Zu Ihrer Sicherheit löschen Sie bitte die gerade importierte Exportdatei, da diese Ihre Passwörter im Klartext enthält."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "They're in your vault now. The file is still encrypted, so it's safe to keep."
+msgstr "Die Einträge befinden sich jetzt in Ihrem Tresor. Die Datei ist weiterhin verschlüsselt, daher können Sie sie bedenkenlos aufbewahren."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "They're in your vault now. The transfer happened directly between the two apps, so there's no file to clean up."
 msgstr "Sie sind jetzt in Ihrem Tresor. Die Übertragung erfolgte direkt zwischen den beiden Apps, daher gibt es keine Datei zu bereinigen."
 
@@ -4211,9 +4239,14 @@ msgstr "Dadurch wird der Tresor der Desktop-App als separater Tresor zu diesem B
 msgid "This authenticator key is invalid and can't generate codes."
 msgstr "Dieser Authentifizierungsschlüssel ist ungültig und kann keine Codes generieren."
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup can't be read. It may be damaged, or not a Bramble backup."
 msgstr "Diese Sicherung kann nicht gelesen werden. Sie ist möglicherweise beschädigt oder keine Bramble-Sicherung."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "This backup has no master password, so it can't be opened here."
+msgstr "Dieses Backup hat kein Master-Passwort und kann daher hier nicht geöffnet werden."
 
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup has no master password, so it can't be restored here."

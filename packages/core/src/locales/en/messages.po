@@ -23,6 +23,11 @@ msgstr "…and {0} more"
 msgid "{0, plural, one {# attachment in the backup file was damaged and wasn't restored. The vault still lists it.} other {# attachments in the backup file were damaged and weren't restored. The vault still lists them.}}"
 msgstr "{0, plural, one {# attachment in the backup file was damaged and wasn't restored. The vault still lists it.} other {# attachments in the backup file were damaged and weren't restored. The vault still lists them.}}"
 
+#. placeholder {0}: result.leftOut.attachments
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# attachment in this backup can't be read, so it's left out.} other {# attachments in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {# attachment in this backup can't be read, so it's left out.} other {# attachments in this backup can't be read, so they're left out.}}"
+
 #. placeholder {0}: outcome.restored
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "{0, plural, one {# attachment restored with it.} other {# attachments restored with it.}}"
@@ -47,6 +52,11 @@ msgstr "{0, plural, one {# device has not signed its roster entry yet. Each devi
 #: packages/core/src/app/bulk-actions/export.tsx
 msgid "{0, plural, one {# entry goes into the file, with its passkeys and history.} other {# entries go into the file, with their passkeys and history.}}"
 msgstr "{0, plural, one {# entry goes into the file, with its passkeys and history.} other {# entries go into the file, with their passkeys and history.}}"
+
+#. placeholder {0}: result.leftOut.items
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# item in this backup can't be read, so it's left out.} other {# items in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {# item in this backup can't be read, so it's left out.} other {# items in this backup can't be read, so they're left out.}}"
 
 #. placeholder {0}: ids.length
 #: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
@@ -454,6 +464,14 @@ msgstr "Add the websites this login covers. Leave empty for a credential not tie
 msgid "Add URL"
 msgstr "Add URL"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
+msgstr "Add what's in a backup to this vault. Entries you already have aren't added twice."
+
+#: packages/core/src/app/screens/Settings/components/DataSection.tsx
+msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+msgstr "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+
 #: packages/core/src/app/screens/Settings/components/BrowserUnlockKeysSection.tsx
 msgid "Added {added}"
 msgstr "Added {added}"
@@ -548,6 +566,10 @@ msgstr "An app password reaches every file in the account, not just this folder,
 #: packages/core/src/hooks/useVault.tsx
 msgid "An attachment hasn't reached this device yet, so the export would be missing it. Try again once it has."
 msgstr "An attachment hasn't reached this device yet, so the export would be missing it. Try again once it has."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault."
+msgstr "An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "An endpoint that returns your own ICE servers as JSON. Defaults to the relay's."
@@ -3006,9 +3028,12 @@ msgid "Password changed {0}"
 msgstr "Password changed {0}"
 
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
-#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Password for the file"
 msgstr "Password for the file"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Password for the file (a backup's is its master password)"
+msgstr "Password for the file (a backup's is its master password)"
 
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Password found in a known data breach"
@@ -3354,7 +3379,6 @@ msgstr "Resetting invalidates your old code."
 
 #: packages/core/src/app/bulk-actions/archive.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
-#: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Restore"
 msgstr "Restore"
 
@@ -3369,8 +3393,8 @@ msgid "Restore a backup"
 msgstr "Restore a backup"
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
-msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
-msgstr "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
+#~ msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
+#~ msgstr "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
 #~ msgid "Restore an encrypted .bramble backup. This replaces the vault on this device."
@@ -4052,8 +4076,8 @@ msgid "That year is outside the range cards use."
 msgstr "That year is outside the range cards use."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
-msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
-msgstr "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
+#~ msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
+#~ msgstr "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
 
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 msgid "The browser was not linked."
@@ -4196,6 +4220,10 @@ msgid "They're in your vault now. For your safety, delete the export file you ju
 msgstr "They're in your vault now. For your safety, delete the export file you just imported, as it holds your passwords in plain text."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "They're in your vault now. The file is still encrypted, so it's safe to keep."
+msgstr "They're in your vault now. The file is still encrypted, so it's safe to keep."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "They're in your vault now. The transfer happened directly between the two apps, so there's no file to clean up."
 msgstr "They're in your vault now. The transfer happened directly between the two apps, so there's no file to clean up."
 
@@ -4211,9 +4239,14 @@ msgstr "This adds the desktop's vault to this browser as a separate one. Your ex
 msgid "This authenticator key is invalid and can't generate codes."
 msgstr "This authenticator key is invalid and can't generate codes."
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup can't be read. It may be damaged, or not a Bramble backup."
 msgstr "This backup can't be read. It may be damaged, or not a Bramble backup."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "This backup has no master password, so it can't be opened here."
+msgstr "This backup has no master password, so it can't be opened here."
 
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup has no master password, so it can't be restored here."

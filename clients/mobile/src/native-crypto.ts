@@ -8,11 +8,13 @@ import { registerPlugin } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import type {
 	EncryptedPayload,
+	OpenedVaultBackup,
 	PasskeyAssertion,
 	PasskeyImportResult,
 	PasskeyRegistration,
 	PasswordSlotBlob,
 	VekEncrypted,
+	WrappedFileKey,
 } from "@core/adapters/crypto";
 import { bytesToBase64 } from "@core/util/bytes";
 import type { PortableVaultBlob, VaultCrypto } from "@core/wasm";
@@ -153,6 +155,13 @@ interface NativeCryptoPlugin {
 		file: PortableVaultBlob;
 		magicVersionB64: string;
 	}): Promise<{ value: string | null }>;
+	openVaultBackup(o: {
+		password: string;
+		file: PortableVaultBlob;
+		magicVersionB64: string;
+		entries: EncryptedPayload[];
+		files: WrappedFileKey[];
+	}): Promise<{ value?: OpenedVaultBackup | null }>;
 	decryptWithVek(o: { ivB64: string; ciphertextB64: string }): Promise<{ value: string }>;
 	mailboxId(o: { groupKeyB64: string }): Promise<{ value: string }>;
 	mailboxSeal(o: {
@@ -344,6 +353,16 @@ const nativeModule: VaultCrypto = {
 				magicVersionB64: bytesToBase64(magicVersion),
 			})
 		).value ?? undefined,
+	open_vault_backup: async (password, file, magicVersion, entries, files) =>
+		(
+			await Native.openVaultBackup({
+				password,
+				file,
+				magicVersionB64: bytesToBase64(magicVersion),
+				entries,
+				files,
+			})
+		).value ?? null,
 	decrypt_with_vek: async (iv, ciphertext) =>
 		(await Native.decryptWithVek({ ivB64: iv, ciphertextB64: ciphertext })).value,
 	mailbox_id: async (groupKeyB64) => (await Native.mailboxId({ groupKeyB64 })).value,

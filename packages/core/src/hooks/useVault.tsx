@@ -14,8 +14,10 @@ import type { BiometryType } from "../adapters/biometric";
 import { type PasskeyPrfSecrets, VAULT_OPEN_FAILED } from "../adapters/crypto";
 import type { PickedAttachment } from "../adapters/files";
 import { buildBackup } from "../backup/archive";
+import type { RandomAccessSource } from "../backup/zip";
 import { usePlatform } from "../context/PlatformContext";
-import type { PlacedAttachment } from "../import/types";
+import { openBrambleFile, storeSealedAttachment } from "../import/bramble";
+import type { ImportResult, PlacedAttachment } from "../import/types";
 import { isVaultEmpty, readVaultContents } from "../vault/vault-empty";
 import {
 	decodeVaultBlob,
@@ -439,8 +441,9 @@ export interface VaultActions {
 	 * is none, so check `canPickFiles` first; elsewhere the UI uses `<input type=file>`. */
 	pickFile(): Promise<PickedAttachment | null>;
 	/**
-	 * Add entries in one write, with any files the import brings. Every file is sealed first,
-	 * so one that cannot be stops the import before anything is written: whole or not at all.
+	 * Add entries in one write, with any files the import brings. Every file is sealed (or, from a
+	 * backup, copied over already sealed) first, so one that cannot be stops the import before
+	 * anything is written: whole or not at all.
 	 * Resolves with the hash of each file stored.
 	 */
 	importEntries(
@@ -448,6 +451,11 @@ export interface VaultActions {
 		attachments?: PlacedAttachment[],
 		opts?: ImportOptions,
 	): Promise<string[]>;
+	/**
+	 * Open a .bramble to import into this vault: a portable export, or a full backup, whose file
+	 * keys are moved over to this vault's key. Null for a wrong password.
+	 */
+	openBrambleFile(source: RandomAccessSource, password: string): Promise<ImportResult | null>;
 	/** The displayed version of an entry, for an edit form to save against (see `updateEntry`). */
 	openVersion(id: string): OpenedVersion | undefined;
 	/**
@@ -1577,6 +1585,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		[vaultFiles],
 	);
 
+	const openBramble = useCallback(
+		(source: RandomAccessSource, password: string) =>
+			openBrambleFile({ crypto, describe: describeFile }, source, password),
+		[crypto, describeFile],
+	);
+
 	const importEntries = useCallback(
 		async (
 			items: EntryData[],
@@ -1584,10 +1598,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			opts?: ImportOptions,
 		): Promise<string[]> => {
 			const files: ImportedFile[] = [];
-			const sealer = vaultFiles?.sealer;
 			for (const a of attachments) {
-				if (!sealer) throw new Error("this platform cannot store file attachments");
-				const sealed = await sealAttachment(sealer, a);
+				if (!vaultFiles) throw new Error("this platform cannot store file attachments");
+				const sealed =
+					a.source.kind === "sealed"
+						? await storeSealedAttachment(vaultFiles.blobs, a.source)
+						: await sealAttachment(vaultFiles.sealer, { ...a, source: a.source });
 				files.push(
 					"item" in a.onto
 						? { sealed, item: items.indexOf(a.onto.item) }
@@ -2434,6 +2450,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			pickFile,
 			addEntry,
 			importEntries,
+			openBrambleFile: openBramble,
 			openVersion,
 			updateEntry,
 			deleteEntry,
@@ -2490,6 +2507,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			pickFile,
 			addEntry,
 			importEntries,
+			openBramble,
 			openVersion,
 			updateEntry,
 			deleteEntry,

@@ -23,6 +23,11 @@ msgstr "…এবং আরও {0}টি"
 msgid "{0, plural, one {# attachment in the backup file was damaged and wasn't restored. The vault still lists it.} other {# attachments in the backup file were damaged and weren't restored. The vault still lists them.}}"
 msgstr "{0, plural, one {ব্যাকআপ ফাইলের #টি সংযুক্তি নষ্ট ছিল, তাই রিস্টোর হয়নি। ভল্টের তালিকায় এটি এখনো আছে।} other {ব্যাকআপ ফাইলের #টি সংযুক্তি নষ্ট ছিল, তাই রিস্টোর হয়নি। ভল্টের তালিকায় এগুলো এখনো আছে।}}"
 
+#. placeholder {0}: result.leftOut.attachments
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# attachment in this backup can't be read, so it's left out.} other {# attachments in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {এই ব্যাকআপের #টি সংযুক্তি পড়া যায় না, তাই এটি বাদ দেওয়া হয়েছে।} other {এই ব্যাকআপের #টি সংযুক্তি পড়া যায় না, তাই সেগুলি বাদ দেওয়া হয়েছে।}}"
+
 #. placeholder {0}: outcome.restored
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "{0, plural, one {# attachment restored with it.} other {# attachments restored with it.}}"
@@ -47,6 +52,11 @@ msgstr "{0, plural, one {#টি ডিভাইস এখনো ডিভাই
 #: packages/core/src/app/bulk-actions/export.tsx
 msgid "{0, plural, one {# entry goes into the file, with its passkeys and history.} other {# entries go into the file, with their passkeys and history.}}"
 msgstr "{0, plural, one {পাসকি ও ইতিহাসসহ #টি এন্ট্রি ফাইলে থাকবে।} other {পাসকি ও ইতিহাসসহ #টি এন্ট্রি ফাইলে থাকবে।}}"
+
+#. placeholder {0}: result.leftOut.items
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# item in this backup can't be read, so it's left out.} other {# items in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {এই ব্যাকআপের #টি আইটেম পড়া যায় না, তাই এটি বাদ দেওয়া হয়েছে।} other {এই ব্যাকআপের #টি আইটেম পড়া যায় না, তাই সেগুলি বাদ দেওয়া হয়েছে।}}"
 
 #. placeholder {0}: ids.length
 #: packages/core/src/app/screens/Settings/components/KdbxExportDialog.tsx
@@ -454,6 +464,14 @@ msgstr "এই লগইন কোন কোন ওয়েবসাইটে�
 msgid "Add URL"
 msgstr "URL যোগ করুন"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
+msgstr "ব্যাকআপে যা আছে তা এই ভল্টে যোগ করুন। আপনার কাছে ইতিমধ্যে থাকা এন্ট্রিগুলি দ্বিতীয়বার যোগ করা হয় না।"
+
+#: packages/core/src/app/screens/Settings/components/DataSection.tsx
+msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+msgstr "একটি এনক্রিপ্ট করা .bramble ব্যাকআপে যা আছে তা এই ভল্টে যোগ করুন। আপনার কাছে ইতিমধ্যে থাকা এন্ট্রিগুলি দ্বিতীয়বার যোগ করা হয় না।"
+
 #: packages/core/src/app/screens/Settings/components/BrowserUnlockKeysSection.tsx
 msgid "Added {added}"
 msgstr "{added} যোগ করা হয়েছে"
@@ -548,6 +566,10 @@ msgstr "অ্যাপ পাসওয়ার্ড দিয়ে শুধ
 #: packages/core/src/hooks/useVault.tsx
 msgid "An attachment hasn't reached this device yet, so the export would be missing it. Try again once it has."
 msgstr "একটি সংযুক্তি এখনো এই ডিভাইসে আসেনি, তাই এক্সপোর্টে সেটি বাদ পড়বে। সেটি আসার পর আবার চেষ্টা করুন।"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault."
+msgstr "এই ব্যাকআপের একটি সংযুক্তি ক্ষতিগ্রস্ত, তাই কিছুই আমদানি করা হয়নি। আপনি এখনও এটিকে আলাদা ভল্ট হিসেবে পুনরুদ্ধার করতে পারেন।"
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "An endpoint that returns your own ICE servers as JSON. Defaults to the relay's."
@@ -2994,9 +3016,12 @@ msgid "Password changed {0}"
 msgstr "{0} পাসওয়ার্ড বদলানো হয়েছে"
 
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
-#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Password for the file"
 msgstr "ফাইলের পাসওয়ার্ড"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Password for the file (a backup's is its master password)"
+msgstr "ফাইলের পাসওয়ার্ড (ব্যাকআপের পাসওয়ার্ড হলো তার মাস্টার পাসওয়ার্ড)"
 
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Password found in a known data breach"
@@ -3342,7 +3367,6 @@ msgstr "রিসেট করলে আপনার পুরোনো কো�
 
 #: packages/core/src/app/bulk-actions/archive.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
-#: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Restore"
 msgstr "রিস্টোর"
 
@@ -3357,8 +3381,8 @@ msgid "Restore a backup"
 msgstr "ব্যাকআপ রিস্টোর করুন"
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
-msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
-msgstr "এনক্রিপ্ট করা .bramble ব্যাকআপ রিস্টোর করুন। এটি নতুন ভল্ট হিসেবে যোগ হবে, তাই এখানকার কিছুই বদলে যাবে না।"
+#~ msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
+#~ msgstr "এনক্রিপ্ট করা .bramble ব্যাকআপ রিস্টোর করুন। এটি নতুন ভল্ট হিসেবে যোগ হবে, তাই এখানকার কিছুই বদলে যাবে না।"
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
 #~ msgid "Restore an encrypted .bramble backup. This replaces the vault on this device."
@@ -4028,8 +4052,8 @@ msgid "That year is outside the range cards use."
 msgstr "এই বছরটি কার্ডের মেয়াদের সীমার বাইরে।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
-msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
-msgstr "এটি পুরো ভল্টের ব্যাকআপ। এর বদলে এটি রিস্টোর করুন: এটি নতুন ভল্ট হিসেবে যোগ হবে, এখানকার কিছুই বদলাবে না।"
+#~ msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
+#~ msgstr "এটি পুরো ভল্টের ব্যাকআপ। এর বদলে এটি রিস্টোর করুন: এটি নতুন ভল্ট হিসেবে যোগ হবে, এখানকার কিছুই বদলাবে না।"
 
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 msgid "The browser was not linked."
@@ -4172,6 +4196,10 @@ msgid "They're in your vault now. For your safety, delete the export file you ju
 msgstr "এগুলো এখন আপনার ভল্টে আছে। নিরাপত্তার জন্য, যে এক্সপোর্ট ফাইলটি এইমাত্র ইমপোর্ট করলেন সেটি মুছে ফেলুন, কারণ এতে আপনার পাসওয়ার্ডগুলো সাধারণ লেখা হিসেবে আছে।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "They're in your vault now. The file is still encrypted, so it's safe to keep."
+msgstr "সেগুলি এখন আপনার ভল্টে রয়েছে। ফাইলটি এখনও এনক্রিপ্ট করা আছে, তাই এটি রাখা নিরাপদ।"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "They're in your vault now. The transfer happened directly between the two apps, so there's no file to clean up."
 msgstr "এগুলো এখন আপনার ভল্টে আছে। ট্রান্সফারটি সরাসরি দুটি অ্যাপের মধ্যে হয়েছে, তাই মোছার মতো কোনো ফাইল নেই।"
 
@@ -4187,9 +4215,14 @@ msgstr "এতে ডেস্কটপের ভল্ট এই ব্রা�
 msgid "This authenticator key is invalid and can't generate codes."
 msgstr "এই অথেনটিকেটর কি সঠিক নয়, তাই এটি দিয়ে কোড তৈরি করা যাচ্ছে না।"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup can't be read. It may be damaged, or not a Bramble backup."
 msgstr "এই ব্যাকআপটি পড়া যাচ্ছে না। এটি হয়তো নষ্ট, অথবা Bramble ব্যাকআপ নয়।"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "This backup has no master password, so it can't be opened here."
+msgstr "এই ব্যাকআপের কোনো মাস্টার পাসওয়ার্ড নেই, তাই এটি এখানে খোলা যাবে না।"
 
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup has no master password, so it can't be restored here."

@@ -8,7 +8,6 @@
 
 import type { CryptoAdapter } from "../adapters/crypto";
 import type { EntryData } from "../hooks/useVault";
-import type { EntriesPayload } from "../sync";
 import { base64ToBytes, bytesToBase64 } from "../util/bytes";
 import { PART_STAMP_FIELDS } from "../vault/parts";
 import {
@@ -39,7 +38,7 @@ export interface PortableVaultPayload {
  * carry. Part stamps name this vault's devices and when each field changed; the importer stamps
  * afresh anyway.
  */
-function withoutId(entry: EntryData & { id?: string }): EntryData {
+export function withoutId(entry: EntryData & { id?: string }): EntryData {
 	const { id: _id, ...data } = entry as unknown as Record<string, unknown>;
 	for (const field of PART_STAMP_FIELDS) delete data[field];
 	return data as unknown as EntryData;
@@ -98,37 +97,4 @@ export function readPortableVaultFile(bytes: Uint8Array): PortableVaultBlob | nu
 		entriesIv: bytesToBase64(blob.entriesIv),
 		entriesCiphertext: bytesToBase64(blob.entriesCiphertext),
 	};
-}
-
-/**
- * Thrown for a full vault backup handed to the importer. A code rather than a sentence: this is
- * a .ts file, which the Lingui transform does not cover, so the Import screen supplies the copy.
- * The message still reads as English on its own, for logs and for any caller that shows it raw.
- */
-export const FULL_BACKUP_ERROR = "That's a full vault backup. Restore it instead.";
-
-/**
- * The entries in a .bramble, or null for a wrong password. Accepts a full vault backup as
- * well as a portable export: a backup's payload is an `EntriesPayload` of ENCRYPTED entries,
- * which this cannot read, so it reports that distinctly rather than pretending it is empty.
- */
-export async function openPortableVaultFile(
-	crypto: Pick<CryptoAdapter, "openPortableVault">,
-	file: PortableVaultBlob,
-	password: string,
-): Promise<EntryData[] | null> {
-	if (!crypto.openPortableVault) throw new Error("Opening a .bramble isn't available here.");
-	const json = await crypto.openPortableVault({
-		file,
-		password,
-		magicVersion: verifierPrefix(),
-	});
-	if (json === null) return null;
-	const parsed = JSON.parse(json) as PortableVaultPayload | EntriesPayload;
-	const entries = parsed.entries;
-	if (!Array.isArray(entries)) throw new Error("That .bramble file has no entries in it.");
-	// A full-vault backup's entries are `{ id, ciphertext, ... }` records still sealed under
-	// their own DEKs. Importing those would silently produce garbage entries.
-	if (entries.some((e) => "ciphertext" in e)) throw new Error(FULL_BACKUP_ERROR);
-	return entries as EntryData[];
 }

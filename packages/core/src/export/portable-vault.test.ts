@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EntryData } from "../hooks/useVault";
 import type { PortableVaultBlob } from "../wasm";
-import {
-	openPortableVaultFile,
-	readPortableVaultFile,
-	sealPortableVaultFile,
-} from "./portable-vault";
+import { readPortableVaultFile, sealPortableVaultFile } from "./portable-vault";
 
 // The crypto is pinned natively (core-rust portable_vault_tests). What these cover is the
 // TS half: that the sealed pieces survive a trip through the real VLT1 encoder and come
@@ -90,30 +86,5 @@ describe("sealPortableVaultFile", () => {
 describe("readPortableVaultFile", () => {
 	it("returns null for bytes that aren't a vault blob", () => {
 		expect(readPortableVaultFile(new Uint8Array([1, 2, 3, 4]))).toBeNull();
-	});
-});
-
-describe("openPortableVaultFile", () => {
-	it("returns the entries the core decrypted", async () => {
-		const crypto = fakeCrypto();
-		const entries = await openPortableVaultFile(crypto, sealed, "pw");
-		expect(entries?.map((e) => e.name)).toEqual(["a"]);
-	});
-
-	// null, not a throw, so the dialog can say "wrong password" rather than "corrupt file".
-	it("returns null for a wrong password", async () => {
-		const crypto = { openPortableVault: vi.fn(async () => null) };
-		expect(await openPortableVaultFile(crypto, sealed, "wrong")).toBeNull();
-	});
-
-	// A full backup decrypts fine but its entries are still sealed under per-entry DEKs.
-	// Importing them would write entries whose every field is ciphertext.
-	it("refuses a full vault backup rather than importing ciphertext", async () => {
-		const crypto = {
-			openPortableVault: vi.fn(async () =>
-				JSON.stringify({ entries: [{ id: "a", ciphertext: "x", iv: "y" }] }),
-			),
-		};
-		await expect(openPortableVaultFile(crypto, sealed, "pw")).rejects.toThrow(/full vault backup/);
 	});
 });

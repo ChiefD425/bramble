@@ -388,12 +388,28 @@ fn seal_portable_vault_core(
 /// Open a portable vault, returning its entries JSON, or `None` when the password is wrong.
 /// Like the sealing side it touches no session state, so importing a file cannot disturb the
 /// vault that is already unlocked.
-#[allow(clippy::too_many_arguments)]
 fn open_portable_vault_core(
     password: &str,
     file: &PortableVault,
     magic_version: &[u8],
 ) -> Result<Option<String>, CryptoError> {
+    let Some(file_key) = unwrap_file_key(password, file, magic_version)? else {
+        return Ok(None);
+    };
+    let entries_iv = iv_from(b64_decode(&file.entries_iv)?)?;
+    let entries_ct = b64_decode(&file.entries_ciphertext)?;
+    let plaintext = aes_decrypt(file_key.as_slice(), &entries_iv, &entries_ct)?;
+    String::from_utf8(plaintext.to_vec())
+        .map(Some)
+        .map_err(|e| err(format!("utf8: {e}")))
+}
+
+/// The key a .bramble's password slot guards, or `None` when the password is wrong.
+fn unwrap_file_key(
+    password: &str,
+    file: &PortableVault,
+    magic_version: &[u8],
+) -> Result<Option<Zeroizing<Vec<u8>>>, CryptoError> {
     let salt = b64_decode(&file.salt)?;
     let slot_id = b64_decode(&file.slot_id)?;
     let verifier = b64_decode(&file.verifier)?;
@@ -406,14 +422,81 @@ fn open_portable_vault_core(
 
     let wrap_iv = iv_from(b64_decode(&file.wrap_iv)?)?;
     let wrapped = b64_decode(&file.wrapped_vek)?;
-    let file_key = aes_decrypt(kek.as_slice(), &wrap_iv, &wrapped)?;
+    aes_decrypt(kek.as_slice(), &wrap_iv, &wrapped).map(Some)
+}
 
-    let entries_iv = iv_from(b64_decode(&file.entries_iv)?)?;
-    let entries_ct = b64_decode(&file.entries_ciphertext)?;
-    let plaintext = aes_decrypt(file_key.as_slice(), &entries_iv, &entries_ct)?;
-    String::from_utf8(plaintext.to_vec())
-        .map(Some)
-        .map_err(|e| err(format!("utf8: {e}")))
+/// A file's key as its record holds it, wrapped under a vault key.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct WrappedFileKey {
+    pub wrapped_fek: String,
+    pub fek_iv: String,
+}
+
+/// A full vault backup, opened to merge into the vault that is unlocked. Positions match the
+/// lists passed in, and an item that won't open is None, so one damaged entry is counted rather
+/// than failing the rest.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct OpenedVaultBackup {
+    /// Each entry's plaintext JSON.
+    pub entries: Vec<Option<String>>,
+    /// Each attachment's key, wrapped again under the session VEK.
+    pub files: Vec<Option<WrappedFileKey>>,
+}
+
+/// Open a full backup's entries and take its attachments' keys over, or `None` for a wrong
+/// password.
+///
+/// The backup's own key is unwrapped from its password slot and dropped on return. It is never
+/// loaded as the session key, so the vault that is open stays open and unchanged. Each file key
+/// is wrapped again under the session VEK, which makes the attachment's sealed bytes and sealed
+/// name this vault's as they are: they are copied over, never opened and sealed again.
+fn open_vault_backup_core(
+    password: &str,
+    file: &PortableVault,
+    magic_version: &[u8],
+    entries: &[EncryptedPayload],
+    files: &[WrappedFileKey],
+) -> Result<Option<OpenedVaultBackup>, CryptoError> {
+    let Some(backup_key) = unwrap_file_key(password, file, magic_version)? else {
+        return Ok(None);
+    };
+    let entries = entries
+        .iter()
+        .map(|p| open_entry(backup_key.as_slice(), p).ok())
+        .collect();
+    let files = if files.is_empty() {
+        Vec::new()
+    } else {
+        with_vek(|vek| {
+            Ok(files
+                .iter()
+                .map(|f| rewrap_file_key(backup_key.as_slice(), vek, f).ok())
+                .collect())
+        })?
+    };
+    Ok(Some(OpenedVaultBackup { entries, files }))
+}
+
+fn rewrap_file_key(
+    from: &[u8],
+    to: &[u8],
+    key: &WrappedFileKey,
+) -> Result<WrappedFileKey, CryptoError> {
+    let iv = iv_from(b64_decode(&key.fek_iv)?)?;
+    let fek = aes_decrypt(from, &iv, &b64_decode(&key.wrapped_fek)?)?;
+    if fek.len() != KEY_LEN {
+        return Err(err("file key must be 32 bytes"));
+    }
+    let mut fek_iv = [0u8; IV_LEN];
+    random_bytes(&mut fek_iv)?;
+    Ok(WrappedFileKey {
+        wrapped_fek: B64.encode(aes_encrypt(to, &fek_iv, &fek)?),
+        fek_iv: B64.encode(fek_iv),
+    })
 }
 
 fn wrap_vek_webauthn_core(
@@ -978,6 +1061,25 @@ mod wasm_exports {
         open_portable_vault_core(&password, &file, &magic_version)
     }
 
+    /// Open a full vault backup to merge into the open vault. Null for a wrong password.
+    #[wasm_bindgen]
+    pub fn open_vault_backup(
+        password: String,
+        file: JsValue,
+        magic_version: Vec<u8>,
+        entries: JsValue,
+        files: JsValue,
+    ) -> Result<JsValue, CryptoError> {
+        let de = |e: serde_wasm_bindgen::Error| err(format!("deserialize: {e}"));
+        let file: PortableVault = serde_wasm_bindgen::from_value(file).map_err(de)?;
+        let entries: Vec<EncryptedPayload> = serde_wasm_bindgen::from_value(entries).map_err(de)?;
+        let files: Vec<WrappedFileKey> = serde_wasm_bindgen::from_value(files).map_err(de)?;
+        let out = open_vault_backup_core(&password, &file, &magic_version, &entries, &files)?;
+        // json_compatible: None must reach JS as null, not undefined.
+        out.serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .map_err(|e| err(format!("serialize: {e}")))
+    }
+
     /// Mint a passkey (provider role) for `rp_id`. Returns credentialId, COSE public
     /// key, private key (to store in the entry), and the `none` attestation object.
     #[wasm_bindgen]
@@ -1217,6 +1319,18 @@ mod ffi_exports {
         magic_version: Vec<u8>,
     ) -> Result<Option<String>, CryptoError> {
         open_portable_vault_core(&password, &file, &magic_version)
+    }
+
+    /// Open a full vault backup to merge into the open vault. None for a wrong password.
+    #[cfg_attr(feature = "ffi", uniffi::export)]
+    pub fn open_vault_backup(
+        password: String,
+        file: PortableVault,
+        magic_version: Vec<u8>,
+        entries: Vec<EncryptedPayload>,
+        files: Vec<WrappedFileKey>,
+    ) -> Result<Option<OpenedVaultBackup>, CryptoError> {
+        open_vault_backup_core(&password, &file, &magic_version, &entries, &files)
     }
 
     /// Mint a passkey (provider role) for `rp_id`.
@@ -1829,5 +1943,154 @@ mod portable_vault_tests {
         let opened = open_portable_vault_core("pw", &file, MAGIC).expect("open");
         assert_eq!(opened.as_deref(), Some(ENTRIES));
         assert!(is_locked());
+    }
+
+    /// A full backup as a vault writes one: an entry and a file key under the backup vault's
+    /// VEK, and that VEK in a password slot. Returns the file's raw key too, to check rewraps.
+    struct Backup {
+        file: PortableVault,
+        entry: EncryptedPayload,
+        fek: Vec<u8>,
+        file_key: WrappedFileKey,
+    }
+
+    fn backup(password: &str) -> Backup {
+        generate_vek().expect("the backup vault's VEK");
+        let salt = B64.encode([7u8; SALT_LEN]);
+        let slot_id = B64.encode([9u8; SLOT_ID_LEN]);
+        let slot = wrap_vek_password_core(password, &salt, &slot_id, MAGIC).expect("slot");
+        let entry = encrypt_entry_core(r#"{"type":"login","name":"a"}"#).expect("entry");
+        let fek = vec![5u8; KEY_LEN];
+        let fek_iv = [3u8; IV_LEN];
+        let wrapped = with_vek(|vek| aes_encrypt(vek, &fek_iv, &fek)).expect("wrap fek");
+        lock();
+        Backup {
+            file: PortableVault {
+                slot_id,
+                salt,
+                verifier: slot.verifier,
+                wrap_iv: slot.wrap_iv,
+                wrapped_vek: slot.wrapped_vek,
+                entries_iv: String::new(),
+                entries_ciphertext: String::new(),
+            },
+            entry,
+            fek,
+            file_key: WrappedFileKey {
+                wrapped_fek: B64.encode(wrapped),
+                fek_iv: B64.encode(fek_iv),
+            },
+        }
+    }
+
+    fn unwrap_under_session(key: &WrappedFileKey) -> Vec<u8> {
+        let iv = iv_from(b64_decode(&key.fek_iv).unwrap()).unwrap();
+        with_vek(|vek| aes_decrypt(vek, &iv, &b64_decode(&key.wrapped_fek)?))
+            .expect("opens under the session VEK")
+            .to_vec()
+    }
+
+    #[test]
+    fn opens_a_backups_entries_and_moves_its_file_keys_to_the_session_vek() {
+        let _guard = VEK_SLOT_LOCK.lock();
+        let b = backup("backup-pw");
+        let vault_vek = generate_vek().expect("the open vault's VEK");
+
+        let opened = open_vault_backup_core(
+            "backup-pw",
+            &b.file,
+            MAGIC,
+            std::slice::from_ref(&b.entry),
+            std::slice::from_ref(&b.file_key),
+        )
+        .expect("open")
+        .expect("right password");
+
+        assert_eq!(
+            opened.entries,
+            vec![Some(r#"{"type":"login","name":"a"}"#.to_string())]
+        );
+        let moved = opened.files[0].as_ref().expect("rewrapped");
+        assert_ne!(moved, &b.file_key);
+        assert_eq!(unwrap_under_session(moved), b.fek);
+        // The backup's key was never loaded: the open vault keeps its own.
+        assert_eq!(export_vek().expect("still unlocked"), vault_vek);
+        lock();
+    }
+
+    #[test]
+    fn a_wrong_backup_password_opens_nothing() {
+        let _guard = VEK_SLOT_LOCK.lock();
+        let b = backup("right");
+        generate_vek().expect("the open vault's VEK");
+        let opened = open_vault_backup_core(
+            "wrong",
+            &b.file,
+            MAGIC,
+            std::slice::from_ref(&b.entry),
+            std::slice::from_ref(&b.file_key),
+        )
+        .expect("open");
+        assert!(opened.is_none());
+        lock();
+    }
+
+    // One damaged item is reported in its place, not allowed to sink the others.
+    #[test]
+    fn a_damaged_entry_or_file_key_comes_back_as_none_in_its_place() {
+        let _guard = VEK_SLOT_LOCK.lock();
+        let b = backup("pw");
+        generate_vek().expect("the open vault's VEK");
+        let mut bad_entry = backup_entry_copy(&b);
+        bad_entry.ciphertext = B64.encode([0u8; 40]);
+        let good_entry = backup_entry_copy(&b);
+        let bad_key = WrappedFileKey {
+            wrapped_fek: B64.encode([1u8; 48]),
+            fek_iv: b.file_key.fek_iv.clone(),
+        };
+        let opened = open_vault_backup_core(
+            "pw",
+            &b.file,
+            MAGIC,
+            &[bad_entry, good_entry],
+            &[bad_key, b.file_key.clone()],
+        )
+        .expect("open")
+        .expect("right password");
+        assert_eq!(opened.entries[0], None);
+        assert!(opened.entries[1].is_some());
+        assert_eq!(opened.files[0], None);
+        assert!(opened.files[1].is_some());
+        lock();
+    }
+
+    fn backup_entry_copy(b: &Backup) -> EncryptedPayload {
+        EncryptedPayload {
+            ciphertext: b.entry.ciphertext.clone(),
+            iv: b.entry.iv.clone(),
+            wrapped_dek: b.entry.wrapped_dek.clone(),
+            dek_iv: b.entry.dek_iv.clone(),
+        }
+    }
+
+    // File keys need somewhere to go; entries alone do not.
+    #[test]
+    fn needs_an_open_vault_only_for_attachments() {
+        let _guard = VEK_SLOT_LOCK.lock();
+        let b = backup("pw");
+        assert!(is_locked());
+        let entries_only =
+            open_vault_backup_core("pw", &b.file, MAGIC, std::slice::from_ref(&b.entry), &[])
+                .expect("entries open without a session")
+                .expect("right password");
+        assert!(entries_only.entries[0].is_some());
+        assert!(open_vault_backup_core(
+            "pw",
+            &b.file,
+            MAGIC,
+            &[],
+            std::slice::from_ref(&b.file_key)
+        )
+        .is_err());
     }
 }

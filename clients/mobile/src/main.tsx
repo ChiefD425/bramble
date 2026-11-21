@@ -5,6 +5,7 @@ import { PREF_AUTOLOCK_MINUTES } from "@core/hooks/usePrefs";
 import {
 	App,
 	OptionsApp,
+	type OptionsScreen,
 	type PendingLogin,
 	type Platform,
 	PlatformProvider,
@@ -67,22 +68,15 @@ const platform: Platform = {
 let deviceLocale: string | undefined;
 
 function Root() {
-	// "app" = vault/unlock UI; "setup" = create/open a vault; "import" = import wizard;
-	// "restore" = restore a .bramble backup. All but "app" render OptionsApp and dismiss
-	// back to "app" on completion/close.
-	const [view, setView] = useState<"app" | "setup" | "import" | "restore">("app");
+	// "app" = vault/unlock UI; "setup" = create/open a vault; the rest are the OptionsScreen
+	// they name. All but "app" render OptionsApp and dismiss back to "app" on completion/close.
+	const [view, setView] = useState<"app" | "setup" | OptionsScreen>("app");
 	const [pendingLogin, setPendingLogin] = useState<PendingLogin | null>(null);
 	const [pendingTotp, setPendingTotp] = useState<{ uri: string } | null>(null);
 	// The back-button listener is registered once; read the current view through a ref.
 	const viewRef = useRef(view);
 	viewRef.current = view;
-	useEffect(
-		() =>
-			registerOpenSetup((screen) =>
-				setView(screen === "import" ? "import" : screen === "restore" ? "restore" : "setup"),
-			),
-		[],
-	);
+	useEffect(() => registerOpenSetup((screen) => setView(screen ?? "setup")), []);
 
 	// An inbound credential-exchange transfer (iOS 26+): the OS launches us with a token, so
 	// route to the import wizard, which owns claiming and redeeming it.
@@ -155,7 +149,7 @@ function Root() {
 		<OptionsApp
 			onComplete={() => setView("app")}
 			mobile
-			screen={view === "import" ? "import" : view === "restore" ? "restore" : undefined}
+			screen={view === "setup" ? undefined : view}
 			preferredLocale={deviceLocale}
 		/>
 	);

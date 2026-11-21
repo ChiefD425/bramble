@@ -33,6 +33,7 @@ public class NativeCryptoPlugin: CAPPlugin, CAPBridgedPlugin {
 		CAPPluginMethod(name: "encryptWithVek", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "sealPortableVault", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "openPortableVault", returnType: CAPPluginReturnPromise),
+		CAPPluginMethod(name: "openVaultBackup", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "decryptWithVek", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "mailboxId", returnType: CAPPluginReturnPromise),
 		CAPPluginMethod(name: "mailboxSeal", returnType: CAPPluginReturnPromise),
@@ -234,21 +235,25 @@ public class NativeCryptoPlugin: CAPPlugin, CAPBridgedPlugin {
 
 	// Decrypt the whole vault in one bridge call: loop over the entries natively
 	// (each uniffi call is in-process) instead of crossing the bridge per entry.
+	private func encryptedPayloads(_ items: JSArray) -> [EncryptedPayload]? {
+		var payloads: [EncryptedPayload] = []
+		payloads.reserveCapacity(items.count)
+		for item in items {
+			guard let d = item as? [String: Any],
+				let ct = d["ciphertext"] as? String, let iv = d["iv"] as? String,
+				let wd = d["wrappedDek"] as? String, let di = d["dekIv"] as? String
+			else { return nil }
+			payloads.append(EncryptedPayload(ciphertext: ct, iv: iv, wrappedDek: wd, dekIv: di))
+		}
+		return payloads
+	}
+
 	@objc func decryptEntries(_ call: CAPPluginCall) {
-		let entries = call.getArray("entries") ?? []
+		guard let payloads = encryptedPayloads(call.getArray("entries") ?? []) else {
+			call.reject("Malformed entry in decryptEntries")
+			return
+		}
 		do {
-			var payloads: [EncryptedPayload] = []
-			payloads.reserveCapacity(entries.count)
-			for item in entries {
-				guard let d = item as? [String: Any],
-					let ct = d["ciphertext"] as? String, let iv = d["iv"] as? String,
-					let wd = d["wrappedDek"] as? String, let di = d["dekIv"] as? String
-				else {
-					call.reject("Malformed entry in decryptEntries")
-					return
-				}
-				payloads.append(EncryptedPayload(ciphertext: ct, iv: iv, wrappedDek: wd, dekIv: di))
-			}
 			// A failed entry is null, never a rejection of the whole vault.
 			let values: [Any] = try App.decryptEntries(payloads: payloads).map { $0 ?? NSNull() }
 			call.resolve(["values": values])
@@ -280,24 +285,71 @@ public class NativeCryptoPlugin: CAPPlugin, CAPBridgedPlugin {
 		} catch { fail(call, error) }
 	}
 
-	@objc func openPortableVault(_ call: CAPPluginCall) {
-		guard let pw = str(call, "password"), let mv = bytes(call, "magicVersionB64"),
-			let f = call.getObject("file"),
+	private func portableVault(_ f: JSObject?) -> PortableVault? {
+		guard let f,
 			let slotId = f["slotId"] as? String, let salt = f["salt"] as? String,
 			let verifier = f["verifier"] as? String, let wrapIv = f["wrapIv"] as? String,
 			let wrappedVek = f["wrappedVek"] as? String, let entriesIv = f["entriesIv"] as? String,
 			let entriesCiphertext = f["entriesCiphertext"] as? String
+		else { return nil }
+		return PortableVault(
+			slotId: slotId, salt: salt, verifier: verifier, wrapIv: wrapIv,
+			wrappedVek: wrappedVek, entriesIv: entriesIv, entriesCiphertext: entriesCiphertext)
+	}
+
+	@objc func openPortableVault(_ call: CAPPluginCall) {
+		guard let pw = str(call, "password"), let mv = bytes(call, "magicVersionB64"),
+			let file = portableVault(call.getObject("file"))
 		else {
 			call.reject("portable vault file is malformed")
 			return
 		}
 		do {
-			let file = PortableVault(
-				slotId: slotId, salt: salt, verifier: verifier, wrapIv: wrapIv,
-				wrappedVek: wrappedVek, entriesIv: entriesIv, entriesCiphertext: entriesCiphertext)
 			// nil is a wrong password, a normal answer rather than an error.
 			let json = try App.openPortableVault(password: pw, file: file, magicVersion: mv)
 			call.resolve(["value": json as Any])
+		} catch { fail(call, error) }
+	}
+
+	// A full backup, to merge into the open vault. Unlike the two above it uses the session VEK:
+	// the backup's file keys come back wrapped under it.
+	@objc func openVaultBackup(_ call: CAPPluginCall) {
+		guard let pw = str(call, "password"), let mv = bytes(call, "magicVersionB64"),
+			let file = portableVault(call.getObject("file")),
+			let entries = encryptedPayloads(call.getArray("entries") ?? [])
+		else {
+			call.reject("vault backup is malformed")
+			return
+		}
+		var files: [WrappedFileKey] = []
+		for item in call.getArray("files") ?? [] {
+			guard let d = item as? [String: Any],
+				let wrappedFek = d["wrappedFek"] as? String, let fekIv = d["fekIv"] as? String
+			else {
+				call.reject("vault backup is malformed")
+				return
+			}
+			files.append(WrappedFileKey(wrappedFek: wrappedFek, fekIv: fekIv))
+		}
+		do {
+			// nil is a wrong password, a normal answer rather than an error.
+			guard
+				let opened = try App.openVaultBackup(
+					password: pw, file: file, magicVersion: mv, entries: entries, files: files)
+			else {
+				call.resolve(["value": NSNull()])
+				return
+			}
+			let keys: [Any] = opened.files.map { key -> Any in
+				guard let key else { return NSNull() }
+				return ["wrappedFek": key.wrappedFek, "fekIv": key.fekIv]
+			}
+			call.resolve([
+				"value": [
+					"entries": opened.entries.map { entry -> Any in entry ?? NSNull() },
+					"files": keys,
+				]
+			])
 		} catch { fail(call, error) }
 	}
 

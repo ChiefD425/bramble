@@ -224,6 +224,17 @@ class NativeCryptoPlugin : Plugin() {
     // Decrypt the whole vault in one bridge call: loop over the entries natively
     // (each uniffi call is in-process) instead of crossing the JS<->native boundary
     // per entry. runCrypto (off the main thread) rejects if any entry fails.
+    private fun encryptedPayloads(entries: JSArray) =
+        (0 until entries.length()).map { i ->
+            val e = entries.getJSONObject(i)
+            uniffi.vault_crypto.EncryptedPayload(
+                e.getString("ciphertext"),
+                e.getString("iv"),
+                e.getString("wrappedDek"),
+                e.getString("dekIv"),
+            )
+        }
+
     @PluginMethod
     fun decryptEntries(call: PluginCall) {
         val entries = call.getArray("entries")
@@ -232,15 +243,7 @@ class NativeCryptoPlugin : Plugin() {
             return
         }
         call.runCrypto {
-            val payloads = (0 until entries.length()).map { i ->
-                val e = entries.getJSONObject(i)
-                uniffi.vault_crypto.EncryptedPayload(
-                    e.getString("ciphertext"),
-                    e.getString("iv"),
-                    e.getString("wrappedDek"),
-                    e.getString("dekIv"),
-                )
-            }
+            val payloads = encryptedPayloads(entries)
             val values = JSArray()
             // A failed entry is null, never a rejection of the whole vault.
             for (v in uniffi.vault_crypto.decryptEntries(payloads)) values.put(v ?: JSONObject.NULL)
@@ -285,33 +288,72 @@ class NativeCryptoPlugin : Plugin() {
     fun openPortableVault(call: PluginCall) {
         val pw = str(call, "password") ?: return
         val mv = bytes(call, "magicVersionB64") ?: return
-        val f = call.getObject("file")
-        if (f == null) {
-            call.reject("Missing file")
-            return
-        }
-        // getString is nullable: a field missing from the bridged object would otherwise
-        // reach Rust as an empty string and fail as a decode error rather than a clear one.
-        val file =
-            try {
-                fun field(key: String) = requireNotNull(f.getString(key)) { key }
-                uniffi.vault_crypto.PortableVault(
-                    slotId = field("slotId"),
-                    salt = field("salt"),
-                    verifier = field("verifier"),
-                    wrapIv = field("wrapIv"),
-                    wrappedVek = field("wrappedVek"),
-                    entriesIv = field("entriesIv"),
-                    entriesCiphertext = field("entriesCiphertext"),
-                )
-            } catch (e: IllegalArgumentException) {
-                call.reject("portable vault file is malformed")
-                return
-            }
+        val file = portableVault(call) ?: return
         call.runCrypto {
             // null is a wrong password, a normal answer rather than an error.
             val json = uniffi.vault_crypto.openPortableVault(pw, file, mv)
             call.resolve(JSObject().put("value", json))
+        }
+    }
+
+    // A full backup, to merge into the open vault. Unlike the two above it uses the session VEK:
+    // the backup's file keys come back wrapped under it.
+    @PluginMethod
+    fun openVaultBackup(call: PluginCall) {
+        val pw = str(call, "password") ?: return
+        val mv = bytes(call, "magicVersionB64") ?: return
+        val file = portableVault(call) ?: return
+        val entries = call.getArray("entries") ?: JSArray()
+        val files = call.getArray("files") ?: JSArray()
+        call.runCrypto {
+            val keys = (0 until files.length()).map { i ->
+                val k = files.getJSONObject(i)
+                uniffi.vault_crypto.WrappedFileKey(k.getString("wrappedFek"), k.getString("fekIv"))
+            }
+            // null is a wrong password, a normal answer rather than an error.
+            val opened =
+                uniffi.vault_crypto.openVaultBackup(pw, file, mv, encryptedPayloads(entries), keys)
+            if (opened == null) {
+                call.resolve(JSObject().put("value", JSONObject.NULL))
+                return@runCrypto
+            }
+            val plain = JSArray()
+            for (v in opened.entries) plain.put(v ?: JSONObject.NULL)
+            val moved = JSArray()
+            for (k in opened.files) {
+                moved.put(
+                    if (k == null) JSONObject.NULL
+                    else JSObject().put("wrappedFek", k.wrappedFek).put("fekIv", k.fekIv),
+                )
+            }
+            call.resolve(
+                JSObject().put("value", JSObject().put("entries", plain).put("files", moved)),
+            )
+        }
+    }
+
+    // getString is nullable: a field missing from the bridged object would otherwise reach Rust
+    // as an empty string and fail as a decode error rather than a clear one.
+    private fun portableVault(call: PluginCall): uniffi.vault_crypto.PortableVault? {
+        val f = call.getObject("file")
+        if (f == null) {
+            call.reject("Missing file")
+            return null
+        }
+        return try {
+            fun field(key: String) = requireNotNull(f.getString(key)) { key }
+            uniffi.vault_crypto.PortableVault(
+                slotId = field("slotId"),
+                salt = field("salt"),
+                verifier = field("verifier"),
+                wrapIv = field("wrapIv"),
+                wrappedVek = field("wrappedVek"),
+                entriesIv = field("entriesIv"),
+                entriesCiphertext = field("entriesCiphertext"),
+            )
+        } catch (e: IllegalArgumentException) {
+            call.reject("portable vault file is malformed")
+            null
         }
     }
 

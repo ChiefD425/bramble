@@ -10,7 +10,6 @@ import {
 	BackupIncompleteError,
 	backupFingerprint,
 	buildBackup,
-	isBackupArchive,
 	openBackup,
 	planBackup,
 	restoreAttachments,
@@ -356,11 +355,6 @@ describe("openBackup is strict about what it accepts", () => {
 		await expect(
 			openBackup(bytesSource(Uint8Array.from([0x50, 0x4b, 3, 4, 0, 0]))),
 		).rejects.toThrow(/damaged/);
-	});
-
-	it("tells an unrelated ZIP from a backup", async () => {
-		expect(await isBackupArchive(zipOf({ "readme.txt": te.encode("hi") }))).toBe(false);
-		expect(await isBackupArchive(vault)).toBe(false);
 	});
 });
 

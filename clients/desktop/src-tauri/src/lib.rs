@@ -314,6 +314,7 @@ pub fn run() {
             crypto::crypto_mailbox_open,
             crypto::crypto_seal_portable_vault,
             crypto::crypto_open_portable_vault,
+            crypto::crypto_open_vault_backup,
             crypto::crypto_passkey_import_pkcs8,
             crypto::crypto_open_kdbx,
             storage::storage_has_vault,

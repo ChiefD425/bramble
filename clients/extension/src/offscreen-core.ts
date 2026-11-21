@@ -12,8 +12,10 @@
 import type {
 	CryptoAdapter,
 	EncryptedPayload,
+	OpenedVaultBackup,
 	PasswordSlotBlob,
 	VekEncrypted,
+	WrappedFileKey,
 } from "@core/adapters/crypto";
 import { buildCryptoAdapter } from "@core/adapters/crypto-wasm";
 import { decodeEntriesPayload } from "@core/sync/entries-payload";
@@ -35,6 +37,7 @@ import { type EnrollWasm, startEnroll } from "@core/sync/transport/enroll-host";
 import type { MeshSession } from "@core/sync/transport/peer-session";
 import { type RosterSyncWasm, startRosterSync } from "@core/sync/transport/roster-sync";
 import { base64ToBytes } from "@core/util/bytes";
+import type { PortableVaultBlob } from "@core/wasm";
 import {
 	CryptoDecryptBatchSchema,
 	CryptoDecryptIndexSchema,
@@ -51,6 +54,7 @@ import {
 	CryptoMailboxSealSchema,
 	CryptoOpenKdbxSchema,
 	CryptoOpenPortableVaultSchema,
+	CryptoOpenVaultBackupSchema,
 	CryptoPasskeyGetSchema,
 	CryptoPasskeyImportPkcs8Schema,
 	CryptoPasskeyMakeSchema,
@@ -435,6 +439,13 @@ type SyncVek = {
 	mailbox_open(groupKeyB64: string, aad: string, sealedB64: string): string;
 	open_file_meta(wrappedFek: string, fekIv: string, metaBlob: string, metaIv: string): string;
 	reseal_file_meta(wrappedFek: string, fekIv: string, metaJson: string): VekEncrypted;
+	open_vault_backup(
+		password: string,
+		file: PortableVaultBlob,
+		magicVersion: Uint8Array,
+		entries: EncryptedPayload[],
+		files: WrappedFileKey[],
+	): OpenedVaultBackup | null;
 };
 
 /** Load the injected vek (when present) into the scratch slot, then run `op`, as one
@@ -700,6 +711,21 @@ async function dispatchCrypto(a: CryptoAdapter, type: string, payload: unknown):
 				file: p.file,
 				magicVersion: Uint8Array.from(p.magicVersion),
 			});
+		}
+
+		case "CRYPTO_OPEN_VAULT_BACKUP": {
+			const p = CryptoOpenVaultBackupSchema.parse(payload);
+			const w = (await getWasm()) as unknown as SyncVek;
+			// null (a wrong password) is a normal reply, not an error.
+			return withVek(w, p.vekB64, (w) =>
+				w.open_vault_backup(
+					p.password,
+					p.file,
+					Uint8Array.from(p.magicVersion),
+					p.entries,
+					p.files,
+				),
+			);
 		}
 
 		case "CRYPTO_PASSKEY_MAKE": {
