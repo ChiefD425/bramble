@@ -131,6 +131,21 @@ it("saving keeps what the form doesn't edit, and what it cleared stays cleared",
 
 // #150: pushing the detail after a save left the form in history, so back from the detail
 // reopened it. Cancel and Save leave the way the header's back does.
+// Turned back on, the old password's result would show against the new one.
+it("a changed password drops the old password's breach result while checks are off", async () => {
+	const breach = { leaked: true, checkedAt: 1 };
+	const opened = version(1000, "p");
+	const data = { ...opened.data, breach };
+	h.entries = [data];
+	h.openVersion.mockReturnValue({ ...opened, data });
+	render(<EntryEditRoute />);
+	await h.form!.onSave(login("p"));
+	expect(h.updateEntry.mock.calls[0]?.[1]).toMatchObject({ breach });
+	await h.form!.onSave(login("mine"));
+	const saved = h.updateEntry.mock.calls[1]?.[1] as Record<string, unknown>;
+	expect(saved.breach).toBeUndefined();
+});
+
 it("cancel and save leave through the route's back, not a fresh push", () => {
 	h.entries = [login("p")];
 	render(<EntryEditRoute />);

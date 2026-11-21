@@ -43,13 +43,13 @@ export function EntryEditRoute() {
 		// version holds stays (archived state, a field a newer build added).
 		const { id: _id, ...kept } = before;
 		const data = { ...kept, ...edited } as EntryData;
-		// Re-check breach only when a login's password changed; reuse the cached value otherwise.
+		// The result belongs to the password it checked: a new password is checked now, or left
+		// without one (checks off, or offline) for the next check to fill in.
 		if (data.type === "login" && before.type === "login") {
-			const passwordChanged = data.password !== before.password;
-			const breach =
-				passwordChanged && prefs.breachCheckEnabled
-					? await checkPasswordBreach(data.password)
-					: before.breach;
+			let breach = before.breach;
+			if (data.password !== before.password) {
+				breach = prefs.breachCheckEnabled ? await checkPasswordBreach(data.password) : undefined;
+			}
 			await updateEntry(entryId, { ...data, breach }, opened);
 			return;
 		}
