@@ -7,7 +7,7 @@ import { SITE } from "@/consts";
 	title="Privacy Policy"
 	description="Bramble is a local-first password manager. It stores everything encrypted on your device. Its network use is limited to optional, off-by-default features you control (a password breach check, peer-to-peer sync between your own devices, encrypted backups to a storage provider you choose, and email aliases from a provider you already use), plus an update check in the desktop and mobile apps that you can turn off."
 	path="/privacy"
-	meta="Effective date: 13 November 2026"
+	meta="Effective date: 20 November 2026"
 >
 	<p class="lead">
 		<strong>The short version:</strong> Bramble is a local-first password manager, available as a
@@ -186,9 +186,9 @@ import { SITE } from "@/consts";
 		</li>
 		<li>
 			<strong>You pick the destination, and Bramble has no server in the middle.</strong> Bramble
-			uploads directly to the storage you configure: Dropbox (which you connect with a normal
-			sign-in), or any S3-compatible or WebDAV storage, including services you self-host. Bramble
-			runs no backup server of its own and keeps no copy.
+			uploads directly to the storage you configure: Dropbox or Google Drive (which you connect with
+			a normal sign-in), or any S3-compatible or WebDAV storage, including services you self-host.
+			Bramble runs no backup server of its own and keeps no copy.
 		</li>
 		<li>
 			<strong>The provider is a third party under its own terms.</strong> Whatever storage you
@@ -197,6 +197,45 @@ import { SITE } from "@/consts";
 			can see.
 		</li>
 	</ul>
+
+	<h2>Google Drive backups (optional)</h2>
+	<p>
+		If you connect Google Drive as a backup destination, Bramble asks Google for one permission,
+		<code>drive.file</code>. It lets Bramble see and change only the files Bramble creates. Bramble
+		cannot see, read, or change anything else in your Google Drive.
+	</p>
+	<ul>
+		<li>
+			<strong>What Bramble does with it.</strong> It creates a folder named "Bramble" in your My
+			Drive, uploads your encrypted backups there, lists them, and deletes the oldest once there are
+			more than the number you chose to keep. It uses the access for nothing else.
+		</li>
+		<li>
+			<strong>Your Google sign-in stays on your device.</strong> When you connect, Google gives
+			Bramble a token that lets it keep backing up. Bramble keeps that token on your device, sealed
+			with your vault key, or in the desktop app, in your operating system's credential store. It
+			is never sent to Bramble, which has no server to receive it: requests go straight from your
+			device to Google.
+		</li>
+		<li>
+			<strong>Nothing is shared.</strong> Bramble does not share data from your Google account with
+			anyone, does not use it for advertising, and does not use it to train AI models. Because it
+			never leaves your device, no person at Bramble can read it.
+		</li>
+		<li>
+			<strong>Turning it off.</strong> Remove the Google Drive destination in Bramble's Settings,
+			then remove Bramble's access in your Google Account under{" "}
+			<a href="https://myaccount.google.com/connections">Third-party apps &amp; services</a>. Your
+			backup files stay in your Drive until you delete them.
+		</li>
+	</ul>
+	<p>
+		Bramble's use and transfer to any other app of information received from Google APIs will adhere
+		to the{" "}
+		<a href="https://developers.google.com/terms/api-services-user-data-policy"
+			>Google API Services User Data Policy</a
+		>, including the Limited Use requirements.
+	</p>
 
 	<h2>Email aliases (optional)</h2>
 	<p>
@@ -337,7 +376,7 @@ import { SITE } from "@/consts";
 		</li>
 		<li>
 			Identity: to run the provider's sign-in screen when you connect a cloud-backup account such as
-			Dropbox.
+			Dropbox or Google Drive.
 		</li>
 		<li>
 			Native messaging (optional, Chromium browsers): to talk to the Bramble desktop app on the same
