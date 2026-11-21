@@ -1108,8 +1108,26 @@ No Bramble server sits in the token path; tokens go device to Google.
 ### One click: Bramble's own client
 
 Bramble registers one Desktop app client. Google treats an installed app's secret as not
-secret ("installed apps cannot keep secrets"), so shipping it is allowed, unlike a Web
-application client's.
+secret, so shipping it is allowed, unlike a Web application client's. The sources:
+
+- Google, [Using OAuth 2.0 to Access Google APIs](https://developers.google.com/identity/protocols/oauth2),
+  "Installed applications": "The process results in a client ID and, in some cases, a client
+  secret, which you embed in the source code of your application. (In this context, the client
+  secret is obviously not treated as a secret.)"
+- Google, [OAuth 2.0 for Mobile & Desktop Apps](https://developers.google.com/identity/protocols/oauth2/native-app):
+  "Because these apps are distributed to individual devices, it is assumed that these apps
+  cannot keep secrets (they are public clients)." And: "Desktop apps are public clients and
+  cannot keep secrets confidential. Always use PKCE (Proof Key for Code Exchange) when
+  requesting authorization codes." The same page recommends a loopback redirect for desktop apps.
+- [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252#section-8.5), OAuth 2.0 for Native Apps,
+  section 8.5: "Secrets that are statically included as part of an app distributed to multiple
+  users should not be treated as confidential secrets." A server that still requires one "MUST
+  treat the client as a public client" and not accept the secret as proof of the client's
+  identity. Section 6 makes PKCE a MUST for native apps.
+
+GitHub's push protection flags the secret anyway, in the commits where it was still in plain
+text. The answer there is "The secret poses no risk": it is a real Google credential, so not a
+false positive, but not a confidential one.
 
 - **Committed, not injected in CI.** `verify-releases.yml` rebuilds the extension from public
   source every day and compares it with the store build, so a secret only CI has would make
