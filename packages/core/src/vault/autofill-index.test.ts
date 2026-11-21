@@ -57,6 +57,20 @@ describe("toAutofillIndex", () => {
 		});
 	});
 
+	// The macOS suggestions rank a site's logins by it, the latest first.
+	it("carries when a login was last used", () => {
+		const login = {
+			type: "login",
+			id: "gh",
+			name: "GitHub",
+			urls: ["https://github.com"],
+			username: "me",
+			password: "pw",
+			lastUsedAt: 1_700_000_000_000,
+		} as unknown as Entry;
+		expect(toAutofillIndex([login])[0]).toMatchObject({ lastUsedAt: 1_700_000_000_000 });
+	});
+
 	it("drops bramble.sh passkeys from the index but keeps the entry's others", () => {
 		const pk = (credentialId: string, rpId: string) => ({
 			credentialId,

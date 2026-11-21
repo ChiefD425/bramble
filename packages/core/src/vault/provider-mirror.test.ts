@@ -37,6 +37,23 @@ describe("buildProviderMirror", () => {
 		expect(m.credentials[0]?.totp).toBe("JBSWY3DPEHPK3PXP");
 	});
 
+	// macOS shows a site's highest-ranked login under the field and folds the rest away.
+	it("ranks a site's logins and codes by when each was last used, the latest highest", () => {
+		const m = buildProviderMirror(
+			[
+				login({ id: "old", lastUsedAt: 1_000_000 } as Partial<IndexEntry>),
+				login({ id: "new", lastUsedAt: 5_000_000, totp: "X" } as Partial<IndexEntry>),
+				login({ id: "never" }),
+			],
+			{ quickType: true },
+		);
+		const rank = (id: string) => m.identities.find((i) => i.recordId === id)?.rank;
+		expect(rank("new")).toBe(5000);
+		expect(rank("old")).toBe(1000);
+		expect(rank("never")).toBeUndefined();
+		expect(m.oneTimeCodeIdentities.find((i) => i.recordId === "new")?.rank).toBe(5000);
+	});
+
 	it("emits no QuickType identities without the opt-in, but always the passkey ones", () => {
 		const m = buildProviderMirror(
 			[login({ totp: "X", passkeys: [passkey("github.com")] } as Partial<IndexEntry>)],

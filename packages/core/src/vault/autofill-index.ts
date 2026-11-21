@@ -100,6 +100,7 @@ function loginIndexEntry(entry: LoginEntry): IndexEntry {
 		autofillEnabled: entry.autofillEnabled,
 		autoSubmit: entry.autoSubmit,
 		subdomainMatch: entry.subdomainMatch,
+		lastUsedAt: entry.lastUsedAt,
 		passkeys: servedPasskeys(entry),
 	};
 }

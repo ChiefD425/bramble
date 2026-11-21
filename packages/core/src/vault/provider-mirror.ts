@@ -23,12 +23,15 @@ export interface QuickTypeIdentity {
 	recordId: string;
 	username: string;
 	service: string;
+	/** When the login was last used, in seconds: the OS puts a site's highest first. Absent if never. */
+	rank?: number;
 }
 
 export interface OneTimeCodeIdentity {
 	recordId: string;
 	label: string;
 	service: string;
+	rank?: number;
 }
 
 export interface PasskeyIdentity {
@@ -80,6 +83,7 @@ export function buildProviderMirror(
 	opts: { quickType: boolean; includeUnlockKeys?: boolean },
 ): ProviderMirror {
 	const credentials: ProviderCredential[] = [];
+	const lastUsed = new Map<string, number>();
 	const passkeys: StoredPasskey[] = [];
 	const stored = (p: PasskeyCredential): StoredPasskey => ({
 		credentialId: p.credentialId,
@@ -97,6 +101,7 @@ export function buildProviderMirror(
 			continue;
 		}
 		if (e.type !== "login") continue;
+		if (e.lastUsedAt) lastUsed.set(e.id, Math.floor(e.lastUsedAt / 1000));
 		if (e.password) {
 			credentials.push({
 				recordId: e.id,
@@ -116,10 +121,19 @@ export function buildProviderMirror(
 	}
 	const hosts = (c: ProviderCredential) =>
 		c.services.map(normalizeHost).filter((s) => s.length > 0);
+	const ranked = (recordId: string) => {
+		const rank = lastUsed.get(recordId);
+		return rank === undefined ? {} : { rank };
+	};
 	const identities = opts.quickType
 		? credentials.flatMap((c) =>
 				c.username
-					? hosts(c).map((service) => ({ recordId: c.recordId, username: c.username, service }))
+					? hosts(c).map((service) => ({
+							recordId: c.recordId,
+							username: c.username,
+							service,
+							...ranked(c.recordId),
+						}))
 					: [],
 			)
 		: [];
@@ -130,6 +144,7 @@ export function buildProviderMirror(
 							recordId: c.recordId,
 							label: c.username || c.name,
 							service,
+							...ranked(c.recordId),
 						}))
 					: [],
 			)

@@ -75,6 +75,9 @@ pub struct PasswordIdentity {
     pub record_id: String,
     pub username: String,
     pub service: String,
+    /// When the login was last used, in seconds: a site's highest shows first. 0 if never.
+    #[serde(default)]
+    pub rank: i64,
 }
 
 #[derive(Deserialize, Default)]
@@ -83,6 +86,8 @@ pub struct CodeIdentity {
     pub record_id: String,
     pub label: String,
     pub service: String,
+    #[serde(default)]
+    pub rank: i64,
 }
 
 /// credentialId and userHandle are STANDARD base64, as the core stores them.
@@ -433,6 +438,13 @@ mod store {
         unsafe { msg_send![a, initWithIdentifier: &*ns(service), type: 0isize] }
     }
 
+    fn set_rank(identity: &AnyObject, rank: i64) {
+        let rank = isize::try_from(rank).unwrap_or(isize::MAX);
+        unsafe {
+            let _: () = msg_send![identity, setRank: rank];
+        }
+    }
+
     /// Every identity the mirror names, as store objects. Kinds this macOS lacks are skipped.
     pub(super) fn identities(m: &Mirror) -> Vec<Retained<AnyObject>> {
         let mut out = Vec::new();
@@ -445,7 +457,7 @@ mod store {
                 let id: Option<Retained<AnyObject>> = unsafe {
                     msg_send![a, initWithServiceIdentifier: &*service, user: &*ns(&i.username), recordIdentifier: &*ns(&super::tag(&m.vault_id, &i.record_id))]
                 };
-                out.extend(id);
+                out.extend(id.inspect(|id| set_rank(id, i.rank)));
             }
         }
         // macOS 14: the passkey sheet only offers a provider it was told holds the credential.
@@ -474,7 +486,7 @@ mod store {
                 let id: Option<Retained<AnyObject>> = unsafe {
                     msg_send![a, initWithServiceIdentifier: &*service, label: &*ns(&c.label), recordIdentifier: &*ns(&super::tag(&m.vault_id, &c.record_id))]
                 };
-                out.extend(id);
+                out.extend(id.inspect(|id| set_rank(id, c.rank)));
             }
         }
         out
@@ -802,7 +814,7 @@ mod tests {
             "iv": "IV", "ciphertext": "CT", "vaultId": "v1", "vaultName": "Personal",
             "slot": { "saltB64": "s" },
             "passkeyIv": "PIV", "passkeyCiphertext": "PCT",
-            "identities": [{ "recordId": "e1", "username": "me", "service": "github.com" }],
+            "identities": [{ "recordId": "e1", "username": "me", "service": "github.com", "rank": 1700000000 }],
             "oneTimeCodeIdentities": [{ "recordId": "c1", "label": "me", "service": "github.com" }],
             "passkeyIdentities": [{ "credentialId": "Y2lk", "rpId": "github.com", "userName": "me", "userHandle": "dWg=" }]
         }))
@@ -1028,6 +1040,16 @@ mod tests {
         assert!(taken.is_some());
         drop(taken);
         assert_eq!(count(), before);
+    }
+
+    // Safari shows a site's highest-ranked login under the field and folds the rest away.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn hands_macos_each_logins_rank() {
+        use objc2::msg_send;
+        let built = store::identities(&mirror());
+        let rank: isize = unsafe { msg_send![&*built[0], rank] };
+        assert_eq!(rank, 1_700_000_000);
     }
 
     // macOS drops a provider's suggestions while it is off, so the moment it comes back on is when

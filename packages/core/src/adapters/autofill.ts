@@ -45,6 +45,8 @@ export interface LoginIndexEntry {
 	autofillEnabled?: boolean;
 	autoSubmit?: boolean;
 	subdomainMatch?: SubdomainMatchMode;
+	/** When the login was last filled or copied (ms): the macOS suggestions put the latest first. */
+	lastUsedAt?: number;
 	/**
 	 * Passkeys this login holds (provider role). Carried so the native mobile credential
 	 * provider can offer + assert them; the extension's passkey provider reads the vault
