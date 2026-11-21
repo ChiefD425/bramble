@@ -69,6 +69,7 @@ function compile(arch) {
 			bin,
 			join(src, "CredentialProviderViewController.swift"),
 			join(src, "Views.swift"),
+			join(src, "VaultCopies.swift"),
 			join(shared, "AutofillCore.swift"),
 			join(shared, "AutofillStyle.swift"),
 			join(shared, "Totp.swift"),

@@ -14,6 +14,7 @@
 		"icons:macos": "node scripts/make-macos-icon.mjs",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run --passWithNoTests",
+		"test:appex": "node scripts/test-appex.mjs",
 		"icons:windows": "node scripts/make-windows-icon.mjs"
 	},
 	"dependencies": {

@@ -20,25 +20,7 @@ private let appGroup = "BHGR3PP64J.group.app.bramble.desktop"
 private let touchIdService = "app.bramble.desktop.biometric"
 private let touchIdGroup = "BHGR3PP64J.app.bramble.desktop"
 
-private struct Mirror: Decodable {
-	let iv: String
-	let ciphertext: String
-	let vaultId: String?
-	/// What the app calls the vault, so the sheet can say which one it unlocks.
-	let vaultName: String?
-	let slot: SlotPayload?
-	let passkeyIv: String?
-	let passkeyCiphertext: String?
-}
-
-private struct SlotPayload: Decodable {
-	let saltB64: String
-	let slotIdB64: String
-	let verifierB64: String
-	let wrapIvB64: String
-	let wrappedVekB64: String
-	let magicVersionB64: String
-}
+private typealias Mirror = VaultCopy
 
 private func groupURL(_ name: String) -> URL? {
 	FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
@@ -46,8 +28,8 @@ private func groupURL(_ name: String) -> URL? {
 }
 
 private func readMirror() -> Mirror? {
-	guard let url = groupURL("autofill.json"), let data = try? Data(contentsOf: url) else { return nil }
-	return try? JSONDecoder().decode(Mirror.self, from: data)
+	guard let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return nil }
+	return chooseCopy(readCopies(in: group), vaultId: nil, credentialIds: [])
 }
 
 // MARK: - Controller
