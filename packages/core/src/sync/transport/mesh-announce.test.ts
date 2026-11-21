@@ -67,6 +67,12 @@ async function tick(ms: number): Promise<void> {
 	await settle();
 }
 
+/** Real turns until `ready` holds. A hello's WebCrypto can outlast settle's few turns on a loaded
+ * machine, so a check that a hello went out waits for it rather than for a count of turns. */
+async function until(ready: () => boolean): Promise<void> {
+	for (let i = 0; i < 200 && !ready(); i++) await new Promise((r) => realSetTimeout(r, 10));
+}
+
 const started: { stop: () => void }[] = [];
 
 async function mesh(
@@ -136,12 +142,15 @@ describe("peer announcements", () => {
 		await mesh();
 		sockets[0]?.open();
 		await tick(0);
-		const first = sockets[0]?.events().length ?? 0;
+		const sent = () => sockets[0]?.events().length ?? 0;
+		await until(() => sent() > 0);
+		const first = sent();
 		expect(first).toBeGreaterThan(0); // the hello at startup
 
 		await tick(31_000);
+		await until(() => sent() > first);
 
-		expect(sockets[0]?.events().length).toBeGreaterThan(first);
+		expect(sent()).toBeGreaterThan(first);
 	});
 
 	it("stops announcing once the session is stopped", async () => {
