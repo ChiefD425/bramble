@@ -13,7 +13,7 @@ import {
 	LEN_WRAPPED_VEK,
 	SLOT_KIND_WEBAUTHN,
 } from "../vault-format";
-import { isBackupArchive, VAULT_ENTRY } from "./archive";
+import { VAULT_ENTRY } from "./archive";
 import { commitRestore, fileSource, readPickedBackup as readSource } from "./restore";
 import { bytesSource } from "./zip";
 
@@ -195,14 +195,5 @@ describe("commitRestore", () => {
 		const outcome = await commitRestore(h.deps, read.picked, "pw");
 		expect(h.calls).not.toContain("receive");
 		expect(outcome).toEqual({ addedNew: true, restored: 0, rejected: 0, unstorable: 0 });
-	});
-});
-
-describe("isBackupArchive", () => {
-	it("is true for a Bramble archive and false for anything else", async () => {
-		expect(await isBackupArchive((await archiveWith([fill(30, 1)])).bytes)).toBe(true);
-		expect(await isBackupArchive(passwordVault())).toBe(false);
-		// An unrelated ZIP is not mistaken for one just because of its magic bytes.
-		expect(await isBackupArchive(zipSync({ "photo.jpg": stored(fill(10, 1)) }))).toBe(false);
 	});
 });

@@ -4,8 +4,10 @@ import type {
 	CryptoAdapter,
 	EncryptedPayload,
 	KdbxRawEntry,
+	OpenedVaultBackup,
 	OpenKdbxInput,
 	OpenPortableVaultInput,
+	OpenVaultBackupInput,
 	PasskeyAssertion,
 	PasskeyImportResult,
 	PasskeyPrfOutput,
@@ -293,6 +295,14 @@ function makeCrypto(vaultId?: string): CryptoAdapter {
 				password: input.password,
 				file: input.file,
 				magicVersion: Array.from(input.magicVersion),
+			}),
+		openVaultBackup: (input: OpenVaultBackupInput) =>
+			send<OpenedVaultBackup | null>("CRYPTO_OPEN_VAULT_BACKUP", {
+				password: input.password,
+				file: input.file,
+				magicVersion: Array.from(input.magicVersion),
+				entries: input.entries,
+				files: input.files,
 			}),
 
 		passkeyMakeCredential: (rpId, userVerified) =>

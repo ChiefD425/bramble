@@ -44,8 +44,10 @@ export interface PopOutHandoff {
 	vaultId?: string;
 }
 
-/** Full-tab screens the options page can boot into, via `?screen=`. Default (omitted) is the vault setup flow. */
-export type OptionsScreen = "import" | "restore";
+/** Full-tab screens the options page can boot into, via `?screen=`. Default (omitted) is the vault
+ * setup flow. "import-backup" is the import flow for a .bramble alone, which merges into the open
+ * vault; "restore" adds a backup as a vault of its own. */
+export type OptionsScreen = "import" | "import-backup" | "restore";
 
 /** Who saves passwords in this browser. "locked": a policy or another extension holds the setting. */
 export type DefaultPasswordManager = "bramble" | "browser" | "locked";

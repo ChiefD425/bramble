@@ -114,6 +114,7 @@ const USE_VEK = new Set([
 	"CRYPTO_FILE_META",
 	"CRYPTO_FILE_RESEAL_META",
 	"CRYPTO_SAVE_KDBX",
+	"CRYPTO_OPEN_VAULT_BACKUP",
 ]);
 
 // The file ops that touch a vault's attachment store. They get the vault id injected beside the

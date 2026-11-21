@@ -18,6 +18,7 @@ export type {
 	ImportProvider,
 	ImportResult,
 	PlacedAttachment,
+	SealedSource,
 } from "./types";
 export {
 	parseAliasVault,
@@ -78,11 +79,12 @@ export const IMPORT_PROVIDERS: readonly ImportProviderInfo[] = [
 	},
 	{
 		// Bramble's own format, so it is the only file import that keeps passkeys and
-		// password history. Sealed under the password chosen at export, not the master
-		// password. Second because it is the best file route where the user has one.
+		// password history. An export is sealed under the password chosen for it, a backup
+		// under its vault's master password; both merge. Second because it is the best file
+		// route where the user has one.
 		id: "bramble",
 		label: "Bramble (.bramble)",
-		blurb: "An export from another Bramble vault, passkeys included",
+		blurb: "A Bramble export or backup, merged into this vault, passkeys included",
 		accept: ".bramble",
 		reads: "bytes",
 		needsCredential: true,

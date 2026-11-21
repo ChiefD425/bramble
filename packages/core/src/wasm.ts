@@ -6,12 +6,14 @@
 
 import type {
 	EncryptedPayload,
+	OpenedVaultBackup,
 	PasskeyAssertion,
 	PasskeyImportResult,
 	PasskeyPrfOutput,
 	PasskeyRegistration,
 	PasswordSlotBlob,
 	VekEncrypted,
+	WrappedFileKey,
 } from "./adapters/crypto";
 
 // Each call returns its value either synchronously (the in-process WASM module) or
@@ -141,6 +143,15 @@ export interface VaultCrypto {
 		file: PortableVaultBlob,
 		magicVersion: Uint8Array,
 	): Awaitable<string | undefined>;
+	/** A full backup opened to merge into the open vault, or null when the password is wrong.
+	 * Uses the session VEK only to rewrap file keys. */
+	open_vault_backup?(
+		password: string,
+		file: PortableVaultBlob,
+		magicVersion: Uint8Array,
+		entries: EncryptedPayload[],
+		files: WrappedFileKey[],
+	): Awaitable<OpenedVaultBackup | null | undefined>;
 }
 
 /**

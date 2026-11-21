@@ -1,6 +1,8 @@
 import type { PasskeyImportResult } from "../adapters/crypto";
+import type { ArchivedAttachment } from "../backup/archive";
+import type { RandomAccessSource } from "../backup/zip";
 import type { EntryData, EntryType } from "../hooks/useVault";
-import type { FileSource } from "../vault/file-mutations";
+import type { FileSource, SealedFile } from "../vault/file-mutations";
 
 /** Password managers whose plaintext/container exports Bramble can read. */
 export type ImportProvider =
@@ -22,8 +24,12 @@ export interface ImportResult {
 	byType: Partial<Record<EntryType, number>>;
 	skipped: number;
 	warnings: string[];
-	/** Files the import brings (KeePass and 1Password carry them), each on one of `imported`. */
+	/** Files the import brings (KeePass, 1Password and Bramble backups carry them), each on one
+	 * of `imported`. */
 	attachments?: ImportAttachment[];
+	/** What a Bramble backup holds that can't come in: items that wouldn't open, and attachments
+	 * that wouldn't open or aren't in the file. Counted so nothing goes missing silently. */
+	leftOut?: { items: number; attachments: number };
 }
 
 /** A file an import brings, on one of its entries (that entry object, from `imported`). */
@@ -31,8 +37,20 @@ export interface ImportAttachment {
 	entry: EntryData;
 	name: string;
 	mime: string;
-	source: FileSource;
+	source: FileSource | SealedSource;
 	size: number;
+}
+
+/**
+ * A backup's attachment, already sealed under the open vault's key once its file key was moved
+ * over: its record's fields, and where its sealed bytes are in the backup. Copied into the
+ * vault's store as it is, never opened and sealed again.
+ */
+export interface SealedSource {
+	kind: "sealed";
+	sealed: SealedFile;
+	archive: RandomAccessSource;
+	at: ArchivedAttachment;
 }
 
 /** An import's file, placed: on one of the items being imported, or, for an item the vault

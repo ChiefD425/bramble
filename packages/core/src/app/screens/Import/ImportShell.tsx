@@ -1,14 +1,9 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { ArrowLeft, ArrowLeftRight, Check, Loader2, ShieldCheck, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isBackupArchive } from "../../../backup/archive";
+import { fileSource } from "../../../backup/restore";
 import { usePlatform } from "../../../context/PlatformContext";
 import { importFromOs } from "../../../exchange";
-import {
-	FULL_BACKUP_ERROR,
-	openPortableVaultFile,
-	readPortableVaultFile,
-} from "../../../export/portable-vault";
 import {
 	exchangeBlockedReason,
 	useExchangeAvailability,
@@ -24,6 +19,7 @@ import {
 	parseImport,
 	tallyByType,
 } from "../../../import";
+import { BrambleFileError, DamagedAttachmentError } from "../../../import/bramble";
 import { tagImport } from "../../../import/tag-import";
 import { base64ToBytes } from "../../../util/bytes";
 import { splitAlreadyImported } from "../../../vault/entry-identity";
@@ -47,10 +43,26 @@ const MAX_IMPORT_FILE_BYTES = MAX_IMPORT_FILE_MB * 1024 * 1024;
 
 /** Import wizard: pick a provider, parse/decrypt the file, preview, then write into the vault.
  * `onClose` (single-window hosts like mobile) returns to the app; the extension opens import
- * in its own tab and passes nothing. */
-export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
-	const { ready, hasVault, isLocked, unlock, importEntries, entries, files, describeFile } =
-		useVault();
+ * in its own tab and passes nothing. `backupOnly` offers just the .bramble route, for
+ * Settings' "Import a backup". */
+export function ImportShell({
+	onClose,
+	backupOnly = false,
+}: {
+	onClose?: () => void;
+	backupOnly?: boolean;
+} = {}) {
+	const {
+		ready,
+		hasVault,
+		isLocked,
+		unlock,
+		importEntries,
+		openBrambleFile,
+		entries,
+		files,
+		describeFile,
+	} = useVault();
 	const { shell, crypto, exchange } = usePlatform();
 	const { vaults, selectVault } = useVaultRegistry();
 	const { t } = useLingui();
@@ -61,10 +73,11 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 	const [importedTag, setImportedTag] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
-	// Encrypted .kdbx picked, awaiting its master password.
+	// Encrypted .kdbx or .bramble picked, awaiting its password. Kept as the file, not its bytes:
+	// a backup with attachments can be any size, and is read a piece at a time.
 	const [kdbxPending, setKdbxPending] = useState<{
 		provider: ImportProviderInfo;
-		file: Uint8Array;
+		file: File;
 	} | null>(null);
 	// The files an import brings, placed on their entries, and what holds a KeePass import's until
 	// then: they are the database's attachments in the clear, so they go as soon as they are
@@ -97,7 +110,9 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 	// device can't transfer, the card says why instead of disappearing.
 	const availability = useExchangeAvailability();
 	const exchangeBlocked = exchangeBlockedReason(availability);
-	const providers = IMPORT_PROVIDERS.filter((p) => !p.viaSystem || exchange);
+	const providers = IMPORT_PROVIDERS.filter((p) =>
+		backupOnly ? p.id === "bramble" : !p.viaSystem || exchange,
+	);
 
 	// The OS opens this screen only because a transfer is already in flight, so claim it and
 	// go straight to the preview. Showing the provider list first would ask the user to pick a
@@ -308,6 +323,10 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 								They're in your vault now. The transfer happened directly between the two apps, so
 								there's no file to clean up.
 							</Trans>
+						) : provider?.id === "bramble" ? (
+							<Trans>
+								They're in your vault now. The file is still encrypted, so it's safe to keep.
+							</Trans>
 						) : (
 							<Trans>
 								They're in your vault now. For your safety, delete the export file you just
@@ -330,14 +349,16 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 		setError(null);
 		setBusy(true);
 		try {
-			if (file.size > MAX_IMPORT_FILE_BYTES) {
+			// A .bramble backup carries its attachments; only its vault is ever read whole, and
+			// that has its own ceiling (see openBackup).
+			if (p.id !== "bramble" && file.size > MAX_IMPORT_FILE_BYTES) {
 				const sizeMb = (file.size / 1024 / 1024).toFixed(1);
 				setError(t`This file is too large to import (${sizeMb} MB; max ${MAX_IMPORT_FILE_MB} MB).`);
 				return;
 			}
-			// Encrypted .kdbx: stash bytes, collect the password in the next step.
+			// Encrypted .kdbx or .bramble: keep the file, collect the password in the next step.
 			if (p.needsCredential) {
-				setKdbxPending({ provider: p, file: new Uint8Array(await file.arrayBuffer()) });
+				setKdbxPending({ provider: p, file });
 				return;
 			}
 			const raw = p.reads === "text" ? await file.text() : new Uint8Array(await file.arrayBuffer());
@@ -403,7 +424,7 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 		try {
 			const res =
 				kdbxPending.provider.id === "bramble"
-					? await openBrambleFile(password)
+					? await openBramble(password)
 					: await openKdbxFile(password, keyfileB64);
 			if (res.imported.length === 0) {
 				throw new Error(t`No importable items were found in this database.`);
@@ -421,7 +442,7 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 		if (!kdbxPending) throw new Error("no pending file");
 		try {
 			const opened = await crypto.openKdbx({
-				file: kdbxPending.file,
+				file: new Uint8Array(await kdbxPending.file.arrayBuffer()),
 				password,
 				keyfile: keyfileB64 ? base64ToBytes(keyfileB64) : undefined,
 			});
@@ -432,28 +453,27 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 		}
 	};
 
-	// Bramble's own format. Entries come back already normalized, so unlike every foreign
-	// format there is nothing to map: passkeys and password history ride along untouched.
-	const openBrambleFile = async (password: string): Promise<ImportResult> => {
+	// Bramble's own format: an export, or a full backup, which merges like any other import rather
+	// than becoming a vault of its own. Entries come back already normalized, so unlike every
+	// foreign format there is nothing to map: passkeys and password history ride along untouched.
+	const openBramble = async (password: string): Promise<ImportResult> => {
 		if (!kdbxPending) throw new Error("no pending file");
-		// Import merges entries into this vault; a full backup is a whole vault and belongs in
-		// Restore, which adds it as a new one. Said the same way for both kinds, the plain vault
-		// (found once its payload is open) and the archive with attachments (found by its shape).
-		const fullBackup = t`That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed.`;
-		const bytes = kdbxPending.file;
-		if (await isBackupArchive(bytes)) throw new Error(fullBackup);
-		const file = readPortableVaultFile(bytes);
-		if (!file) throw new Error(t`That doesn't look like a Bramble export (.bramble) file.`);
-		let entries: Awaited<ReturnType<typeof openPortableVaultFile>>;
+		let res: ImportResult | null;
 		try {
-			entries = await openPortableVaultFile(crypto, file, password);
+			res = await openBrambleFile(fileSource(kdbxPending.file), password);
 		} catch (e) {
-			if (e instanceof Error && e.message === FULL_BACKUP_ERROR) throw new Error(fullBackup);
-			throw e;
+			if (!(e instanceof BrambleFileError)) throw e;
+			throw new Error(
+				e.reason === "damaged"
+					? t`This backup can't be read. It may be damaged, or not a Bramble backup.`
+					: e.reason === "no-password"
+						? t`This backup has no master password, so it can't be opened here.`
+						: t`That doesn't look like a Bramble export (.bramble) file.`,
+			);
 		}
 		// null is a wrong password, distinct from a file this can't read at all.
-		if (entries === null) throw new Error(t`That password didn't open the file.`);
-		return { imported: entries, byType: tallyByType(entries), skipped: 0, warnings: [] };
+		if (res === null) throw new Error(t`That password didn't open the file.`);
+		return res;
 	};
 
 	const runImport = async () => {
@@ -469,7 +489,13 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 			setImportedFiles(attachments.length);
 			release();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : t`Couldn't write to the vault.`);
+			setError(
+				err instanceof DamagedAttachmentError
+					? t`An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault.`
+					: err instanceof Error
+						? err.message
+						: t`Couldn't write to the vault.`,
+			);
 		} finally {
 			setBusy(false);
 		}
@@ -506,6 +532,24 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 									value={skippedFiles}
 									one="# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app."
 									other="# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app."
+								/>
+							</p>
+						)}
+						{!!result.leftOut?.items && (
+							<p className="text-xs text-warning">
+								<Plural
+									value={result.leftOut.items}
+									one="# item in this backup can't be read, so it's left out."
+									other="# items in this backup can't be read, so they're left out."
+								/>
+							</p>
+						)}
+						{!!result.leftOut?.attachments && (
+							<p className="text-xs text-warning">
+								<Plural
+									value={result.leftOut.attachments}
+									one="# attachment in this backup can't be read, so it's left out."
+									other="# attachments in this backup can't be read, so they're left out."
 								/>
 							</p>
 						)}
@@ -601,7 +645,7 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 				providerLabel={kdbxPending.provider.label}
 				passwordLabel={
 					kdbxPending.provider.id === "bramble"
-						? t`Password for the file`
+						? t`Password for the file (a backup's is its master password)`
 						: t`KeePass master password`
 				}
 				allowKeyfile={kdbxPending.provider.id !== "bramble"}
@@ -616,7 +660,13 @@ export function ImportShell({ onClose }: { onClose?: () => void } = {}) {
 
 	return (
 		<Shell onClose={onClose}>
-			<Header subtitle={t`Bring your logins, cards and notes over from another manager`} />
+			<Header
+				subtitle={
+					backupOnly
+						? t`Add what's in a backup to this vault. Entries you already have aren't added twice.`
+						: t`Bring your logins, cards and notes over from another manager`
+				}
+			/>
 			<div className="space-y-2.5">
 				{providers.map((p) =>
 					p.viaSystem ? (

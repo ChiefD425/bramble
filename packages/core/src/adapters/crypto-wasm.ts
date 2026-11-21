@@ -197,5 +197,14 @@ export function buildCryptoAdapter(
 			// a bad password from a corrupt file.
 			return (await wasm.open_portable_vault(i.password, i.file, i.magicVersion)) ?? null;
 		},
+
+		async openVaultBackup(i) {
+			const wasm = await getWasm();
+			if (!wasm.open_vault_backup) throw new Error("Opening a .bramble isn't available here.");
+			return (
+				(await wasm.open_vault_backup(i.password, i.file, i.magicVersion, i.entries, i.files)) ??
+				null
+			);
+		},
 	};
 }

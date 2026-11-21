@@ -153,9 +153,9 @@ export default function OptionsApp({
 				<ThemeProvider>
 					<VaultRegistryProvider>
 						<VaultProvider>
-							{active === "import" ? (
+							{active === "import" || active === "import-backup" ? (
 								<Suspense fallback={null}>
-									<ImportShell onClose={onComplete} />
+									<ImportShell onClose={onComplete} backupOnly={active === "import-backup"} />
 								</Suspense>
 							) : active === "restore" ? (
 								<RestoreShell onClose={onComplete} />

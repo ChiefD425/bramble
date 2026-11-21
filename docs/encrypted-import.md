@@ -4,8 +4,9 @@ How Bramble handles *encrypted* imports. Three formats are in play, at different
 levels of support:
 
 - **Bramble `.bramble`** — our own portable vault, sealed at export under a password
-  chosen for the file. The only import that keeps passkeys and password history,
-  since the entries arrive already normalized. See [below](#bramble-portable-vault).
+  chosen for the file, or a full backup under its vault's master password. The only
+  import that keeps passkeys and password history, since the entries arrive already
+  normalized. See [below](#bramble-portable-vault).
 - **KeePass KDBX4** — fully decrypted inside WASM and imported. See below.
 - **Bitwarden encrypted JSON** — *not* decrypted. Bramble detects it and tells the
   user what to do, because one of the two Bitwarden encrypted formats can't be
@@ -28,9 +29,9 @@ entries you already have" with an Import them anyway button. A login sharing a s
 and username under a different password is still imported as new, and the preview
 says how many. Hosts, not registrable domains, because core carries no public
 suffix list, and missing a duplicate is the safer error. Import always merges into
-the current vault. Replacing a vault wholesale
-is a different operation, restore-from-backup, described in
-[cloud-storage-backups.md](cloud-storage-backups.md).
+the current vault, a full Bramble backup included. Adding a backup as a vault of its
+own is a different operation, restore-from-backup, offered at vault setup and described
+in [cloud-storage-backups.md](cloud-storage-backups.md).
 
 ---
 
@@ -59,18 +60,40 @@ Code: `seal_portable_vault` / `open_portable_vault` in
 - **Framing lives in TypeScript.** The core returns the sealed pieces (slot fields,
   entries IV and ciphertext) and `encodeVaultBlob` assembles them, so VLT1 keeps a
   single implementation instead of gaining a second one in Rust.
-- **A full vault backup is refused, by name.** Its payload decrypts fine but holds
-  entries still sealed under per-entry DEKs; importing them would write entries whose
-  every field is ciphertext, so `openPortableVaultFile` detects that shape and points
-  the user at restore instead. A backup of a vault with attachments (a ZIP) is refused
-  the same way, recognized by parsing it with the backup reader, so an unrelated ZIP is
-  not mistaken for one. The message is a code (`FULL_BACKUP_ERROR`) that the Import
-  screen turns into translated copy.
 - **Wrong password is not an error.** The core answers `None`/`null`, kept distinct
   from a corrupt or non-Bramble file so the UI can say which happened.
 
 The password prompt is the shared credential step (`KdbxUnlock`), with the key-file
 field off: only KeePass has those.
+
+## Importing a full backup
+
+A backup (plain VLT1, or the ZIP with attachments) merges like an export. Code:
+`packages/core/src/import/bramble.ts`, and `open_vault_backup` in core-rust.
+
+- **Told apart by the payload.** `openPortableVault` opens either kind, since both are a
+  VLT1 password slot over an entries payload. An export's entries are plain; a backup's
+  are `{ id, ciphertext, ... }` records still sealed under per-entry DEKs, which is how
+  the opener knows to take the second step.
+- **The backup's key never becomes the session key.** `open_vault_backup` unwraps it
+  from the backup's password slot, opens each entry's DEK with it and drops it on return,
+  so the vault that is open stays open and unchanged (the issue #27 hazard again). The
+  password is derived twice, once per call; that is the price of keeping both calls
+  free of payload parsing in Rust.
+- **Attachments are moved, not re-sealed.** Each file key is unwrapped under the backup's
+  key and wrapped again under the session VEK, so the sealed blob and its sealed name
+  belong to this vault as they are. Import copies the blob from the archive into the
+  vault's store, checked against its hash on the way in (`storeSealedAttachment`), and
+  writes a record with the moved key. Nothing is decrypted to disk, and a large backup is
+  read a piece at a time. This call is VEK-scoped (on the extension it is in `USE_VEK`).
+- **What stays behind is counted.** Local-only entries (the hidden unlock key) belong to
+  the device that made the backup and are skipped. An entry that won't open, or a file
+  whose key won't open, whose bytes aren't in the file, or that is on no entry the import
+  brings, is counted and shown in the preview. A file whose bytes don't match their hash
+  at import time stops the whole import, as a file that can't be sealed does.
+- **Duplicates as for any import.** The opened entries go through
+  `splitAlreadyImported`, so importing a backup of this same vault adds only what has
+  changed or gone missing since, and each file follows its entry as KeePass's do.
 
 ---
 

@@ -27,7 +27,7 @@ FEATURES
 - Built-in password generator.
 - Optional breach checking. Have I Been Pwned lookup using k-anonymity, so nothing about your password leaves your machine. Off by default.
 - Auto-lock after 15 minutes idle (configurable).
-- Import from 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords and Google Password Manager.
+- Easy switching. Import from other password managers or a KeePass file.
 
 WHY LOCAL-FIRST
 

@@ -356,21 +356,6 @@ export async function openBackup(src: RandomAccessSource): Promise<BackupContent
 }
 
 /**
- * Whether these bytes are a Bramble backup archive (a vault with its attachments). Parsed with
- * the same strict reader rather than judged by the ZIP magic, so an unrelated ZIP is not
- * mistaken for one. For a screen that must turn one away, such as Import, which merges entries
- * and cannot take a whole vault.
- */
-export async function isBackupArchive(bytes: Uint8Array): Promise<boolean> {
-	if (!isZipMagic(bytes)) return false;
-	try {
-		return (await openBackup(bytesSource(bytes))).kind === "archive";
-	} catch {
-		return false;
-	}
-}
-
-/**
  * Put an archive's attachments into a vault's store, streamed from the archive in chunks. Each
  * is checked against its own name as it is stored, so no vault key is needed here, which
  * matters on mobile, where the one loaded key may not be this vault's yet.

@@ -9,8 +9,10 @@ import type {
 	CryptoAdapter,
 	EncryptedPayload,
 	KdbxRawEntry,
+	OpenedVaultBackup,
 	OpenKdbxInput,
 	OpenPortableVaultInput,
+	OpenVaultBackupInput,
 	PasskeyAssertion,
 	PasskeyImportResult,
 	PasskeyPrfOutput,
@@ -165,6 +167,14 @@ export const desktopCrypto: CryptoAdapter = {
 			password: input.password,
 			file: input.file,
 			magicVersion: bytes(input.magicVersion),
+		}),
+	openVaultBackup: (input: OpenVaultBackupInput) =>
+		invoke<OpenedVaultBackup | null>("crypto_open_vault_backup", {
+			password: input.password,
+			file: input.file,
+			magicVersion: bytes(input.magicVersion),
+			entries: input.entries,
+			files: input.files,
 		}),
 
 	// Passkey PROVIDER (mint/assert for other sites) stays unwired, and not just for effort:

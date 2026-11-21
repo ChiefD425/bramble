@@ -63,10 +63,15 @@ export function DataSection() {
 				<Row
 					icon={<ArchiveRestore className="w-4 h-4 text-primary" />}
 					title={t`Import a backup`}
-					subtitle={t`Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced.`}
+					subtitle={t`Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice.`}
 				>
-					<Button variant="secondary" size="sm" onClick={() => void shell.openSetup("restore")}>
-						<Trans>Restore</Trans>
+					<Button
+						variant="secondary"
+						size="sm"
+						aria-label={t`Import a backup`}
+						onClick={() => void shell.openSetup("import-backup")}
+					>
+						<Trans>Import</Trans>
 					</Button>
 				</Row>
 				{shell.exportBytes && (

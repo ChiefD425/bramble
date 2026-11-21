@@ -23,6 +23,11 @@ msgstr "… 외 {0}개 더"
 msgid "{0, plural, one {# attachment in the backup file was damaged and wasn't restored. The vault still lists it.} other {# attachments in the backup file were damaged and weren't restored. The vault still lists them.}}"
 msgstr "{0, plural, one {백업 파일의 첨부 파일 #개가 손상되어 복원되지 않았습니다. 보관함에는 계속 표시됩니다.} other {백업 파일의 첨부 파일 #개가 손상되어 복원되지 않았습니다. 보관함에는 계속 표시됩니다.}}"
 
+#. placeholder {0}: result.leftOut.attachments
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# attachment in this backup can't be read, so it's left out.} other {# attachments in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {이 백업의 첨부 파일 #개를 읽을 수 없어 제외되었습니다.} other {이 백업의 첨부 파일 #개를 읽을 수 없어 제외되었습니다.}}"
+
 #. placeholder {0}: outcome.restored
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "{0, plural, one {# attachment restored with it.} other {# attachments restored with it.}}"
@@ -42,6 +47,11 @@ msgstr "{0, plural, one {기기 #대가 아직 로스터 항목에 서명하지 
 #: packages/core/src/app/bulk-actions/export.tsx
 msgid "{0, plural, one {# entry goes into the file, with its passkeys and history.} other {# entries go into the file, with their passkeys and history.}}"
 msgstr "{0, plural, one {항목 #개가 패스키와 기록과 함께 파일에 들어갑니다.} other {항목 #개가 패스키와 기록과 함께 파일에 들어갑니다.}}"
+
+#. placeholder {0}: result.leftOut.items
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "{0, plural, one {# item in this backup can't be read, so it's left out.} other {# items in this backup can't be read, so they're left out.}}"
+msgstr "{0, plural, one {이 백업의 항목 #개를 읽을 수 없어 제외되었습니다.} other {이 백업의 항목 #개를 읽을 수 없어 제외되었습니다.}}"
 
 #. placeholder {0}: attachments.length
 #: packages/core/src/app/screens/Import/ImportShell.tsx
@@ -375,6 +385,14 @@ msgstr "이 로그인이 적용되는 웹사이트를 추가하세요. 사이트
 msgid "Add URL"
 msgstr "URL 추가"
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Add what's in a backup to this vault. Entries you already have aren't added twice."
+msgstr "백업의 내용을 이 보관함에 추가합니다. 이미 있는 항목은 두 번 추가되지 않습니다."
+
+#: packages/core/src/app/screens/Settings/components/DataSection.tsx
+msgid "Add what's in an encrypted .bramble backup to this vault. Entries you already have aren't added twice."
+msgstr "암호화된 .bramble 백업의 내용을 이 보관함에 추가합니다. 이미 있는 항목은 두 번 추가되지 않습니다."
+
 #: packages/core/src/app/screens/Settings/components/BrowserUnlockKeysSection.tsx
 msgid "Added {added}"
 msgstr "{added} 추가됨"
@@ -464,6 +482,10 @@ msgstr "앱 비밀번호는 이 폴더뿐 아니라 계정의 모든 파일에 �
 #: packages/core/src/hooks/useVault.tsx
 msgid "An attachment hasn't reached this device yet, so the export would be missing it. Try again once it has."
 msgstr "첨부 파일이 아직 이 기기에 도착하지 않아 내보내기에 포함되지 않습니다. 도착한 후 다시 시도하세요."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "An attachment in this backup is damaged, so nothing was imported. You can still restore it as a separate vault."
+msgstr "이 백업의 첨부 파일 하나가 손상되어 아무것도 가져오지 못했습니다. 그래도 별도의 보관함으로 복원할 수 있습니다."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "An endpoint that returns your own ICE servers as JSON. Defaults to the relay's."
@@ -2717,9 +2739,12 @@ msgid "Password changed {0}"
 msgstr "비밀번호 변경됨: {0}"
 
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
-#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Password for the file"
 msgstr "파일 비밀번호"
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "Password for the file (a backup's is its master password)"
+msgstr "파일 비밀번호(백업의 비밀번호는 마스터 비밀번호)"
 
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Password found in a known data breach"
@@ -3045,7 +3070,6 @@ msgstr "재설정하면 이전 코드가 무효화됩니다."
 
 #: packages/core/src/app/bulk-actions/archive.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
-#: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Restore"
 msgstr "복원"
 
@@ -3060,8 +3084,8 @@ msgid "Restore a backup"
 msgstr "백업 복원"
 
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
-msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
-msgstr "암호화된 .bramble 백업을 복원합니다. 새 볼트로 추가되므로 기존 항목은 대체되지 않습니다."
+#~ msgid "Restore an encrypted .bramble backup. It's added as a new vault, so nothing here is replaced."
+#~ msgstr "암호화된 .bramble 백업을 복원합니다. 새 볼트로 추가되므로 기존 항목은 대체되지 않습니다."
 
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Restore entry"
@@ -3703,8 +3727,8 @@ msgid "That year is outside the range cards use."
 msgstr "해당 연도는 카드에 사용되는 범위를 벗어납니다."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
-msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
-msgstr "전체 보관함 백업입니다. 대신 복원하십시오. 새 보관함으로 추가되며 이 보관함은 변경되지 않습니다."
+#~ msgid "That's a full vault backup. Restore it instead: it's added as a new vault, and nothing here is changed."
+#~ msgstr "전체 보관함 백업입니다. 대신 복원하십시오. 새 보관함으로 추가되며 이 보관함은 변경되지 않습니다."
 
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 msgid "The browser was not linked."
@@ -3823,6 +3847,10 @@ msgid "They're in your vault now. For your safety, delete the export file you ju
 msgstr "이제 볼트에 있습니다. 안전을 위해 방금 가져온 내보내기 파일을 삭제하세요. 해당 파일에는 비밀번호가 평문으로 저장되어 있습니다."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "They're in your vault now. The file is still encrypted, so it's safe to keep."
+msgstr "이제 항목이 보관함에 있습니다. 파일은 계속 암호화되어 있으므로 보관해도 안전합니다."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "They're in your vault now. The transfer happened directly between the two apps, so there's no file to clean up."
 msgstr "이제 볼트에 있습니다. 두 앱 간에 직접 전송되었으므로 정리할 파일이 없습니다."
 
@@ -3834,9 +3862,14 @@ msgstr "데스크톱의 볼트를 이 브라우저에 별도 볼트로 추가합
 msgid "This authenticator key is invalid and can't generate codes."
 msgstr "이 인증자 키는 유효하지 않아 코드를 생성할 수 없습니다."
 
+#: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup can't be read. It may be damaged, or not a Bramble backup."
 msgstr "이 백업을 읽을 수 없습니다. 손상되었거나 Bramble 백업이 아닐 수 있습니다."
+
+#: packages/core/src/app/screens/Import/ImportShell.tsx
+msgid "This backup has no master password, so it can't be opened here."
+msgstr "이 백업에는 마스터 비밀번호가 없어 여기서 열 수 없습니다."
 
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 msgid "This backup has no master password, so it can't be restored here."

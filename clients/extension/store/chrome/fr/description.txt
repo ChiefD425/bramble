@@ -27,7 +27,7 @@ FONCTIONNALITÉS
 - Générateur de mots de passe intégré.
 - Vérification optionnelle des violations. Recherche Have I Been Pwned utilisant le k-anonymat, de sorte que rien concernant votre mot de passe ne quitte votre machine. Désactivée par défaut.
 - Verrouillage automatique après 15 minutes d’inactivité (configurable).
-- Import depuis 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords et Google Password Manager.
+- Changement facile. Importez depuis d’autres gestionnaires de mots de passe ou un fichier KeePass.
 
 POURQUOI LOCAL D’ABORD
 

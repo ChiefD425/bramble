@@ -50,16 +50,10 @@ const platform: Platform = {
 function Root() {
 	// "app" = vault/unlock UI; the rest render OptionsApp and dismiss back to "app".
 	// One window, so these are views rather than the extension's separate options page.
-	const [view, setView] = useState<"app" | "setup" | "import" | "restore">("app");
+	const [view, setView] = useState<"app" | "setup" | OptionsScreen>("app");
 	const [pendingTotp, setPendingTotp] = useState<{ uri: string } | null>(null);
 
-	useEffect(
-		() =>
-			registerOpenSetup((screen?: OptionsScreen) =>
-				setView(screen === "import" ? "import" : screen === "restore" ? "restore" : "setup"),
-			),
-		[],
-	);
+	useEffect(() => registerOpenSetup((screen?: OptionsScreen) => setView(screen ?? "setup")), []);
 
 	// Ongoing sync follows the lock state from here on: it starts on unlock and stops on lock.
 	useEffect(() => initRosterSync(), []);
@@ -96,10 +90,7 @@ function Root() {
 
 	if (view === "app") return <App pendingTotp={pendingTotp ?? undefined} />;
 	return (
-		<OptionsApp
-			onComplete={() => setView("app")}
-			screen={view === "import" ? "import" : view === "restore" ? "restore" : undefined}
-		/>
+		<OptionsApp onComplete={() => setView("app")} screen={view === "setup" ? undefined : view} />
 	);
 }
 

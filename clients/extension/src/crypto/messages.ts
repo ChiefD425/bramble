@@ -120,6 +120,17 @@ export const CryptoOpenPortableVaultSchema = z.object({
 	magicVersion,
 });
 
+// A full backup to merge: unlike the portable ops this one is VEK-scoped, since the backup's file
+// keys are wrapped again under the target vault's key.
+export const CryptoOpenVaultBackupSchema = z.object({
+	password: z.string(),
+	file: portableVaultBlob,
+	magicVersion,
+	entries: CryptoDecryptBatchSchema.shape.entries,
+	files: z.array(z.object({ wrappedFek: z.string(), fekIv: z.string() })),
+	...vekInject,
+});
+
 // Passkey provider (authenticator role). The crypto is pure, so no slot/VEK fields.
 export const CryptoPasskeyMakeSchema = z.object({
 	rpId: z.string(),

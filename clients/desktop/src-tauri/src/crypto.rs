@@ -11,8 +11,8 @@
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde::Serialize;
 use vault_crypto::{
-    CryptoError, EncryptedPayload, KdbxAttachmentFile, MasterEncrypted, OutEntry,
-    PasskeyImportResult, PasswordSlotBlob, PortableVault,
+    CryptoError, EncryptedPayload, KdbxAttachmentFile, MasterEncrypted, OpenedVaultBackup,
+    OutEntry, PasskeyImportResult, PasswordSlotBlob, PortableVault, WrappedFileKey,
 };
 
 /// Errors ride to JS as a plain string, which `invoke` rejects with. The core already
@@ -269,6 +269,25 @@ pub fn crypto_open_portable_vault(
         password,
         file,
         magic_version,
+    ))
+}
+
+/// A full backup opened to merge into the open vault, or `None` for a wrong password. Its file
+/// keys come back wrapped under the session VEK.
+#[tauri::command(async)]
+pub fn crypto_open_vault_backup(
+    password: String,
+    file: PortableVault,
+    magic_version: Vec<u8>,
+    entries: Vec<EncryptedPayload>,
+    files: Vec<WrappedFileKey>,
+) -> CmdResult<Option<OpenedVaultBackup>> {
+    map(vault_crypto::open_vault_backup(
+        password,
+        file,
+        magic_version,
+        entries,
+        files,
     ))
 }
 
