@@ -24,11 +24,17 @@ import { desktopStorage } from "./storage";
 const onMac = () =>
 	typeof navigator !== "undefined" && /Macintosh|Mac OS X/.test(navigator.userAgent);
 
-/** What the app calls the vault next to its brand, so the sheet names the one it unlocks. */
-async function vaultName(vaultId: string): Promise<string | undefined> {
+/**
+ * What the app calls the vault next to its brand, so the sheet names the one it unlocks, and the
+ * vaults the picker lists, so copies of any other vault are pruned.
+ */
+async function pickerView(vaultId: string): Promise<{ name?: string; listed: string[] }> {
 	const vaults = listedVaults(parseRegistry(await desktopStorage.getMeta(VAULT_REGISTRY_KEY)));
 	const index = vaults.findIndex((v) => v.id === vaultId);
-	return index >= 0 ? displayLabel(vaults[index]!, index) : undefined;
+	return {
+		name: index >= 0 ? displayLabel(vaults[index]!, index) : undefined,
+		listed: vaults.map((v) => v.id),
+	};
 }
 
 /**
@@ -41,6 +47,7 @@ async function mirrorForProvider(entries: IndexEntry[], vaultId: string): Promis
 	const m = buildProviderMirror(entries, { quickType, includeUnlockKeys: true });
 	const enc = await desktopCrypto.encryptWithVek(JSON.stringify(m.credentials));
 	const encPk = await desktopCrypto.encryptWithVek(JSON.stringify(m.passkeys));
+	const picker = await pickerView(vaultId);
 	const slot = await desktopStorage
 		.readVaultBlob(vaultId)
 		.then((blob) => passwordSlotPayload(decodeVaultBlob(blob)))
@@ -50,7 +57,8 @@ async function mirrorForProvider(entries: IndexEntry[], vaultId: string): Promis
 			iv: enc.iv,
 			ciphertext: enc.ciphertext,
 			vaultId,
-			vaultName: await vaultName(vaultId),
+			vaultName: picker.name,
+			listedVaultIds: picker.listed,
 			slot,
 			passkeyIv: encPk.iv,
 			passkeyCiphertext: encPk.ciphertext,
@@ -83,7 +91,9 @@ function desktopAutofillFor(vaultId?: string): AutofillAdapter {
 		withVault: (id) => desktopAutofillFor(id),
 		// The mirror stays on lock, as on iOS: it is VEK-encrypted, and the extension unlocks on its own.
 		clearIndex: () => invoke<void>("link_clear_index"),
-		clearProviderData: () => invoke<void>("autofill_provider_clear"),
+		clearProviderData: async () => {
+			if (vaultId) await invoke<void>("autofill_provider_clear", { vaultId });
+		},
 
 		query: async (): Promise<QueryResult> => ({
 			logins: [],

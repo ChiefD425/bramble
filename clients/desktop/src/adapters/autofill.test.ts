@@ -40,7 +40,13 @@ const onMac = (yes: boolean) =>
 const mirrorCall = () =>
 	invoke.mock.calls.find(([cmd]) => cmd === "autofill_provider_set")?.[1] as
 		| {
-				mirror: { ciphertext: string; vaultId: string; vaultName?: string; identities: unknown[] };
+				mirror: {
+					ciphertext: string;
+					vaultId: string;
+					vaultName?: string;
+					listedVaultIds?: string[];
+					identities: unknown[];
+				};
 		  }
 		| undefined;
 
@@ -85,9 +91,32 @@ describe("desktopAutofill", () => {
 		expect(encrypt).not.toHaveBeenCalled();
 	});
 
-	it("clears the mirror when the vault is deleted", async () => {
+	it("clears the copy of the vault it is for", async () => {
+		await personal().clearProviderData?.();
+		expect(invoke).toHaveBeenCalledWith("autofill_provider_clear", { vaultId: "v1" });
+		invoke.mockClear();
 		await desktopAutofill.clearProviderData?.();
-		expect(invoke).toHaveBeenCalledWith("autofill_provider_clear");
+		expect(invoke).not.toHaveBeenCalled();
+	});
+
+	// A copy of any vault the picker no longer lists is pruned when the next copy is written.
+	it("tells the copy which vaults the picker lists", async () => {
+		onMac(true);
+		meta.set(VAULT_REGISTRY_KEY, {
+			vaults: [
+				{ id: "v0", label: "Work", number: 1, createdAt: 1 },
+				{ id: "v1", label: "Personal", number: 2, createdAt: 2 },
+				{
+					id: "v2",
+					label: "Old",
+					number: 3,
+					createdAt: 3,
+					hidden: { at: 4, blobHash: "h", into: "v1" },
+				},
+			],
+		});
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.listedVaultIds).toEqual(["v0", "v1"]);
 	});
 
 	it("gives the AutoFill extension the unlock key but never the browser link", async () => {
