@@ -91,9 +91,13 @@ A backup (plain VLT1, or the ZIP with attachments) merges like an export. Code:
   whose key won't open, whose bytes aren't in the file, or that is on no entry the import
   brings, is counted and shown in the preview. A file whose bytes don't match their hash
   at import time stops the whole import, as a file that can't be sealed does.
-- **Duplicates as for any import.** The opened entries go through
-  `splitAlreadyImported`, so importing a backup of this same vault adds only what has
-  changed or gone missing since, and each file follows its entry as KeePass's do.
+- **A backup of this vault adds only what it lost.** Entry ids belong to a vault and outlive
+  every edit, so a backup entry whose id the open vault still shows is left out (counted with
+  the duplicates) and never even opened: the vault's copy is the same or newer, and the
+  backup's would come back beside it as an old version. Entries deleted since come back. An
+  attachment of a kept entry goes onto that entry, if it lacks a file of that name and size.
+  Everything else, a backup from another vault included, goes through `splitAlreadyImported`
+  like any import, and each file follows its entry as KeePass's do.
 
 ---
 

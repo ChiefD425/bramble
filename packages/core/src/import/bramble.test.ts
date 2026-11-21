@@ -35,7 +35,7 @@ function sealedEntry(id: string, data: object, extra: object = {}) {
 	};
 }
 
-function fakeDeps(payload: object | null) {
+function fakeDeps(payload: object | null, held: string[] = []) {
 	const openVaultBackup = vi.fn(async (input: OpenVaultBackupInput) => ({
 		entries: input.entries.map((e) => (e.ciphertext === "damaged" ? null : e.ciphertext)),
 		files: input.files.map((f) =>
@@ -51,6 +51,7 @@ function fakeDeps(payload: object | null) {
 			if (!record.wrappedFek.startsWith("moved:")) throw new Error("not this vault's key");
 			return { name: `${record.metaBlob}.pdf`, mime: "application/pdf" };
 		}),
+		held: new Set(held),
 	} satisfies BrambleImportDeps;
 	return { deps, openVaultBackup };
 }
@@ -206,6 +207,41 @@ describe("openBrambleFile", () => {
 		});
 		const res = await openBrambleFile(deps, bytesSource(bytes), "pw");
 		expect(res?.attachments).toEqual([]);
+		expect(res?.leftOut).toEqual({ items: 0, attachments: 0 });
+	});
+});
+
+describe("a backup of this same vault", () => {
+	// The vault's own copy is the same or newer, so the backup's would come back as an old copy.
+	it("leaves out entries the vault still has, counted, and never opens them", async () => {
+		const { deps, openVaultBackup } = fakeDeps(
+			{
+				entries: [sealedEntry("kept", loginEntry("kept")), sealedEntry("gone", loginEntry("gone"))],
+				tombstones: [],
+			},
+			["kept"],
+		);
+		const res = await openBrambleFile(deps, plainFile(), "pw");
+		expect(res?.imported.map((e) => e.name)).toEqual(["gone"]);
+		expect(res?.alreadyHere).toBe(1);
+		expect(res?.leftOut?.items).toBe(0);
+		expect(openVaultBackup.mock.calls[0]?.[0].entries).toHaveLength(1);
+	});
+
+	// A file removed from an entry the vault kept comes back onto that entry, by its id.
+	it("puts an attachment of a kept entry onto that entry", async () => {
+		const { bytes, hashes } = await archiveOf([fill(30, 1)]);
+		const { deps } = fakeDeps(
+			{
+				entries: [sealedEntry("kept", loginEntry("kept"))],
+				tombstones: [],
+				files: [fileRecord({ id: "f", entryId: "kept", hash: hashes[0], metaBlob: "scan" })],
+			},
+			["kept"],
+		);
+		const res = await openBrambleFile(deps, bytesSource(bytes), "pw");
+		expect(res?.imported).toEqual([]);
+		expect(res?.attachments?.map((a) => [a.entry, a.name])).toEqual([["kept", "scan.pdf"]]);
 		expect(res?.leftOut).toEqual({ items: 0, attachments: 0 });
 	});
 });

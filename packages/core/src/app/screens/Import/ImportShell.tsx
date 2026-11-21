@@ -152,7 +152,7 @@ export function ImportShell({
 		(res: ImportResult, placed: PlacedAttachment[] = []) => {
 			const split = splitAlreadyImported(entries, res.imported);
 			source.current = res;
-			setDuplicates(split.duplicates);
+			setDuplicates(split.duplicates + (res.alreadyHere ?? 0));
 			setHeldBack(split.likelyDuplicates);
 			setPasswordDiffers(split.passwordDiffers);
 			setAttachments(placed);
@@ -176,7 +176,7 @@ export function ImportShell({
 			const { sameAs, resembles } = splitAlreadyImported(entries, res.imported);
 			const placed: PlacedAttachment[] = [];
 			for (const { entry, ...file } of res.attachments ?? []) {
-				let to = sameAs.get(entry) ?? entry;
+				let to = typeof entry === "string" ? entry : (sameAs.get(entry) ?? entry);
 				if (typeof to !== "string" && !withHeldBack) to = resembles.get(to) ?? to;
 				if (typeof to !== "string") {
 					placed.push({ ...file, onto: { item: to } });
@@ -427,7 +427,8 @@ export function ImportShell({
 				kdbxPending.provider.id === "bramble"
 					? await openBramble(password)
 					: await openKdbxFile(password, keyfileB64);
-			if (res.imported.length === 0) {
+			// A backup of this vault may bring nothing but files, or nothing it doesn't already have.
+			if (res.imported.length === 0 && !res.alreadyHere && !res.attachments?.length) {
 				throw new Error(t`No importable items were found in this database.`);
 			}
 			if (showResult(res, await placeAttachments(res)) === 0) throw new Error(nothingNew(res));

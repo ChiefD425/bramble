@@ -1587,8 +1587,16 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
 	const openBramble = useCallback(
 		(source: RandomAccessSource, password: string) =>
-			openBrambleFile({ crypto, describe: describeFile }, source, password),
-		[crypto, describeFile],
+			openBrambleFile(
+				{
+					crypto,
+					describe: describeFile,
+					held: new Set(snapshotEntries().entries.map((e) => e.id)),
+				},
+				source,
+				password,
+			),
+		[crypto, describeFile, snapshotEntries],
 	);
 
 	const importEntries = useCallback(

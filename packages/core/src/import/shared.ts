@@ -69,7 +69,7 @@ export function summarize(
 	if (dropped > 0) warnings.push(`${dropped} item(s) had an unexpected shape and were skipped.`);
 	const placed: ImportAttachment[] = [];
 	for (const a of attachments) {
-		const entry = kept.get(a.entry);
+		const entry = typeof a.entry === "string" ? undefined : kept.get(a.entry);
 		if (entry) placed.push({ ...a, entry });
 	}
 	if (placed.length < attachments.length) {

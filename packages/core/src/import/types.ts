@@ -30,11 +30,14 @@ export interface ImportResult {
 	/** What a Bramble backup holds that can't come in: items that wouldn't open, and attachments
 	 * that wouldn't open or aren't in the file. Counted so nothing goes missing silently. */
 	leftOut?: { items: number; attachments: number };
+	/** Items a Bramble backup holds that the vault still has (by id), so they don't come in. */
+	alreadyHere?: number;
 }
 
-/** A file an import brings, on one of its entries (that entry object, from `imported`). */
+/** A file an import brings, on one of its entries (that entry object, from `imported`), or on
+ * an entry the vault already holds (its id; only a Bramble backup of this vault knows those). */
 export interface ImportAttachment {
-	entry: EntryData;
+	entry: EntryData | string;
 	name: string;
 	mime: string;
 	source: FileSource | SealedSource;

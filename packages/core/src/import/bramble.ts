@@ -40,6 +40,9 @@ export interface BrambleImportDeps {
 	crypto: Pick<CryptoAdapter, "openPortableVault" | "openVaultBackup">;
 	/** Open an attachment's sealed name and type under that same vault's key. */
 	describe(record: FileRecord): Promise<FileMeta>;
+	/** The ids of the entries that vault shows. Ids belong to a vault and outlive every edit, so
+	 * a backup entry whose id is here is one the vault still has, as it was or newer. */
+	held: ReadonlySet<string>;
 }
 
 /** The entries in a .bramble, and a backup's attachments, or null for a wrong password. */
@@ -69,6 +72,9 @@ export async function openBrambleFile(
 	// Local-only entries (the hidden unlock key) belong to the device that made the backup.
 	const shown = payload.entries.filter((e) => !e.localOnly);
 	const shownIds = new Set(shown.map((e) => e.id));
+	// What a backup of this vault adds is only what it lost: an entry still here stays as it is,
+	// rather than coming back beside it as an older copy.
+	const missing = shown.filter((e) => !deps.held.has(e.id));
 	const archived = new Map(read.picked.attachments.map((a) => [a.hash, a]));
 	const records = liveFiles(payload);
 	// A file comes only on an entry that comes, and only with its bytes in the file.
@@ -80,14 +86,14 @@ export async function openBrambleFile(
 		file,
 		password,
 		magicVersion,
-		entries: shown.map(sealedEntry),
+		entries: missing.map(sealedEntry),
 		files: carried.map(({ wrappedFek, fekIv }) => ({ wrappedFek, fekIv })),
 	});
 	if (!opened) return null;
 
 	const imported: EntryData[] = [];
 	const byId = new Map<string, EntryData>();
-	shown.forEach((e, i) => {
+	missing.forEach((e, i) => {
 		const entry = parseEntry(opened.entries[i] ?? null);
 		if (!entry) return;
 		imported.push(entry);
@@ -97,7 +103,13 @@ export async function openBrambleFile(
 	const attachments: ImportAttachment[] = [];
 	for (const [i, record] of carried.entries()) {
 		const key = opened.files[i];
-		const entry = record.entryId === undefined ? undefined : byId.get(record.entryId);
+		// On an entry the vault still has, it goes onto that entry, if that entry lacks it.
+		const entry =
+			record.entryId === undefined
+				? undefined
+				: deps.held.has(record.entryId)
+					? record.entryId
+					: byId.get(record.entryId);
 		const at = archived.get(record.hash);
 		if (!key || !entry || !at) continue;
 		const moved = { ...record, ...key };
@@ -127,8 +139,9 @@ export async function openBrambleFile(
 		skipped: 0,
 		warnings: [],
 		attachments,
+		alreadyHere: shown.length - missing.length,
 		leftOut: {
-			items: shown.length - imported.length,
+			items: missing.length - imported.length,
 			attachments: records.length - attachments.length,
 		},
 	};

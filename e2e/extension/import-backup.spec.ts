@@ -145,3 +145,28 @@ test("Import from another manager leaves .bramble files to Import a backup", asy
 	await expect(page.getByText("Bitwarden")).toBeVisible();
 	await expect(page.getByText("Bramble (.bramble)")).toHaveCount(0);
 });
+
+// The vault's own copy of an entry is the same or newer than a backup's, so a changed entry
+// doesn't come back beside it as the old version.
+test("an entry changed since the backup doesn't come back as an old copy", async ({
+	context,
+	extensionId,
+}) => {
+	const popup = await openExampleLogin(context, extensionId);
+	await popup.getByRole("button", { name: "Go to vault" }).click();
+	const backup = await exportBackup(popup);
+
+	await openPopup(popup, extensionId);
+	await popup.getByRole("button", { name: "Go to vault" }).click();
+	await popup.getByText("Example Login").click();
+	await popup.getByRole("button", { name: "Edit entry" }).click();
+	await popup.getByLabel("Password", { exact: true }).fill("a-newer-password-02");
+	await popup.getByRole("button", { name: /Update Login/i }).click();
+	await expect(popup.getByRole("button", { name: "Edit entry" })).toBeVisible();
+
+	const page = await context.newPage();
+	await page.goto(`${optionsUrl(extensionId)}?screen=import-backup`);
+	await openBackup(page, backup);
+	await expect(page.getByText(/already in your vault/i)).toBeVisible();
+	await expect(page.getByText(/items ready to import/i)).toBeHidden();
+});
