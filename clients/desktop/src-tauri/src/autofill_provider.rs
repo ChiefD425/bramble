@@ -131,6 +131,19 @@ fn path_group_dir() -> Option<PathBuf> {
     })
 }
 
+/// A store identity's record identifier, carrying its vault so the sheet knows which to open.
+fn tag(vault_id: &str, id: &str) -> String {
+    format!("{vault_id}:{id}")
+}
+
+/// Whether a record identifier is one of `vault_id`'s. The colon keeps `v1` off `v10`'s.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn tagged_for(record_identifier: &str, vault_id: &str) -> bool {
+    record_identifier
+        .strip_prefix(vault_id)
+        .is_some_and(|rest| rest.starts_with(':'))
+}
+
 fn copy_path(dir: &Path, vault_id: &str) -> Result<PathBuf, String> {
     crate::storage::ops::validate_vault_id(vault_id)?;
     Ok(dir.join(COPIES_DIR).join(format!("{vault_id}.json")))
@@ -270,8 +283,16 @@ pub fn autofill_provider_set(mirror: Mirror) -> Result<(), String> {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
-        write_mirror(&dir, &mirror, now_ms)?;
-        store::replace(&mirror);
+        let written = write_mirror(&dir, &mirror, now_ms)?;
+        // The single copy's identities were untagged: only a full replace clears them.
+        if written.legacy_removed {
+            store::replace_all(&mirror);
+        } else {
+            store::replace_vault(&mirror);
+        }
+        for vault_id in &written.pruned {
+            store::prune_vault(vault_id);
+        }
     }
     #[cfg(not(target_os = "macos"))]
     let _ = mirror;
@@ -284,7 +305,7 @@ pub fn autofill_provider_clear(vault_id: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         clear_mirror(&group_dir().ok_or("no home directory")?, &vault_id)?;
-        store::replace(&Mirror::default());
+        store::remove_vault(&vault_id);
     }
     #[cfg(not(target_os = "macos"))]
     let _ = vault_id;
@@ -340,7 +361,7 @@ mod store {
                 };
                 let a: Allocated<AnyObject> = unsafe { msg_send![cls, alloc] };
                 let id: Option<Retained<AnyObject>> = unsafe {
-                    msg_send![a, initWithServiceIdentifier: &*service, user: &*ns(&i.username), recordIdentifier: &*ns(&i.record_id)]
+                    msg_send![a, initWithServiceIdentifier: &*service, user: &*ns(&i.username), recordIdentifier: &*ns(&super::tag(&m.vault_id, &i.record_id))]
                 };
                 out.extend(id);
             }
@@ -356,7 +377,7 @@ mod store {
                 };
                 let a: Allocated<AnyObject> = unsafe { msg_send![cls, alloc] };
                 let id: Option<Retained<AnyObject>> = unsafe {
-                    msg_send![a, initWithRelyingPartyIdentifier: &*ns(&p.rp_id), userName: &*ns(&p.user_name), credentialID: &*data(&cid), userHandle: &*data(&handle), recordIdentifier: &*ns(&p.credential_id)]
+                    msg_send![a, initWithRelyingPartyIdentifier: &*ns(&p.rp_id), userName: &*ns(&p.user_name), credentialID: &*data(&cid), userHandle: &*data(&handle), recordIdentifier: &*ns(&super::tag(&m.vault_id, &p.credential_id))]
                 };
                 out.extend(id);
             }
@@ -369,7 +390,7 @@ mod store {
                 };
                 let a: Allocated<AnyObject> = unsafe { msg_send![cls, alloc] };
                 let id: Option<Retained<AnyObject>> = unsafe {
-                    msg_send![a, initWithServiceIdentifier: &*service, label: &*ns(&c.label), recordIdentifier: &*ns(&c.record_id)]
+                    msg_send![a, initWithServiceIdentifier: &*service, label: &*ns(&c.label), recordIdentifier: &*ns(&super::tag(&m.vault_id, &c.record_id))]
                 };
                 out.extend(id);
             }
@@ -384,46 +405,164 @@ mod store {
         }
     }
 
-    /// One replace for every kind: it clears the whole store, as on iOS. A no-op until the user
-    /// enables Bramble in AutoFill & Passwords, which is also when QuickType should start.
-    pub(super) fn replace(m: &Mirror) {
-        autoreleasepool(|_| {
-            let Some(cls) = AnyClass::get(c"ASCredentialIdentityStore") else {
-                return;
-            };
-            let store: Retained<AnyObject> = unsafe { msg_send![cls, sharedStore] };
+    fn shared() -> Option<Retained<AnyObject>> {
+        let cls = AnyClass::get(c"ASCredentialIdentityStore")?;
+        Some(unsafe { msg_send![cls, sharedStore] })
+    }
 
-            let (tx, rx) = mpsc::channel();
-            let on_state = RcBlock::new(move |state: *mut AnyObject| {
-                let enabled = !state.is_null() && unsafe { msg_send![state, isEnabled] };
-                let _ = tx.send(enabled);
-            });
-            unsafe {
-                let _: () =
-                    msg_send![&*store, getCredentialIdentityStoreStateWithCompletion: &*on_state];
-            }
-            if !rx.recv_timeout(WAIT).unwrap_or(false) {
-                return;
-            }
+    /// A no-op until the user enables Bramble in AutoFill & Passwords, which is also when
+    /// QuickType should start.
+    fn enabled(store: &AnyObject) -> bool {
+        let (tx, rx) = mpsc::channel();
+        let on_state = RcBlock::new(move |state: *mut AnyObject| {
+            let enabled = !state.is_null() && unsafe { msg_send![state, isEnabled] };
+            let _ = tx.send(enabled);
+        });
+        unsafe {
+            let _: () = msg_send![store, getCredentialIdentityStoreStateWithCompletion: &*on_state];
+        }
+        rx.recv_timeout(WAIT).unwrap_or(false)
+    }
 
-            let all = identities(m);
-            let (tx, rx) = mpsc::channel();
-            let done = RcBlock::new(move |_ok: Bool, _error: *mut AnyObject| {
+    fn responds(store: &AnyObject, selector: objc2::runtime::Sel) -> bool {
+        let yes: Bool = unsafe { msg_send![store, respondsToSelector: selector] };
+        yes.as_bool()
+    }
+
+    /// Send one store message that ends in a completion block, and wait for it.
+    fn wait(send: impl FnOnce(&RcBlock<dyn Fn(Bool, *mut AnyObject)>)) {
+        let (tx, rx) = mpsc::channel();
+        let done: RcBlock<dyn Fn(Bool, *mut AnyObject)> =
+            RcBlock::new(move |_ok: Bool, _error: *mut AnyObject| {
                 let _ = tx.send(());
             });
-            let entries: Bool = unsafe {
-                msg_send![&*store, respondsToSelector: sel!(replaceCredentialIdentityEntries:completion:)]
-            };
-            unsafe {
-                if entries.as_bool() {
-                    let _: () = msg_send![&*store, replaceCredentialIdentityEntries: &*array(&all), completion: &*done];
-                } else {
-                    // macOS 13: the older selector, passwords only (the other classes don't exist
-                    // there, so `all` holds nothing else).
-                    let _: () = msg_send![&*store, replaceCredentialIdentitiesWithIdentities: &*array(&all), completion: &*done];
-                }
+        send(&done);
+        let _ = rx.recv_timeout(WAIT);
+    }
+
+    fn replace_with(store: &AnyObject, all: &[Retained<AnyObject>]) {
+        let entries = responds(store, sel!(replaceCredentialIdentityEntries:completion:));
+        wait(|done| unsafe {
+            if entries {
+                let _: () = msg_send![store, replaceCredentialIdentityEntries: &*array(all), completion: &**done];
+            } else {
+                // macOS 13: the older selector, passwords only (the other classes don't exist
+                // there, so `all` holds nothing else).
+                let _: () = msg_send![store, replaceCredentialIdentitiesWithIdentities: &*array(all), completion: &**done];
             }
-            let _ = rx.recv_timeout(WAIT);
+        });
+    }
+
+    /// Everything in the store, on macOS 14.4+; None where it cannot be read back.
+    fn read_back(store: &AnyObject) -> Option<Vec<Retained<AnyObject>>> {
+        if !responds(
+            store,
+            sel!(getCredentialIdentitiesForService:credentialIdentityTypes:completionHandler:),
+        ) {
+            return None;
+        }
+        let (tx, rx) = mpsc::channel::<usize>();
+        let got = RcBlock::new(move |list: *mut AnyObject| {
+            // Kept alive past the block, and handed over as an address: Retained is not Send.
+            let kept = unsafe { Retained::retain(list) };
+            let _ = tx.send(kept.map_or(0, |l| Retained::into_raw(l) as usize));
+        });
+        unsafe {
+            let none: *const AnyObject = std::ptr::null();
+            // ASCredentialIdentityTypesAll.
+            let _: () = msg_send![store, getCredentialIdentitiesForService: none, credentialIdentityTypes: 0usize, completionHandler: &*got];
+        }
+        let raw = rx.recv_timeout(WAIT).ok()?;
+        let list = unsafe { Retained::from_raw(raw as *mut AnyObject) }?;
+        let count: usize = unsafe { msg_send![&*list, count] };
+        Some(
+            (0..count)
+                .filter_map(|i| unsafe {
+                    let item: *mut AnyObject = msg_send![&*list, objectAtIndex: i];
+                    Retained::retain(item)
+                })
+                .collect(),
+        )
+    }
+
+    /// Remove `vault_id`'s identities from what the store read back.
+    fn remove_tagged(store: &AnyObject, existing: &[Retained<AnyObject>], vault_id: &str) {
+        let theirs: Vec<Retained<AnyObject>> = existing
+            .iter()
+            .filter(|o| {
+                let id: Option<Retained<NSString>> = unsafe { msg_send![&***o, recordIdentifier] };
+                id.is_some_and(|id| super::tagged_for(&id.to_string(), vault_id))
+            })
+            .cloned()
+            .collect();
+        if theirs.is_empty() {
+            return;
+        }
+        wait(|done| unsafe {
+            let _: () = msg_send![store, removeCredentialIdentityEntries: &*array(&theirs), completion: &**done];
+        });
+    }
+
+    /// Every vault's identities replaced by this one's. For the first write after the single copy,
+    /// whose identities carried no vault.
+    pub(super) fn replace_all(m: &Mirror) {
+        autoreleasepool(|_| {
+            let Some(store) = shared() else { return };
+            if enabled(&store) {
+                replace_with(&store, &identities(m));
+            }
+        });
+    }
+
+    /// This vault's identities swapped for the new ones, every other vault's left as they are.
+    /// Before macOS 14.4 the store cannot be read back, so it holds this vault's only.
+    pub(super) fn replace_vault(m: &Mirror) {
+        autoreleasepool(|_| {
+            let Some(store) = shared() else { return };
+            if !enabled(&store) {
+                return;
+            }
+            let Some(existing) = read_back(&store) else {
+                replace_with(&store, &identities(m));
+                return;
+            };
+            remove_tagged(&store, &existing, &m.vault_id);
+            let mine = identities(m);
+            if mine.is_empty() {
+                return;
+            }
+            wait(|done| unsafe {
+                let _: () = msg_send![&*store, saveCredentialIdentityEntries: &*array(&mine), completion: &**done];
+            });
+        });
+    }
+
+    /// A vault no longer listed: its identities go. Before macOS 14.4 the store holds only the
+    /// vault just written, so there is nothing of this one's to remove.
+    pub(super) fn prune_vault(vault_id: &str) {
+        autoreleasepool(|_| {
+            let Some(store) = shared() else { return };
+            if !enabled(&store) {
+                return;
+            }
+            if let Some(existing) = read_back(&store) {
+                remove_tagged(&store, &existing, vault_id);
+            }
+        });
+    }
+
+    /// The vault is deleted: its identities go too. Before macOS 14.4, everything, as they were
+    /// the deleted vault's.
+    pub(super) fn remove_vault(vault_id: &str) {
+        autoreleasepool(|_| {
+            let Some(store) = shared() else { return };
+            if !enabled(&store) {
+                return;
+            }
+            match read_back(&store) {
+                Some(existing) => remove_tagged(&store, &existing, vault_id),
+                None => replace_with(&store, &[]),
+            }
         });
     }
 }
@@ -444,7 +583,7 @@ mod tests {
             "slot": { "saltB64": "s" },
             "passkeyIv": "PIV", "passkeyCiphertext": "PCT",
             "identities": [{ "recordId": "e1", "username": "me", "service": "github.com" }],
-            "oneTimeCodeIdentities": [],
+            "oneTimeCodeIdentities": [{ "recordId": "c1", "label": "me", "service": "github.com" }],
             "passkeyIdentities": [{ "credentialId": "Y2lk", "rpId": "github.com", "userName": "me", "userHandle": "dWg=" }]
         }))
         .unwrap()
@@ -583,13 +722,38 @@ mod tests {
         assert_eq!(ivs, vec!["new", "old"]);
     }
 
+    #[test]
+    fn tags_and_recognises_a_vaults_identities() {
+        assert_eq!(tag("v1", "e1"), "v1:e1");
+        assert!(tagged_for("v1:e1", "v1"));
+        assert!(!tagged_for("v10:e1", "v1"));
+        assert!(!tagged_for("e1", "v1"));
+    }
+
     // The Objective-C side for real, short of the store: wrong selectors or argument types fail
     // here rather than on a user's Mac.
     #[cfg(target_os = "macos")]
     #[test]
     fn builds_identity_objects_the_store_takes() {
+        use objc2::{msg_send, rc::Retained};
+        use objc2_foundation::NSString;
         let m = mirror();
         let built = store::identities(&m);
-        assert_eq!(built.len(), 2, "one password, one passkey");
+        assert!(
+            built.len() >= 2,
+            "one password, one passkey, and a code from macOS 15"
+        );
+        let mut ids: Vec<String> = built
+            .iter()
+            .map(|o| {
+                let id: Retained<NSString> = unsafe { msg_send![&**o, recordIdentifier] };
+                id.to_string()
+            })
+            .collect();
+        ids.sort();
+        let mut want = vec!["v1:Y2lk", "v1:e1", "v1:c1"];
+        want.truncate(built.len());
+        want.sort();
+        assert_eq!(ids, want);
     }
 }
