@@ -25,12 +25,14 @@ comments point here instead of repeating it.
 | [field-inventory.md](field-inventory.md) | Plan: collapse the repeated whole-page detector walks into one composed-preorder inventory per parse, without moving any detector result |
 | [storage.md](storage.md) | The chrome.storage.local vault backend, crash recovery, legacy FSA migration, durability |
 | [encrypted-import.md](encrypted-import.md) | Encrypted imports: the `.bramble` portable vault, KDBX4 internals, Bitwarden encrypted-JSON handling, and the dedup every import shares |
+| [firefox-import.md](firefox-import.md) | The Firefox CSV export: every value quoted, epoch-ms dates, the HTTP realm, and Firefox's own account row (its Sync key) left out |
 | [credential-exchange.md](credential-exchange.md) | FIDO credential exchange (CXF/CXP) on iOS: the wire format, the OS handoff, and why Android is out |
 | [passkey-import.md](passkey-import.md) | Importing passkeys from a file or an OS transfer: what is stored vs what arrives, and every reason one is skipped |
 | [passkey-security-review.md](passkey-security-review.md) | Record: the 2026-11-01 adversarial review of the passkey provider and PRF, each finding's fix, and the decisions taken (including why iOS passkey identities skip the QuickType opt-in) |
 | [passkey-prf.md](passkey-prf.md) | Plan: answer the WebAuthn PRF extension from Bramble's passkeys on every surface, and keep their PRF secrets through every import, export and credential exchange |
 | [dashlane-import.md](dashlane-import.md) | The Dashlane CSV export: a zip of five CSVs known by header, a lone CSV from a Safari unzip, the columns that changed, identities and banks as notes |
 | [lastpass-import.md](lastpass-import.md) | The LastPass CSV export format: two header variants, typed secure notes and their traps, note templates, and the Google signature collision |
+| [onepassword-1pif-import.md](onepassword-1pif-import.md) | The 1Password 7 .1pif export: a folder read as data.1pif or zipped with its attachments, the Mac and Windows shapes, and items still in the 1Password 3 shape |
 | [protonpass-import.md](protonpass-import.md) | The Proton Pass zip export: each website's autofill rule, Never websites kept out of autofill, and files named by a hash of their vault and file ids |
 | [roboform-import.md](roboform-import.md) | The RoboForm CSV export format: what it leaves out (identities, cards), the spilled fields column, the escaped leading quote |
 | [routing.md](routing.md) | Router guards, back navigation, pop-out handoff |

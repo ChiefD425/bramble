@@ -194,15 +194,23 @@ export function unzipCapped(
  */
 export function readZippedJson<T>(
 	raw: string | Uint8Array,
-	opts: {
-		findData: (files: Record<string, Uint8Array>) => Uint8Array | undefined;
-		schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } };
-		corruptError: string;
-		formatError: string;
-	},
+	opts: ZippedJsonOptions<T> & { corruptError: string },
 ): { data: T; files: Record<string, Uint8Array> } {
 	const files = unzipCapped(raw, opts.corruptError);
+	return { data: parseZippedJson(files, opts), files };
+}
 
+interface ZippedJsonOptions<T> {
+	findData: (files: Record<string, Uint8Array>) => Uint8Array | undefined;
+	schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } };
+	formatError: string;
+}
+
+/** readZippedJson for an archive already unzipped. */
+export function parseZippedJson<T>(
+	files: Record<string, Uint8Array>,
+	opts: ZippedJsonOptions<T>,
+): T {
 	const dataFile = opts.findData(files);
 	if (!dataFile) throw new Error(opts.formatError);
 
@@ -214,7 +222,7 @@ export function readZippedJson<T>(
 	}
 	const parsed = opts.schema.safeParse(json);
 	if (!parsed.success) throw new Error(opts.formatError);
-	return { data: parsed.data, files };
+	return parsed.data;
 }
 
 /** Throw if an unzip result's total decompressed size exceeds the cap. Run before any further parsing. */

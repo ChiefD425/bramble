@@ -68,3 +68,14 @@ kind of item, with the headers and CRLF line endings Dashlane writes today.
 Bank login, and `passport-scan.png`, the Passport Document item's own. Each sits at
 `files/<documentId>__<fileName>`, the layout KeePassXC and Proton Pass read; neither file is
 really a PDF or PNG, just a line of text the e2e checks byte for byte.
+
+`firefox.csv` is invented data in the exact shape of a real Firefox export (checked against one
+from Firefox on macOS): every value quoted, null cells bare, CRLF and no newline at the end. Its
+first row is Firefox's own account record, with a fake key in place of the Sync key a real export
+carries there; the importer leaves it out.
+
+`onepassword7-data.1pif` is invented data in the shape 1Password 7 for Mac writes: a folder, a
+login with a one-time code in that folder, a card, a note, and a trashed note that must stay
+behind. `onepassword7.zip` is the same data.1pif zipped inside its export folder, with an
+attachment for the note under `attachments/<item uuid>/`, a thumbnail under `previews/`, and the
+`__MACOSX/` copy Finder's Compress can add.

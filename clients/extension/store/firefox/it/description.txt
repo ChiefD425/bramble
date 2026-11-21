@@ -27,7 +27,7 @@ FUNZIONALITÀ
 - Generatore di password integrato.
 - Controllo violazioni opzionale. Verifica tramite Have I Been Pwned con k-anonymity, così nulla della Sua password lascia il Suo dispositivo. Disattivato per impostazione predefinita.
 - Blocco automatico dopo 15 minuti di inattività (configurabile).
-- Importazione da 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords e Google Password Manager.
+- Importazione da 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords e Google Password Manager.
 
 PERCHÉ LOCAL-FIRST
 

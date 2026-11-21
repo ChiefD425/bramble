@@ -58,6 +58,13 @@ export const DASHLANE_CSV: CsvFormat = {
 	signature: ["username", "username2", "title", "password", "url"],
 };
 
+// Firefox: `url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,
+// timePasswordChanged`, written by LoginExport.sys.mjs. Its forks and Thunderbird write the same.
+export const FIREFOX_CSV: CsvFormat = {
+	label: "Firefox",
+	signature: ["url", "username", "password", "httprealm", "formactionorigin"],
+};
+
 const ALL: readonly CsvFormat[] = [
 	APPLE_CSV,
 	GOOGLE_CSV,
@@ -65,6 +72,7 @@ const ALL: readonly CsvFormat[] = [
 	ALIASVAULT_CSV,
 	ROBOFORM_CSV,
 	DASHLANE_CSV,
+	FIREFOX_CSV,
 ];
 
 /** A header row reduced to lower-cased, trimmed labels. */

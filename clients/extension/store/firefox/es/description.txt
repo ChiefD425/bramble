@@ -27,7 +27,7 @@ FUNCIONES
 - Generador de contraseñas integrado.
 - Comprobación opcional de filtraciones. Consulta en Have I Been Pwned mediante k-anonimato, de modo que nada de su contraseña sale de su equipo. Desactivada por defecto.
 - Bloqueo automático tras 15 minutos de inactividad (configurable).
-- Importación desde 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords y Google Password Manager.
+- Importación desde 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords y Google Password Manager.
 
 POR QUÉ DAR PRIORIDAD A LO LOCAL
 

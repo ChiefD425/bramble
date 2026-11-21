@@ -16,7 +16,8 @@ export type ImportProvider =
 	| "enpass"
 	| "aliasvault"
 	| "roboform"
-	| "dashlane";
+	| "dashlane"
+	| "firefox";
 
 /** Normalized parse result. `imported` is id-less (the vault assigns ids); `warnings` flags lossy mappings. */
 export interface ImportResult {

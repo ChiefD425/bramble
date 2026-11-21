@@ -1,7 +1,7 @@
 // Flat login CSVs: Apple Passwords and Google Password Manager. One module for both, because
 // the formats differ only in their column names — everything else (the RFC 4180 read, the row
-// mapping, the "you picked the wrong card" check) is shared. Adding Chrome/Firefox/Edge/Safari
-// later is a new SPEC entry, not a new parser.
+// mapping, the "you picked the wrong card" check) is shared. Another flat login CSV is a new SPEC
+// entry, not a new parser; Firefox has its own (firefox.ts) for the rows it must leave out.
 //
 // Neither format carries folders, cards, notes-as-items, or passkeys, so every row becomes a
 // login. Google carries no TOTP at all; Apple's OTPAuth column holds a full otpauth:// URI,

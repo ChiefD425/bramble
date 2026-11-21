@@ -27,7 +27,7 @@ FUNKTIONEN
 - Integrierter Passwort-Generator.
 - Optionale Leak-Prüfung. „Have I Been Pwned“-Abgleich mit k-Anonymität, sodass nichts über Ihr Passwort Ihren Rechner verlässt. Standardmäßig deaktiviert.
 - Automatische Sperre nach 15 Minuten Inaktivität (konfigurierbar).
-- Import aus 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords und Google Password Manager.
+- Import aus 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords und Google Password Manager.
 
 WARUM LOCAL-FIRST
 

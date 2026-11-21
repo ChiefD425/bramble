@@ -27,7 +27,7 @@ Firefox, LibreWolf, Waterfox, Zen সহ অন্যান্য সব Firefox
 - ভেতরেই আছে পাসওয়ার্ড জেনারেটর।
 - ডেটা লিক হয়েছে কিনা জানার সুবিধা। k-anonymity প্রযুক্তির সাহায্যে Have I Been Pwned থেকে তথ্য মিলিয়ে দেখা যায়, ফলে আপনার পাসওয়ার্ডের কোনো কিছুই ডিভাইস থেকে বাইরে যায় না। এটি ডিফল্টভাবে বন্ধ থাকে।
 - ১৫ মিনিট কোনো কাজ না করলে অটো-লক (সময় নিজের মতো পরিবর্তনযোগ্য)।
-- 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords এবং Google Password Manager থেকে সহজে ইমপোর্ট করার সুবিধা।
+- 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords এবং Google Password Manager থেকে সহজে ইমপোর্ট করার সুবিধা।
 
 কেন লোকাল-ফার্স্ট
 

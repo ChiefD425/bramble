@@ -27,7 +27,7 @@ Firefox, LibreWolf, Waterfox, Zen 및 기타 Firefox 기반 브라우저에서 �
 - 내장 비밀번호 생성기.
 - 선택적 유출 확인. k-익명성을 사용한 Have I Been Pwned 조회로, 비밀번호에 관한 어떤 정보도 기기를 떠나지 않습니다. 기본적으로 꺼져 있습니다.
 - 유휴 상태 15분 후 자동 잠금(설정 가능).
-- 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords, Google Password Manager에서 가져오기.
+- 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords, Google Password Manager에서 가져오기.
 
 로컬 우선인 이유
 

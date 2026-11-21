@@ -3,6 +3,7 @@ import { parseBitwarden } from "./bitwarden";
 import { parseApplePasswords, parseGooglePasswords } from "./csv";
 import { parseDashlane } from "./dashlane";
 import { parseEnpass } from "./enpass";
+import { parseFirefox } from "./firefox";
 import { parseKeePass } from "./keepass";
 import { parseLastPass } from "./lastpass";
 import { parseOnePassword } from "./onepassword";
@@ -26,6 +27,7 @@ export {
 	parseBitwarden,
 	parseDashlane,
 	parseEnpass,
+	parseFirefox,
 	parseGooglePasswords,
 	parseKeePass,
 	parseLastPass,
@@ -46,6 +48,7 @@ const PARSERS: Record<ImportProvider, ImportParser> = {
 	roboform: parseRoboForm,
 	apple: parseApplePasswords,
 	google: parseGooglePasswords,
+	firefox: parseFirefox,
 };
 
 /**
@@ -99,8 +102,9 @@ export const IMPORT_PROVIDERS: readonly ImportProviderInfo[] = [
 	{
 		id: "onepassword",
 		label: "1Password",
-		blurb: ".1pux export",
-		accept: ".1pux,.zip",
+		// 1Password 7 writes a folder: data.1pif inside it, or the folder zipped with its files.
+		blurb: ".1pux export, or data.1pif from 1Password 7",
+		accept: ".1pux,.zip,.1pif",
 		reads: "bytes",
 	},
 	{
@@ -177,6 +181,13 @@ export const IMPORT_PROVIDERS: readonly ImportProviderInfo[] = [
 		// points at a card the user can actually see.
 		label: "Google Password Manager",
 		blurb: "passwords.google.com → Export (.csv)",
+		accept: ".csv,text/csv",
+		reads: "text",
+	},
+	{
+		id: "firefox",
+		label: "Firefox",
+		blurb: "about:logins → ⋯ → Export Passwords (.csv)",
 		accept: ".csv,text/csv",
 		reads: "text",
 	},

@@ -1,0 +1,5 @@
+"url","username","password","httpRealm","formActionOrigin","guid","timeCreated","timeLastUsed","timePasswordChanged"
+"chrome://FirefoxAccounts","00000000000000000000000000000000","{""version"":1,""accountData"":{""scopedKeys"":{""https://identity.mozilla.com/apps/oldsync"":{""kty"":""oct"",""k"":""FAKE-NOT-A-KEY""}}}}","Firefox Accounts credentials",,"{00000000-0000-4000-8000-000000000001}","1700000000000","1700000000000","1700000000000"
+"https://github.com","firefox-octo","123456",,"","{00000000-0000-4000-8000-000000000002}","1700000000000","1710000000000","1705000000000"
+"https://news.example.com","reader","123456",,"https://news.example.com","{00000000-0000-4000-8000-000000000003}","1700000000000","1700000000000","1700000000000"
+"https://router.example.net","admin","123456","Router admin",,"{00000000-0000-4000-8000-000000000004}","1700000000000","1700000000000","1700000000000"

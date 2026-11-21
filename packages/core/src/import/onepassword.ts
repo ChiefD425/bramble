@@ -4,12 +4,15 @@ import { cardBrand } from "../util/card";
 import { deriveKeyType } from "../util/ssh";
 import { mimeFor } from "../vault/mime";
 import { normalizeTags } from "../vault/tags";
+import { PIF_FORMAT_ERROR, parseOnePif, pifPaths } from "./onepassword-1pif";
 import {
+	asText,
 	missingFilesWarning,
+	parseZippedJson,
 	type RawField,
-	readZippedJson,
 	summarize,
 	toCustomFields,
+	unzipCapped,
 } from "./shared";
 import type { ImportAttachment, ImportResult } from "./types";
 
@@ -268,14 +271,30 @@ function filesById(files: Record<string, Uint8Array>): Map<string, Uint8Array> {
 	return out;
 }
 
-/** Parse a 1Password .1pux export (zip) into importable entries. */
+const isZip = (raw: string | Uint8Array): raw is Uint8Array =>
+	typeof raw !== "string" && raw[0] === 0x50 && raw[1] === 0x4b;
+
+/**
+ * Parse a 1Password export: a .1pux (1Password 8), or 1Password 7's .1pif, picked as its
+ * data.1pif or as the export folder zipped up, which brings its attachments too.
+ */
 export function parseOnePassword(raw: string | Uint8Array): ImportResult {
-	const { data: parsed, files } = readZippedJson(raw, {
-		findData: (files) =>
-			files["export.data"] ?? Object.entries(files).find(([p]) => p.endsWith("export.data"))?.[1],
+	if (!isZip(raw)) return parseOnePif(asText(raw));
+	const files = unzipCapped(raw, "Couldn't read this file. It may be corrupt.");
+	const exportData =
+		files["export.data"] ?? Object.entries(files).find(([p]) => p.endsWith("export.data"))?.[1];
+	const pifs = pifPaths(files);
+	if (!exportData && pifs.length > 1) {
+		throw new Error("This .zip holds more than one .1pif export. Zip one export folder at a time.");
+	}
+	const pif = pifs[0];
+	if (!exportData && pif) {
+		return parseOnePif(asText(files[pif] ?? new Uint8Array()), { files, path: pif });
+	}
+	const parsed = parseZippedJson(files, {
+		findData: () => exportData,
 		schema: exportSchema,
-		corruptError: "Couldn't read this .1pux file. It may be corrupt.",
-		formatError: FORMAT_ERROR,
+		formatError: exportData ? FORMAT_ERROR : PIF_FORMAT_ERROR,
 	});
 
 	const stored = filesById(files);
