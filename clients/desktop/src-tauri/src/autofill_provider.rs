@@ -50,7 +50,7 @@ pub struct Mirror {
 /// A copy on disk: the mirror, plus what the sheet reads before it unlocks.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Copy<'a> {
+struct OnDisk<'a> {
     #[serde(flatten)]
     mirror: &'a Mirror,
     passkey_credential_ids: Vec<&'a str>,
@@ -131,6 +131,48 @@ fn path_group_dir() -> Option<PathBuf> {
     })
 }
 
+/// What a copy write, a prune or a delete does to the store.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+enum StoreOp {
+    Write,
+    Prune,
+    Delete,
+}
+
+/// What reading the store back gave: nothing below macOS 14.4, or no answer in time.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+enum Read {
+    Unsupported,
+    Slow,
+    Got,
+}
+
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[derive(Debug, PartialEq)]
+enum Plan {
+    ReplaceAll,
+    RemoveTaggedThenSave,
+    SaveOnly,
+    RemoveTagged,
+    ClearAll,
+    Nothing,
+}
+
+/// Only what was read back says which identities are another vault's, so without it nothing but
+/// this vault's own goes: a slow store skips removal rather than wiping every vault.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn store_plan(op: StoreOp, read: Read) -> Plan {
+    match (op, read) {
+        (StoreOp::Write, Read::Got) => Plan::RemoveTaggedThenSave,
+        (StoreOp::Write, Read::Slow) => Plan::SaveOnly,
+        (StoreOp::Write, Read::Unsupported) => Plan::ReplaceAll,
+        (StoreOp::Prune | StoreOp::Delete, Read::Got) => Plan::RemoveTagged,
+        // Below 14.4 the store holds the last vault's only: the deleted one's, never a pruned one's.
+        (StoreOp::Delete, Read::Unsupported) => Plan::ClearAll,
+        (StoreOp::Prune, Read::Unsupported) | (_, Read::Slow) => Plan::Nothing,
+    }
+}
+
 /// A store identity's record identifier, carrying its vault so the sheet knows which to open.
 fn tag(vault_id: &str, id: &str) -> String {
     format!("{vault_id}:{id}")
@@ -161,7 +203,7 @@ fn write_mirror(dir: &Path, mirror: &Mirror, now_ms: u64) -> Result<Written, Str
     let path = copy_path(dir, &mirror.vault_id)?;
     let copies = dir.join(COPIES_DIR);
     fs::create_dir_all(&copies).map_err(|e| format!("group container: {e}"))?;
-    let copy = Copy {
+    let copy = OnDisk {
         mirror,
         passkey_credential_ids: mirror
             .passkey_identities
@@ -334,7 +376,7 @@ mod store {
     };
     use objc2_foundation::NSString;
 
-    use super::Mirror;
+    use super::{store_plan, Mirror, Plan, Read, StoreOp};
 
     #[link(name = "AuthenticationServices", kind = "framework")]
     extern "C" {}
@@ -460,36 +502,65 @@ mod store {
         });
     }
 
-    /// Everything in the store, on macOS 14.4+; None where it cannot be read back.
-    fn read_back(store: &AnyObject) -> Option<Vec<Retained<AnyObject>>> {
+    /// A retained object handed across threads by address (Retained is not Send). Released if
+    /// never taken, so an answer that arrives after the wait was given up on does not leak.
+    pub(super) struct Handed(*mut AnyObject);
+
+    unsafe impl Send for Handed {}
+
+    impl Handed {
+        pub(super) fn new(raw: *mut AnyObject) -> Self {
+            Self(raw)
+        }
+
+        pub(super) fn take(mut self) -> Option<Retained<AnyObject>> {
+            let raw = std::mem::replace(&mut self.0, std::ptr::null_mut());
+            unsafe { Retained::from_raw(raw) }
+        }
+    }
+
+    impl Drop for Handed {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                drop(unsafe { Retained::from_raw(self.0) });
+            }
+        }
+    }
+
+    /// Everything in the store, where macOS 14.4+ can say in time.
+    fn read_back(store: &AnyObject) -> (Read, Vec<Retained<AnyObject>>) {
         if !responds(
             store,
             sel!(getCredentialIdentitiesForService:credentialIdentityTypes:completionHandler:),
         ) {
-            return None;
+            return (Read::Unsupported, Vec::new());
         }
-        let (tx, rx) = mpsc::channel::<usize>();
+        let (tx, rx) = mpsc::channel::<Handed>();
         let got = RcBlock::new(move |list: *mut AnyObject| {
-            // Kept alive past the block, and handed over as an address: Retained is not Send.
             let kept = unsafe { Retained::retain(list) };
-            let _ = tx.send(kept.map_or(0, |l| Retained::into_raw(l) as usize));
+            let _ = tx.send(Handed::new(
+                kept.map_or(std::ptr::null_mut(), Retained::into_raw),
+            ));
         });
         unsafe {
             let none: *const AnyObject = std::ptr::null();
             // ASCredentialIdentityTypesAll.
             let _: () = msg_send![store, getCredentialIdentitiesForService: none, credentialIdentityTypes: 0usize, completionHandler: &*got];
         }
-        let raw = rx.recv_timeout(WAIT).ok()?;
-        let list = unsafe { Retained::from_raw(raw as *mut AnyObject) }?;
+        let Ok(handed) = rx.recv_timeout(WAIT) else {
+            return (Read::Slow, Vec::new());
+        };
+        let Some(list) = handed.take() else {
+            return (Read::Got, Vec::new());
+        };
         let count: usize = unsafe { msg_send![&*list, count] };
-        Some(
-            (0..count)
-                .filter_map(|i| unsafe {
-                    let item: *mut AnyObject = msg_send![&*list, objectAtIndex: i];
-                    Retained::retain(item)
-                })
-                .collect(),
-        )
+        let items = (0..count)
+            .filter_map(|i| unsafe {
+                let item: *mut AnyObject = msg_send![&*list, objectAtIndex: i];
+                Retained::retain(item)
+            })
+            .collect();
+        (Read::Got, items)
     }
 
     /// Remove `vault_id`'s identities from what the store read back.
@@ -521,56 +592,51 @@ mod store {
         });
     }
 
+    fn save(store: &AnyObject, mine: &[Retained<AnyObject>]) {
+        if mine.is_empty() {
+            return;
+        }
+        wait(|done| unsafe {
+            let _: () =
+                msg_send![store, saveCredentialIdentityEntries: &*array(mine), completion: &**done];
+        });
+    }
+
+    /// Update the store for one vault as `store_plan` says, from what it could read back.
+    fn apply(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>]) {
+        autoreleasepool(|_| {
+            let Some(store) = shared() else { return };
+            if !enabled(&store) {
+                return;
+            }
+            let (read, existing) = read_back(&store);
+            match store_plan(op, read) {
+                Plan::ReplaceAll => replace_with(&store, mine),
+                Plan::RemoveTaggedThenSave => {
+                    remove_tagged(&store, &existing, vault_id);
+                    save(&store, mine);
+                }
+                Plan::SaveOnly => save(&store, mine),
+                Plan::RemoveTagged => remove_tagged(&store, &existing, vault_id),
+                Plan::ClearAll => replace_with(&store, &[]),
+                Plan::Nothing => {}
+            }
+        });
+    }
+
     /// This vault's identities swapped for the new ones, every other vault's left as they are.
-    /// Before macOS 14.4 the store cannot be read back, so it holds this vault's only.
     pub(super) fn replace_vault(m: &Mirror) {
-        autoreleasepool(|_| {
-            let Some(store) = shared() else { return };
-            if !enabled(&store) {
-                return;
-            }
-            let Some(existing) = read_back(&store) else {
-                replace_with(&store, &identities(m));
-                return;
-            };
-            remove_tagged(&store, &existing, &m.vault_id);
-            let mine = identities(m);
-            if mine.is_empty() {
-                return;
-            }
-            wait(|done| unsafe {
-                let _: () = msg_send![&*store, saveCredentialIdentityEntries: &*array(&mine), completion: &**done];
-            });
-        });
+        apply(StoreOp::Write, &m.vault_id, &identities(m));
     }
 
-    /// A vault no longer listed: its identities go. Before macOS 14.4 the store holds only the
-    /// vault just written, so there is nothing of this one's to remove.
+    /// A vault no longer listed: its identities go.
     pub(super) fn prune_vault(vault_id: &str) {
-        autoreleasepool(|_| {
-            let Some(store) = shared() else { return };
-            if !enabled(&store) {
-                return;
-            }
-            if let Some(existing) = read_back(&store) {
-                remove_tagged(&store, &existing, vault_id);
-            }
-        });
+        apply(StoreOp::Prune, vault_id, &[]);
     }
 
-    /// The vault is deleted: its identities go too. Before macOS 14.4, everything, as they were
-    /// the deleted vault's.
+    /// The vault is deleted: its identities go too.
     pub(super) fn remove_vault(vault_id: &str) {
-        autoreleasepool(|_| {
-            let Some(store) = shared() else { return };
-            if !enabled(&store) {
-                return;
-            }
-            match read_back(&store) {
-                Some(existing) => remove_tagged(&store, &existing, vault_id),
-                None => replace_with(&store, &[]),
-            }
-        });
+        apply(StoreOp::Delete, vault_id, &[]);
     }
 }
 
@@ -727,6 +793,47 @@ mod tests {
         let got = consume_pending(dir.path()).unwrap();
         let ivs: Vec<_> = got.iter().map(|r| r.iv.as_str()).collect();
         assert_eq!(ivs, vec!["new", "old"]);
+    }
+
+    // Reading the store back is the only way to know which identities are another vault's, so a
+    // store too slow to answer must cost nothing but this vault's own update.
+    #[test]
+    fn a_slow_store_never_costs_other_vaults_their_suggestions() {
+        use StoreOp::*;
+        assert_eq!(store_plan(Write, Read::Slow), Plan::SaveOnly);
+        assert_eq!(store_plan(Prune, Read::Slow), Plan::Nothing);
+        assert_eq!(store_plan(Delete, Read::Slow), Plan::Nothing);
+    }
+
+    #[test]
+    fn plans_each_store_update_from_what_it_could_read() {
+        use StoreOp::*;
+        assert_eq!(store_plan(Write, Read::Got), Plan::RemoveTaggedThenSave);
+        assert_eq!(store_plan(Prune, Read::Got), Plan::RemoveTagged);
+        assert_eq!(store_plan(Delete, Read::Got), Plan::RemoveTagged);
+        // Before macOS 14.4 the store holds the last vault's identities only.
+        assert_eq!(store_plan(Write, Read::Unsupported), Plan::ReplaceAll);
+        assert_eq!(store_plan(Prune, Read::Unsupported), Plan::Nothing);
+        assert_eq!(store_plan(Delete, Read::Unsupported), Plan::ClearAll);
+    }
+
+    // An answer that arrives after the wait is given up on is released, not leaked.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_list_handed_over_and_never_taken_is_released() {
+        use objc2::{msg_send, rc::Retained, runtime::AnyClass, runtime::AnyObject};
+        let obj: Retained<AnyObject> =
+            unsafe { msg_send![AnyClass::get(c"NSObject").unwrap(), new] };
+        let count = || -> usize { unsafe { msg_send![&*obj, retainCount] } };
+        let before = count();
+        let handed = store::Handed::new(Retained::into_raw(obj.clone()));
+        assert_eq!(count(), before + 1);
+        drop(handed);
+        assert_eq!(count(), before);
+        let taken = store::Handed::new(Retained::into_raw(obj.clone())).take();
+        assert!(taken.is_some());
+        drop(taken);
+        assert_eq!(count(), before);
     }
 
     #[test]
