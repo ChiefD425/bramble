@@ -158,6 +158,24 @@ describe("desktopAutofill", () => {
 		expect(mirrorCall()?.mirror.vaultName).toBe("Vault 2");
 	});
 
+	it("names a vault the picker is not listing, so the sheet never shows a blank", async () => {
+		onMac(true);
+		meta.set(VAULT_REGISTRY_KEY, {
+			vaults: [
+				{ id: "v0", label: "Work", number: 1, createdAt: 1 },
+				{
+					id: "v1",
+					label: "Personal",
+					number: 2,
+					createdAt: 2,
+					hidden: { at: 3, blobHash: "h", into: "v0" },
+				},
+			],
+		});
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.vaultName).toBe("Personal");
+	});
+
 	it("writes no copy without a vault to write it for, but keeps the browser link", async () => {
 		onMac(true);
 		meta.set("active-vault", "v1");

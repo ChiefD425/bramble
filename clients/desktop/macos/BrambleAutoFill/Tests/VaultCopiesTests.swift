@@ -32,6 +32,11 @@ struct VaultCopiesTests {
 		check(chooseCopy(copies, vaultId: nil, credentialIds: ["Z"]) == nil, "no vault holds the passkey")
 		check(chooseCopy(copies, vaultId: nil, credentialIds: [])?.vaultId == "v2", "the copy written last")
 
+		// Every vault in the menu has a name to pick it by.
+		check(menuLabel(copy("v1", written: 1)) == "v1", "a vault's own name")
+		let unnamed = try! JSONDecoder().decode(VaultCopy.self, from: Data(#"{"iv":"I","ciphertext":"C","vaultId":"v4","vaultName":" "}"#.utf8))
+		check(menuLabel(unnamed) == "Unnamed vault", "a vault with no name")
+
 		// Before the first write after updating, the single copy lists no passkeys: it may hold one.
 		let legacy = try! JSONDecoder().decode(VaultCopy.self, from: Data(#"{"iv":"I","ciphertext":"C"}"#.utf8))
 		check(chooseCopy([legacy], vaultId: nil, credentialIds: ["A"]) != nil, "the single copy from before")

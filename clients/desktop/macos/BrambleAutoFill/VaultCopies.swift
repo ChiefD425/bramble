@@ -63,3 +63,9 @@ func chooseCopy(_ copies: [VaultCopy], vaultId: String?, credentialIds: [String]
 	// The single copy from before does not list its passkeys, so it may still hold the one asked for.
 	return copies.contains { $0.passkeyCredentialIds == nil } ? last : nil
 }
+
+/// How the vault menu names a copy: its own name, or a stand-in when the app had none to give.
+func menuLabel(_ copy: VaultCopy) -> String {
+	let name = copy.vaultName?.trimmingCharacters(in: .whitespaces) ?? ""
+	return name.isEmpty ? String(localized: "Unnamed vault") : name
+}

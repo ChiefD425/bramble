@@ -185,7 +185,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		let others = copies.filter { $0.vaultId != copy.vaultId }
 		let model = UnlockModel(
 			vault: copy.vaultName,
-			others: others.map { (id: $0.vaultId ?? "", name: $0.vaultName ?? "") },
+			others: others.map { (id: $0.vaultId ?? "", name: menuLabel($0)) },
 			canTouchId: touchIdItemExists(vaultId: copy.vaultId),
 			onSwitch: { [weak self] id in
 				guard let next = copies.first(where: { $0.vaultId == id }) else { return }

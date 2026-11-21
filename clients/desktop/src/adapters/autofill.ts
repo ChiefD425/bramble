@@ -29,10 +29,14 @@ const onMac = () =>
  * vaults the picker lists, so copies of any other vault are pruned.
  */
 async function pickerView(vaultId: string): Promise<{ name?: string; listed: string[] }> {
-	const vaults = listedVaults(parseRegistry(await desktopStorage.getMeta(VAULT_REGISTRY_KEY)));
-	const index = vaults.findIndex((v) => v.id === vaultId);
+	const registry = parseRegistry(await desktopStorage.getMeta(VAULT_REGISTRY_KEY));
+	const vaults = listedVaults(registry);
+	const listedAt = vaults.findIndex((v) => v.id === vaultId);
+	// Named even when the picker is not listing it, so the sheet never shows a blank.
+	const index = listedAt >= 0 ? listedAt : registry.vaults.findIndex((v) => v.id === vaultId);
+	const record = listedAt >= 0 ? vaults[listedAt] : registry.vaults[index];
 	return {
-		name: index >= 0 ? displayLabel(vaults[index]!, index) : undefined,
+		name: record ? displayLabel(record, index) : undefined,
 		listed: vaults.map((v) => v.id),
 	};
 }

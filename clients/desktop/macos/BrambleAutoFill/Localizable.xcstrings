@@ -1489,6 +1489,53 @@
         }
       }
     },
+    "Unnamed vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নামহীন ভল্ট"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbenannter Tresor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bóveda sin nombre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coffre sans nom"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivio senza nome"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 없는 보관함"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cofre sem nome"
+          }
+        }
+      }
+    },
     "Use Touch ID": {
       "extractionState": "manual",
       "localizations": {
