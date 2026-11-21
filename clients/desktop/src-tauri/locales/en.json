@@ -21,6 +21,10 @@
 	"menu.undo": "Undo",
 	"menu.window": "Window",
 	"menu.zoom": "Zoom",
+	"oauth.not_signed_in": "Sign-in didn't finish",
+	"oauth.not_signed_in_body": "You can close this tab and try again in {app}.",
+	"oauth.signed_in": "Signed in",
+	"oauth.signed_in_body": "You can close this tab and go back to {app}.",
 	"tray.open": "Open {app}",
 	"tray.quick": "Quick Access",
 	"tray.quit": "Quit {app}"

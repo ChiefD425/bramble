@@ -21,6 +21,10 @@
 	"menu.undo": "Annuler",
 	"menu.window": "Fenêtre",
 	"menu.zoom": "Réduire/Agrandir",
+	"oauth.not_signed_in": "Connexion non terminée",
+	"oauth.not_signed_in_body": "Vous pouvez fermer cet onglet et réessayer dans {app}.",
+	"oauth.signed_in": "Connecté",
+	"oauth.signed_in_body": "Vous pouvez fermer cet onglet et revenir à {app}.",
 	"tray.open": "Ouvrir {app}",
 	"tray.quick": "Accès rapide",
 	"tray.quit": "Quitter {app}"

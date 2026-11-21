@@ -21,6 +21,10 @@
 	"menu.undo": "আনডু",
 	"menu.window": "উইন্ডো",
 	"menu.zoom": "জুম",
+	"oauth.not_signed_in": "সাইন ইন সম্পূর্ণ হয়নি",
+	"oauth.not_signed_in_body": "আপনি এই ট্যাবটি বন্ধ করে {app}-এ আবার চেষ্টা করতে পারেন।",
+	"oauth.signed_in": "সাইন ইন করা হয়েছে",
+	"oauth.signed_in_body": "আপনি এই ট্যাবটি বন্ধ করে {app}-এ ফিরে যেতে পারেন।",
 	"tray.open": "{app} খুলুন",
 	"tray.quick": "দ্রুত অ্যাক্সেস",
 	"tray.quit": "{app} বন্ধ করুন"

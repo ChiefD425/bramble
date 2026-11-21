@@ -21,6 +21,10 @@
 	"menu.undo": "Widerrufen",
 	"menu.window": "Fenster",
 	"menu.zoom": "Zoomen",
+	"oauth.not_signed_in": "Anmeldung nicht abgeschlossen",
+	"oauth.not_signed_in_body": "Sie können diesen Tab schließen und es in {app} erneut versuchen.",
+	"oauth.signed_in": "Angemeldet",
+	"oauth.signed_in_body": "Sie können diesen Tab schließen und zu {app} zurückkehren.",
 	"tray.open": "{app} öffnen",
 	"tray.quick": "Schnellzugriff",
 	"tray.quit": "{app} beenden"

@@ -21,6 +21,10 @@
 	"menu.undo": "Deshacer",
 	"menu.window": "Ventana",
 	"menu.zoom": "Zoom",
+	"oauth.not_signed_in": "El inicio de sesión no finalizó",
+	"oauth.not_signed_in_body": "Puede cerrar esta pestaña e intentarlo de nuevo en {app}.",
+	"oauth.signed_in": "Sesión iniciada",
+	"oauth.signed_in_body": "Puede cerrar esta pestaña y volver a {app}.",
 	"tray.open": "Abrir {app}",
 	"tray.quick": "Acceso rápido",
 	"tray.quit": "Salir de {app}"

@@ -150,8 +150,44 @@ pub async fn bind(p: Provider) -> Res<(TcpListener, String)> {
     Ok((listener, format!("http://127.0.0.1:{port}/")))
 }
 
-const SIGNED_IN: &str = "Signed in. You can close this tab and go back to Bramble.";
-const NOT_SIGNED_IN: &str = "Sign-in didn't finish. You can close this tab.";
+/// The page the browser lands on. Bramble's own look (the setup screen's "Vault ready": a 64 px
+/// primary tile, a 24 px medium title, a 14 px muted line, values from `@vault/theme`), following
+/// the OS theme since it can't know the app's. Self-contained: the listener closes after it.
+fn page(signed_in: bool) -> String {
+    let (title, body, icon) = if signed_in {
+        (
+            "oauth.signed_in",
+            "oauth.signed_in_body",
+            r#"<path d="M20 6 9 17l-5-5"/>"#,
+        )
+    } else {
+        (
+            "oauth.not_signed_in",
+            "oauth.not_signed_in_body",
+            r#"<path d="M18 6 6 18"/><path d="m6 6 12 12"/>"#,
+        )
+    };
+    let escape = |s: String| {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    };
+    let (title, body) = (escape(crate::i18n::t(title)), escape(crate::i18n::t(body)));
+    format!(
+        r#"<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title>
+<style>
+:root {{ color-scheme: light dark; --background: oklch(98.5% 0 0); --foreground: oklch(20.5% 0 0); --primary: oklch(20.5% 0 0); --primary-foreground: #fff; --muted-foreground: oklch(52% 0 0); }}
+@media (prefers-color-scheme: dark) {{ :root {{ --background: oklch(20.5% 0 0); --foreground: oklch(97% 0 0); --primary: oklch(97% 0 0); --primary-foreground: oklch(20.5% 0 0); --muted-foreground: oklch(70.8% 0 0); }} }}
+* {{ box-sizing: border-box; }}
+body {{ margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; font: 16px/1.5 ui-sans-serif, system-ui, sans-serif; color: var(--foreground); background: var(--background) linear-gradient(to bottom right, var(--background), var(--background), color-mix(in oklab, var(--primary) 5%, transparent)); }}
+main {{ width: 100%; max-width: 36rem; text-align: center; }}
+.icon {{ display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 16px; margin-bottom: 16px; color: var(--primary-foreground); background: linear-gradient(to bottom right, var(--primary), color-mix(in oklab, var(--primary) 80%, transparent)); }}
+h1 {{ margin: 0 0 8px; font-size: 24px; line-height: 32px; font-weight: 500; }}
+p {{ margin: 0; font-size: 14px; line-height: 20px; color: var(--muted-foreground); }}
+</style>
+<main><div class="icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{icon}</svg></div><h1>{title}</h1><p>{body}</p></main>"#
+    )
+}
 
 /// The request target of one HTTP request (`/?state=..&code=..`), read up to the blank line.
 async fn request_target(stream: &mut TcpStream) -> Option<String> {
@@ -168,10 +204,11 @@ async fn request_target(stream: &mut TcpStream) -> Option<String> {
     line.split(' ').nth(1).map(str::to_string)
 }
 
-async fn respond(stream: &mut TcpStream, status: &str, text: &str) {
-    let body = format!("<!doctype html><meta charset=utf-8><title>Bramble</title><p>{text}</p>");
+async fn respond(stream: &mut TcpStream, status: &str, signed_in: bool) {
+    let body = page(signed_in);
+    // The page needs nothing but its own inline style, so it may load nothing else.
     let reply = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
     let _ = stream.write_all(reply.as_bytes()).await;
@@ -195,18 +232,18 @@ pub async fn await_code(listener: TcpListener, state: &str, wait: Duration) -> R
             };
             let q: HashMap<String, String> = url.query_pairs().into_owned().collect();
             if !q.contains_key("code") && !q.contains_key("error") {
-                respond(&mut stream, "404 Not Found", NOT_SIGNED_IN).await;
+                respond(&mut stream, "404 Not Found", false).await;
                 continue;
             }
             if q.get("state").map(String::as_str) != Some(state) {
-                respond(&mut stream, "400 Bad Request", NOT_SIGNED_IN).await;
+                respond(&mut stream, "400 Bad Request", false).await;
                 return Err("Sign-in could not be verified (state mismatch).".to_string());
             }
             if let Some(error) = q.get("error") {
-                respond(&mut stream, "200 OK", NOT_SIGNED_IN).await;
+                respond(&mut stream, "200 OK", false).await;
                 return Err(format!("Sign-in was cancelled or failed: {error}"));
             }
-            respond(&mut stream, "200 OK", SIGNED_IN).await;
+            respond(&mut stream, "200 OK", true).await;
             return Ok(q["code"].clone());
         }
     };
@@ -491,6 +528,24 @@ mod tests {
     }
 
     #[test]
+    fn pages_look_like_bramble_and_load_nothing() {
+        for (signed_in, title, body) in [
+            (true, "oauth.signed_in", "oauth.signed_in_body"),
+            (false, "oauth.not_signed_in", "oauth.not_signed_in_body"),
+        ] {
+            let html = page(signed_in);
+            assert!(html.contains(&crate::i18n::t(title)), "{title}");
+            assert!(html.contains(&crate::i18n::t(body)), "{body}");
+            assert!(html.contains("prefers-color-scheme: dark"));
+            assert!(html.contains("<svg"));
+            // Served from a listener that closes after one answer: nothing may load from elsewhere.
+            assert!(!html.contains("http"), "{html}");
+        }
+        assert_ne!(page(true), page(false));
+        assert!(crate::i18n::t("oauth.signed_in_body").contains("Bramble"));
+    }
+
+    #[test]
     fn returns_the_code_for_the_right_state() {
         block_on(async {
             let (listener, redirect) = bind(Provider::Gdrive).await.unwrap();
@@ -501,7 +556,10 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(code, "C1");
-            assert!(client.await.unwrap().contains("Signed in"));
+            assert!(client
+                .await
+                .unwrap()
+                .contains(&crate::i18n::t("oauth.signed_in")));
         });
     }
 
@@ -535,7 +593,10 @@ mod tests {
                 .await
                 .unwrap_err();
             assert!(err.contains("could not be verified"), "{err}");
-            assert!(client.await.unwrap().contains("didn't finish"));
+            assert!(client
+                .await
+                .unwrap()
+                .contains(&crate::i18n::t("oauth.not_signed_in")));
         });
     }
 

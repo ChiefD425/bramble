@@ -21,6 +21,10 @@
 	"menu.undo": "Annulla",
 	"menu.window": "Finestra",
 	"menu.zoom": "Zoom",
+	"oauth.not_signed_in": "Accesso non completato",
+	"oauth.not_signed_in_body": "Può chiudere questa scheda e riprovare in {app}.",
+	"oauth.signed_in": "Accesso effettuato",
+	"oauth.signed_in_body": "Può chiudere questa scheda e tornare a {app}.",
 	"tray.open": "Apri {app}",
 	"tray.quick": "Accesso rapido",
 	"tray.quit": "Esci da {app}"

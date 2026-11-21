@@ -21,6 +21,10 @@
 	"menu.undo": "Desfazer",
 	"menu.window": "Janela",
 	"menu.zoom": "Zoom",
+	"oauth.not_signed_in": "O login não foi concluído",
+	"oauth.not_signed_in_body": "Você pode fechar esta aba e tentar novamente em {app}.",
+	"oauth.signed_in": "Sessão iniciada",
+	"oauth.signed_in_body": "Você pode fechar esta aba e voltar para {app}.",
 	"tray.open": "Abrir o {app}",
 	"tray.quick": "Acesso rápido",
 	"tray.quit": "Encerrar o {app}"
