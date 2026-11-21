@@ -113,7 +113,7 @@ objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std"
 # without it macOS falls back to the login keychain, which has no biometric access control.
 security-framework = { version = "3.7", features = ["OSX_10_15"] }
 core-foundation = "0.10"
-objc2 = "0.6.4"
+objc2 = { version = "0.6.4", features = ["exception"] }
 block2 = "0.6.2"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
 

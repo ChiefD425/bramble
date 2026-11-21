@@ -133,6 +133,7 @@ fn path_group_dir() -> Option<PathBuf> {
 
 /// What a copy write, a prune or a delete does to the store.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[derive(Debug)]
 enum StoreOp {
     Write,
     Prune,
@@ -141,6 +142,7 @@ enum StoreOp {
 
 /// What reading the store back gave: nothing below macOS 14.4, or no answer in time.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[derive(Debug)]
 enum Read {
     Unsupported,
     Slow,
@@ -447,11 +449,54 @@ mod store {
         out
     }
 
-    fn array(items: &[Retained<AnyObject>]) -> Retained<AnyObject> {
+    pub(super) fn list(items: &[Retained<AnyObject>]) -> Retained<AnyObject> {
         let ptrs: Vec<*const AnyObject> = items.iter().map(|o| Retained::as_ptr(o)).collect();
         unsafe {
             msg_send![AnyClass::get(c"NSArray").unwrap(), arrayWithObjects: ptrs.as_ptr(), count: ptrs.len()]
         }
+    }
+
+    /// Run store messages, an Objective-C exception becoming a logged warning: one escaping into
+    /// Rust aborts the whole app, and a failed store update is only ever worth a warning.
+    pub(super) fn guarded(what: &str, f: impl FnOnce()) -> Option<String> {
+        match objc2::exception::catch(std::panic::AssertUnwindSafe(f)) {
+            Ok(()) => None,
+            Err(e) => {
+                let caught = e.map_or_else(|| "a nil exception".to_string(), |e| format!("{e:?}"));
+                log::warn!("autofill store: {what}: {caught}");
+                Some(caught)
+            }
+        }
+    }
+
+    fn answers(obj: &AnyObject, selector: objc2::runtime::Sel) -> bool {
+        let yes: Bool = unsafe { msg_send![obj, respondsToSelector: selector] };
+        yes.as_bool()
+    }
+
+    /// An identity's record identifier, or None from anything that does not answer for one.
+    pub(super) fn record_identifier(obj: &AnyObject) -> Option<String> {
+        if !answers(obj, sel!(recordIdentifier)) {
+            return None;
+        }
+        let id: Option<Retained<NSString>> = unsafe { msg_send![obj, recordIdentifier] };
+        id.map(|id| id.to_string())
+    }
+
+    /// The objects in a list, or None when what came back is not one.
+    pub(super) fn items(list: &AnyObject) -> Option<Vec<Retained<AnyObject>>> {
+        if !answers(list, sel!(count)) || !answers(list, sel!(objectAtIndex:)) {
+            return None;
+        }
+        let count: usize = unsafe { msg_send![list, count] };
+        Some(
+            (0..count)
+                .filter_map(|i| unsafe {
+                    let item: *mut AnyObject = msg_send![list, objectAtIndex: i];
+                    Retained::retain(item)
+                })
+                .collect(),
+        )
     }
 
     fn shared() -> Option<Retained<AnyObject>> {
@@ -493,11 +538,11 @@ mod store {
         let entries = responds(store, sel!(replaceCredentialIdentityEntries:completion:));
         wait(|done| unsafe {
             if entries {
-                let _: () = msg_send![store, replaceCredentialIdentityEntries: &*array(all), completion: &**done];
+                let _: () = msg_send![store, replaceCredentialIdentityEntries: &*list(all), completion: &**done];
             } else {
                 // macOS 13: the older selector, passwords only (the other classes don't exist
                 // there, so `all` holds nothing else).
-                let _: () = msg_send![store, replaceCredentialIdentitiesWithIdentities: &*array(all), completion: &**done];
+                let _: () = msg_send![store, replaceCredentialIdentitiesWithIdentities: &*list(all), completion: &**done];
             }
         });
     }
@@ -553,42 +598,53 @@ mod store {
         let Some(list) = handed.take() else {
             return (Read::Got, Vec::new());
         };
-        let count: usize = unsafe { msg_send![&*list, count] };
-        let items = (0..count)
-            .filter_map(|i| unsafe {
-                let item: *mut AnyObject = msg_send![&*list, objectAtIndex: i];
-                Retained::retain(item)
-            })
+        // Unreadable counts as no answer: nothing is removed on the strength of it.
+        let Some(read) = items(&list) else {
+            log::warn!(
+                "autofill store: read back a {}, not a list",
+                list.class().name().to_string_lossy()
+            );
+            return (Read::Slow, Vec::new());
+        };
+        let mut kinds: Vec<String> = read
+            .iter()
+            .map(|o| o.class().name().to_string_lossy().into_owned())
             .collect();
-        (Read::Got, items)
+        kinds.sort();
+        kinds.dedup();
+        log::info!(
+            "autofill store: read back {} identities ({})",
+            read.len(),
+            kinds.join(", ")
+        );
+        (Read::Got, read)
     }
 
     /// Remove `vault_id`'s identities from what the store read back.
     fn remove_tagged(store: &AnyObject, existing: &[Retained<AnyObject>], vault_id: &str) {
         let theirs: Vec<Retained<AnyObject>> = existing
             .iter()
-            .filter(|o| {
-                let id: Option<Retained<NSString>> = unsafe { msg_send![&***o, recordIdentifier] };
-                id.is_some_and(|id| super::tagged_for(&id.to_string(), vault_id))
-            })
+            .filter(|o| record_identifier(o).is_some_and(|id| super::tagged_for(&id, vault_id)))
             .cloned()
             .collect();
         if theirs.is_empty() {
             return;
         }
         wait(|done| unsafe {
-            let _: () = msg_send![store, removeCredentialIdentityEntries: &*array(&theirs), completion: &**done];
+            let _: () = msg_send![store, removeCredentialIdentityEntries: &*list(&theirs), completion: &**done];
         });
     }
 
     /// Every vault's identities replaced by this one's. For the first write after the single copy,
     /// whose identities carried no vault.
     pub(super) fn replace_all(m: &Mirror) {
-        autoreleasepool(|_| {
-            let Some(store) = shared() else { return };
-            if enabled(&store) {
-                replace_with(&store, &identities(m));
-            }
+        guarded("replace all", || {
+            autoreleasepool(|_| {
+                let Some(store) = shared() else { return };
+                if enabled(&store) {
+                    replace_with(&store, &identities(m));
+                }
+            })
         });
     }
 
@@ -598,18 +654,29 @@ mod store {
         }
         wait(|done| unsafe {
             let _: () =
-                msg_send![store, saveCredentialIdentityEntries: &*array(mine), completion: &**done];
+                msg_send![store, saveCredentialIdentityEntries: &*list(mine), completion: &**done];
         });
     }
 
     /// Update the store for one vault as `store_plan` says, from what it could read back.
     fn apply(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>]) {
-        autoreleasepool(|_| {
+        guarded(&format!("{op:?} {vault_id}"), || {
+            autoreleasepool(|_| apply_in_pool(op, vault_id, mine))
+        });
+    }
+
+    fn apply_in_pool(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>]) {
+        {
             let Some(store) = shared() else { return };
             if !enabled(&store) {
                 return;
             }
             let (read, existing) = read_back(&store);
+            log::info!(
+                "autofill store: {op:?} {vault_id}: read {read:?} ({} there, {} new)",
+                existing.len(),
+                mine.len()
+            );
             match store_plan(op, read) {
                 Plan::ReplaceAll => replace_with(&store, mine),
                 Plan::RemoveTaggedThenSave => {
@@ -621,7 +688,7 @@ mod store {
                 Plan::ClearAll => replace_with(&store, &[]),
                 Plan::Nothing => {}
             }
-        });
+        }
     }
 
     /// This vault's identities swapped for the new ones, every other vault's left as they are.
@@ -815,6 +882,40 @@ mod tests {
         assert_eq!(store_plan(Write, Read::Unsupported), Plan::ReplaceAll);
         assert_eq!(store_plan(Prune, Read::Unsupported), Plan::Nothing);
         assert_eq!(store_plan(Delete, Read::Unsupported), Plan::ClearAll);
+    }
+
+    // An Objective-C exception escaping into Rust aborts the whole app (2026-11-21): a store
+    // message that throws must cost a warning, never the app.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn an_exception_in_a_store_message_is_caught_and_named() {
+        use objc2::{msg_send, rc::Retained, runtime::AnyClass, runtime::AnyObject};
+        let caught = store::guarded("reading past the end", || unsafe {
+            let empty: Retained<AnyObject> = msg_send![AnyClass::get(c"NSArray").unwrap(), array];
+            let _: *mut AnyObject = msg_send![&*empty, objectAtIndex: 3usize];
+        });
+        let caught = caught.expect("the exception is reported");
+        assert!(caught.contains("NSRangeException"), "{caught}");
+        assert_eq!(store::guarded("nothing thrown", || {}), None);
+    }
+
+    // What the store reads back is only trusted as far as it answers: a message an object does not
+    // understand throws, and a throw is what took the app down.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reads_back_only_what_answers_the_messages_it_is_sent() {
+        use objc2::{msg_send, rc::Retained, runtime::AnyClass, runtime::AnyObject};
+        let plain: Retained<AnyObject> =
+            unsafe { msg_send![AnyClass::get(c"NSObject").unwrap(), new] };
+        assert_eq!(store::record_identifier(&plain), None);
+        assert!(store::items(&plain).is_none(), "not a list");
+        let built = store::identities(&mirror());
+        assert_eq!(
+            store::record_identifier(&built[0]).as_deref(),
+            Some("v1:e1")
+        );
+        let list = store::list(&built);
+        assert_eq!(store::items(&list).map(|v| v.len()), Some(built.len()));
     }
 
     // An answer that arrives after the wait is given up on is released, not leaked.
