@@ -1,10 +1,8 @@
-Neu in dieser Version:
+Was ist neu in dieser Version:
 
-- Wenn AutoFill für ein Registrierungsformular kein Login hat, wählen Sie „Neues Login“, um eines mit einem generierten Passwort zu erstellen und es in einem Schritt auszufüllen.
-- Sortieren Sie Ihren Tresor nach „Letzte Aktivitäten“: der jeweils letzte Zeitpunkt, zu dem Sie einen Eintrag verwendet, hinzugefügt oder bearbeitet haben.
-- Ein angezeigtes Passwort zeigt die Position jedes Zeichens, für Websites, die zum Beispiel nach dem 3. und 7. Zeichen fragen.
-- In 1Password archivierte Einträge bleiben beim Import archiviert.
-- Aus 1Password übernommene Logins behalten ihre ursprünglichen Datumsangaben.
-- Bramble ist jetzt auf Bengalisch verfügbar.
+- Wenn zwei Ihrer Geräte unterschiedliche Teile eines Eintrags ändern, etwa das Passwort auf dem einen und die Notizen auf dem anderen, bleiben beide Änderungen erhalten.
+- Importieren Sie Ihre Passwörter aus Firefox und 1Password 7.
+- Fügen Sie dem geöffneten Tresor über Einstellungen → Sicherungskopien → Ein Backup importieren ein Bramble-Backup hinzu. Bereits vorhandene Einträge werden nicht doppelt hinzugefügt.
+- Der KeePass-Export enthält jetzt Ihre Passkeys, sodass KeePassXC sich mit ihnen anmelden kann.
 
 Kein Konto, keine Cloud. Alles bleibt auf Ihren Geräten.

@@ -1,10 +1,8 @@
-Quoi de neuf dans cette version :
+Nouveautés de cette version :
 
-- Lorsque le remplissage automatique ne trouve aucun identifiant pour un formulaire d’inscription, choisissez « Nouvel identifiant » pour en créer un, avec un mot de passe généré, puis remplissez le formulaire en une seule étape.
-- Triez votre coffre-fort par Activité récente : la plus récente parmi l’utilisation, l’ajout ou la modification de chaque élément.
-- Un mot de passe révélé affiche la position de chaque caractère, pour les sites qui demandent, par exemple, le 3e et le 7e.
-- Les éléments que vous avez archivés dans 1Password restent archivés lorsque vous les importez.
-- Les identifiants transférés depuis 1Password conservent leurs dates d’origine.
-- Bramble est désormais disponible en bengali.
+- Lorsque deux de vos appareils modifient différentes parties d’un même élément, par exemple son mot de passe sur l’un et ses notes sur l’autre, les deux modifications sont conservées.
+- Importez vos mots de passe depuis Firefox et 1Password 7.
+- Ajoutez une sauvegarde Bramble au coffre-fort actuellement ouvert via Paramètres → Sauvegardes → Importer une sauvegarde. Les entrées que vous avez déjà ne sont pas ajoutées en double.
+- L’export KeePass inclut désormais vos clés de passe, afin que KeePassXC puisse les utiliser pour se connecter.
 
-Aucun compte, aucun cloud. Tout reste sur vos appareils.
+Sans compte, sans cloud. Tout reste sur vos appareils.

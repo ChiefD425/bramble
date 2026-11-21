@@ -1,10 +1,8 @@
-O que há de novo nesta versão:
+Novidades desta versão:
 
-- Quando o preenchimento automático não tiver um login para um formulário de cadastro, escolha Novo login para criar um, com uma senha gerada, e preencher tudo em uma única etapa.
-- Classifique seu cofre por Atividade recente: a mais recente entre as datas em que você usou, adicionou ou editou cada item.
-- Uma senha revelada mostra a posição de cada caractere, para sites que pedem, por exemplo, o 3º e o 7º.
-- Itens que você arquivou no 1Password permanecem arquivados quando você os importa.
-- Logins transferidos do 1Password mantêm suas datas originais.
-- Bramble agora está disponível em bengali.
+- Quando dois dos seus dispositivos alteram partes diferentes de um mesmo item, como a senha em um e as notas no outro, ambas as alterações são mantidas.
+- Importe suas senhas do Firefox e do 1Password 7.
+- Adicione um backup do Bramble ao cofre que você tem aberto em Configurações → Backups → Importar um backup. Os itens que você já tem não são adicionados duas vezes.
+- A exportação do KeePass agora inclui suas chaves de acesso, para que o KeePassXC possa entrar com elas.
 
 Sem conta, sem nuvem. Tudo permanece nos seus dispositivos.

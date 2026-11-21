@@ -1,10 +1,8 @@
 What's new in this release:
 
-- When autofill has no login for a sign-up form, choose New login to make one, with a generated password, and fill it in one step.
-- Sort your vault by Recent activity: the latest of when you used, added or edited each item.
-- A revealed password shows the position of each character, for sites that ask for, say, the 3rd and 7th.
-- Items you archived in 1Password stay archived when you import them.
-- Logins moved over from 1Password keep their original dates.
-- Bramble is now available in Bengali.
+- When two of your devices change different parts of one item, like its password on one and its notes on the other, both changes are kept.
+- Import your passwords from Firefox, and from 1Password 7.
+- Add a Bramble backup to the vault you have open from Settings → Backups → Import a backup. Entries you already have aren't added twice.
+- The KeePass export now includes your passkeys, so KeePassXC can sign in with them.
 
 No account, no cloud. Everything stays on your devices.

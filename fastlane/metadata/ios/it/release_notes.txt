@@ -1,10 +1,8 @@
-Novità di questa versione:
+Novità in questa versione:
 
-- Quando il riempimento automatico non trova una credenziale per un modulo di registrazione, scegliere Nuova credenziale per crearne una, con una password generata, e compilarlo in un unico passaggio.
-- Ordinare la cassaforte per Attività recente: la più recente tra le date di utilizzo, aggiunta o modifica di ogni elemento.
-- Una password mostrata indica la posizione di ogni carattere, per i siti che chiedono, ad esempio, il 3° e il 7°.
-- Gli elementi archiviati in 1Password restano archiviati quando vengono importati.
-- Gli accessi trasferiti da 1Password conservano le date originali.
-- Bramble è ora disponibile in bengalese.
+- Quando due dispositivi modificano parti diverse di uno stesso elemento, come la password su uno e le note sull'altro, entrambe le modifiche vengono conservate.
+- Importare le password da Firefox e da 1Password 7.
+- Aggiungere un backup Bramble alla cassaforte aperta da Impostazioni → Backup → Importa un backup. Gli elementi già presenti non vengono aggiunti due volte.
+- L'esportazione KeePass ora include le chiavi di accesso, così KeePassXC può accedere con esse.
 
-Nessun account, nessun cloud. Tutto resta sui dispositivi.
+Nessun account, nessun cloud. Tutto rimane sui dispositivi.

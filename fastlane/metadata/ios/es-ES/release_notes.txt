@@ -1,10 +1,8 @@
 Novedades de esta versión:
 
-- Cuando el autocompletado no tenga ninguna credencial para un formulario de registro, elija Nueva credencial para crear una con una contraseña generada y rellénela en un solo paso.
-- Ordene su bóveda por Actividad reciente: la fecha más reciente en la que usó, añadió o editó cada elemento.
-- Una contraseña revelada muestra la posición de cada carácter, para los sitios que piden, por ejemplo, el tercero y el séptimo.
-- Los elementos que archivó en 1Password permanecen archivados al importarlos.
-- Los inicios de sesión transferidos desde 1Password conservan sus fechas originales.
-- Bramble ya está disponible en bengalí.
+- Cuando dos de sus dispositivos modifican partes distintas de un mismo elemento, como su contraseña en uno y sus notas en el otro, se conservan ambos cambios.
+- Importe sus contraseñas desde Firefox y desde 1Password 7.
+- Añada una copia de seguridad de Bramble a la bóveda que tenga abierta desde Configuración → Copias de seguridad → Importar una copia de seguridad. Las entradas que ya tiene no se añaden dos veces.
+- La exportación de KeePass ahora incluye sus claves de acceso, para que KeePassXC pueda iniciar sesión con ellas.
 
 Sin cuenta, sin nube. Todo permanece en sus dispositivos.
