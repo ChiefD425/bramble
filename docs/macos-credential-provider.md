@@ -309,7 +309,7 @@ copy, the last vault opened; [Several vaults](#several-vaults) is the design for
 
 ### Several vaults
 
-**Status: designed 2026-11-20, not built.** With one copy, the sheet only knows the last vault
+**Status: built and checked on a Mac 2026-11-21.** With one copy, the sheet only knows the last vault
 opened in the app. The browser extension's Tap to unlock key lives in the vault it unlocks, so
 after opening another vault in the app, Tap to unlock asks for the wrong vault and has no passkey
 to offer.
@@ -341,6 +341,17 @@ to offer.
   request that needs it says to open that vault in Bramble first.
 - **iOS** can hold several vaults too and keeps one copy the same way. It gets this design after
   macOS, in its own plan.
+- **Safari's suggestions** under a sign-in field are the same store's login identities, behind
+  Settings > General > AutoFill suggestions (`pref.autofillQuickType`, off by default, as on the
+  phone): on, macOS keeps the usernames and sites outside the vault. Off, every vault's login and
+  code identities leave the store. Safari shows one per site and folds the rest away; each carries
+  `rank`, the login's last use in seconds, so the one used last is shown. Switching Bramble on in
+  AutoFill & Passwords sends the open vault's again within seconds, since macOS drops a provider's
+  identities while it is off; other vaults' return as each is opened.
+- **Two traps found building it.** The read-back hands its completion block to another process
+  over XPC, which refuses a block without argument types, so the Rust block carries its encoding
+  (`v16@?0@"NSArray"8`). And an Objective-C exception escaping into Rust aborts the app, so every
+  store update runs inside an exception catch that logs it instead.
 
 ### Unlocking inside the extension
 
