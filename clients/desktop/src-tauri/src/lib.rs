@@ -198,6 +198,8 @@ pub fn run() {
             // is usually hidden and a hidden webview's timers are throttled. See `backup`.
             backup::start_ticker(app.handle().clone());
             autolock::start(app.handle().clone());
+            #[cfg(target_os = "macos")]
+            autofill_provider::watch_enabled(app.handle().clone());
 
             // The browser proxy's end of the pipe. Bound at startup rather than on first
             // pairing: an extension that is already paired reconnects whenever its browser

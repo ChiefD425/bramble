@@ -186,15 +186,25 @@ export function GeneralSection() {
 				</Row>
 			)}
 
-			{/* Keyboard suggestions opt-in: only shown where inline suggestions can actually
-			    render (always on iOS; on Android only on a keyboard that supports them). Off by
-			    default; turning it on surfaces matching logins inline above the keyboard.
+			{/* Suggestions opt-in: only shown where inline suggestions can actually render (iOS; Android
+			    on a keyboard that supports them; macOS, below fields in Safari). Off by default, since
+			    the OS keeps the usernames and sites outside the vault to show them before unlock.
 			    Re-index immediately so the change takes effect. */}
-			{autofill.setKeepUnlocked && inlineAvailable && (
+			{inlineAvailable && (
 				<Row
-					icon={<Keyboard className="w-4 h-4 text-primary" />}
-					title={t`Keyboard suggestions`}
-					subtitle={t`Show matching logins above the keyboard for one-tap autofill.`}
+					icon={
+						target === "desktop" ? (
+							<TextCursorInput className="w-4 h-4 text-primary" />
+						) : (
+							<Keyboard className="w-4 h-4 text-primary" />
+						)
+					}
+					title={target === "desktop" ? t`AutoFill suggestions` : t`Keyboard suggestions`}
+					subtitle={
+						target === "desktop"
+							? t`Show your logins below sign-in fields in Safari. macOS keeps their usernames and sites outside your vault.`
+							: t`Show matching logins above the keyboard for one-tap autofill.`
+					}
 				>
 					<Toggle
 						checked={prefs.autofillQuickType}
@@ -204,7 +214,9 @@ export function GeneralSection() {
 								await refreshAutofillIndex();
 							})()
 						}
-						label={t`Toggle keyboard suggestions`}
+						label={
+							target === "desktop" ? t`Toggle AutoFill suggestions` : t`Toggle keyboard suggestions`
+						}
 					/>
 				</Row>
 			)}

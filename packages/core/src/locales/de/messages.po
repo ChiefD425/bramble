@@ -703,6 +703,10 @@ msgstr "Nach dem Ausfüllen automatisch absenden"
 msgid "Autofill on web pages"
 msgstr "Autofill auf Webseiten"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "AutoFill suggestions"
+msgstr "AutoFill-Vorschläge"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Avoid look-alike characters (0 O l 1)"
 msgstr "Verwechselbare Zeichen vermeiden (0 O l 1)"
@@ -3795,6 +3799,10 @@ msgstr "Anzeige dieses Eintrags im Autofüll-Dropdown. Ist diese Funktion deakti
 msgid "Show value"
 msgstr "Wert anzeigen"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Show your logins below sign-in fields in Safari. macOS keeps their usernames and sites outside your vault."
+msgstr "Zeigt Ihre Zugangsdaten unter Anmeldefeldern in Safari. macOS speichert deren Benutzernamen und Websites außerhalb Ihres Tresors."
+
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
 #~ msgstr "Melden Sie sich an und Bramble speichert verschlüsselte Sicherungen in seinem eigenen {name}-App-Ordner. Es wird nur Chiffretext hochgeladen, sodass {name} nichts in Ihrem Tresor lesen kann."
@@ -4448,6 +4456,10 @@ msgstr "Titel"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle autofill on web pages"
 msgstr "Autofill auf Webseiten umschalten"
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Toggle AutoFill suggestions"
+msgstr "AutoFill-Vorschläge umschalten"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle Bramble passkey provider"

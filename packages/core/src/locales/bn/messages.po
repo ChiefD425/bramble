@@ -703,6 +703,10 @@ msgstr "পূরণের পর নিজে থেকেই সাবমি�
 msgid "Autofill on web pages"
 msgstr "ওয়েব পেজে অটোফিল"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "AutoFill suggestions"
+msgstr "AutoFill সাজেশন"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Avoid look-alike characters (0 O l 1)"
 msgstr "দেখতে একই রকম অক্ষর বাদ দিন (0 O l 1)"
@@ -3775,6 +3779,10 @@ msgstr "অটোফিল ড্রপডাউনে এই এন্ট্র
 msgid "Show value"
 msgstr "মান দেখান"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Show your logins below sign-in fields in Safari. macOS keeps their usernames and sites outside your vault."
+msgstr "Safari-তে সাইন-ইন ঘরের নিচে আপনার লগইন দেখান। macOS এগুলোর ব্যবহারকারীর নাম ও সাইট আপনার ভল্টের বাইরে রাখে।"
+
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
 #~ msgstr "সাইন ইন করলে Bramble তার নিজের {name} অ্যাপ ফোল্ডারে এনক্রিপ্ট করা ব্যাকআপ রাখে। শুধু এনক্রিপ্ট করা ডেটা আপলোড হয়, তাই {name} আপনার ভল্টের কিছুই পড়তে পারে না।"
@@ -4424,6 +4432,10 @@ msgstr "শিরোনাম"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle autofill on web pages"
 msgstr "ওয়েব পেজে অটোফিল চালু বা বন্ধ করুন"
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Toggle AutoFill suggestions"
+msgstr "AutoFill সাজেশন চালু বা বন্ধ করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle Bramble passkey provider"

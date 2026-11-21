@@ -152,3 +152,27 @@ describe("GeneralSection keyboard suggestions", () => {
 		await vi.waitFor(() => expect(calls).toEqual(["update:autofillQuickType=true", "refresh"]));
 	});
 });
+
+describe("GeneralSection AutoFill suggestions on the Mac", () => {
+	it("is offered under its Mac name, saved, then sent to macOS when switched on", async () => {
+		const calls: string[] = [];
+		h.update = async (key, value) => void calls.push(`update:${key}=${value}`);
+		h.refreshAutofillIndex = async () => void calls.push("refresh");
+		const platform = {
+			target: "desktop",
+			autofill: { inlineSuggestionsAvailable: async () => true },
+			shell: {},
+		} as unknown as Platform;
+		render(
+			<I18nProvider i18n={i18n}>
+				<PlatformProvider platform={platform}>
+					<GeneralSection />
+				</PlatformProvider>
+			</I18nProvider>,
+		);
+		fireEvent.click(await screen.findByLabelText("Toggle AutoFill suggestions"));
+		await vi.waitFor(() => expect(calls).toEqual(["update:autofillQuickType=true", "refresh"]));
+		expect(screen.getByText("AutoFill suggestions")).toBeTruthy();
+		expect(screen.queryByText("Keyboard suggestions")).toBeNull();
+	});
+});

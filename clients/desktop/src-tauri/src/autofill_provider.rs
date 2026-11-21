@@ -42,6 +42,9 @@ pub struct Mirror {
     pub one_time_code_identities: Vec<CodeIdentity>,
     #[serde(default, skip_serializing)]
     pub passkey_identities: Vec<PasskeyIdentity>,
+    /// Whether macOS may list logins and codes. Off, every vault's leave the store, not only this one's.
+    #[serde(default, skip_serializing)]
+    pub suggest_logins: bool,
     /// The vaults the app lists. A copy of any other vault is pruned; empty prunes nothing.
     #[serde(default, skip_serializing)]
     pub listed_vault_ids: Vec<String>,
@@ -173,6 +176,34 @@ fn store_plan(op: StoreOp, read: Read) -> Plan {
         (StoreOp::Delete, Read::Unsupported) => Plan::ClearAll,
         (StoreOp::Prune, Read::Unsupported) | (_, Read::Slow) => Plan::Nothing,
     }
+}
+
+/// Sent when Bramble is switched on in AutoFill: macOS dropped its suggestions while it was off.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+const PROVIDER_ENABLED_EVENT: &str = "autofill-provider-enabled";
+
+/// The moment Bramble comes back on in AutoFill. The first look is not a change.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn became_enabled(was: Option<bool>, now: bool) -> bool {
+    was == Some(false) && now
+}
+
+/// Tell the webview when Bramble is switched on in AutoFill, so it sends the open vault's
+/// suggestions again rather than leaving macOS without them until the next unlock.
+#[cfg(target_os = "macos")]
+pub fn watch_enabled(app: tauri::AppHandle) {
+    use tauri::Emitter;
+    std::thread::spawn(move || {
+        let mut was = None;
+        loop {
+            let now = store::is_enabled();
+            if became_enabled(was, now) {
+                let _ = app.emit(PROVIDER_ENABLED_EVENT, ());
+            }
+            was = Some(now);
+            std::thread::sleep(std::time::Duration::from_secs(5));
+        }
+    });
 }
 
 /// A store identity's record identifier, carrying its vault so the sheet knows which to open.
@@ -474,6 +505,29 @@ mod store {
         yes.as_bool()
     }
 
+    /// Passkeys are offered by credential when a site asks; logins and codes are what show under
+    /// fields, and what the suggestions setting governs.
+    pub(super) fn is_passkey(obj: &AnyObject) -> bool {
+        let Some(cls) = AnyClass::get(c"ASPasskeyCredentialIdentity") else {
+            return false;
+        };
+        let yes: Bool = unsafe { msg_send![obj, isKindOfClass: cls] };
+        yes.as_bool()
+    }
+
+    /// Whether Bramble is on in AutoFill & Passwords.
+    pub(super) fn is_enabled() -> bool {
+        let mut on = false;
+        guarded("read the store's state", || {
+            autoreleasepool(|_| {
+                if let Some(store) = shared() {
+                    on = enabled(&store);
+                }
+            })
+        });
+        on
+    }
+
     /// An identity's record identifier, or None from anything that does not answer for one.
     pub(super) fn record_identifier(obj: &AnyObject) -> Option<String> {
         if !answers(obj, sel!(recordIdentifier)) {
@@ -632,11 +686,20 @@ mod store {
         (Read::Got, read)
     }
 
-    /// Remove `vault_id`'s identities from what the store read back.
-    fn remove_tagged(store: &AnyObject, existing: &[Retained<AnyObject>], vault_id: &str) {
+    /// Remove `vault_id`'s identities from what the store read back, and with `logins_off` every
+    /// vault's logins and codes.
+    fn remove_tagged(
+        store: &AnyObject,
+        existing: &[Retained<AnyObject>],
+        vault_id: &str,
+        logins_off: bool,
+    ) {
         let theirs: Vec<Retained<AnyObject>> = existing
             .iter()
-            .filter(|o| record_identifier(o).is_some_and(|id| super::tagged_for(&id, vault_id)))
+            .filter(|o| {
+                (logins_off && !is_passkey(o))
+                    || record_identifier(o).is_some_and(|id| super::tagged_for(&id, vault_id))
+            })
             .cloned()
             .collect();
         if theirs.is_empty() {
@@ -671,13 +734,13 @@ mod store {
     }
 
     /// Update the store for one vault as `store_plan` says, from what it could read back.
-    fn apply(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>]) {
+    fn apply(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>], logins_off: bool) {
         guarded(&format!("{op:?} {vault_id}"), || {
-            autoreleasepool(|_| apply_in_pool(op, vault_id, mine))
+            autoreleasepool(|_| apply_in_pool(op, vault_id, mine, logins_off))
         });
     }
 
-    fn apply_in_pool(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>]) {
+    fn apply_in_pool(op: StoreOp, vault_id: &str, mine: &[Retained<AnyObject>], logins_off: bool) {
         {
             let Some(store) = shared() else { return };
             if !enabled(&store) {
@@ -692,11 +755,11 @@ mod store {
             match store_plan(op, read) {
                 Plan::ReplaceAll => replace_with(&store, mine),
                 Plan::RemoveTaggedThenSave => {
-                    remove_tagged(&store, &existing, vault_id);
+                    remove_tagged(&store, &existing, vault_id, logins_off);
                     save(&store, mine);
                 }
                 Plan::SaveOnly => save(&store, mine),
-                Plan::RemoveTagged => remove_tagged(&store, &existing, vault_id),
+                Plan::RemoveTagged => remove_tagged(&store, &existing, vault_id, false),
                 Plan::ClearAll => replace_with(&store, &[]),
                 Plan::Nothing => {}
             }
@@ -705,17 +768,22 @@ mod store {
 
     /// This vault's identities swapped for the new ones, every other vault's left as they are.
     pub(super) fn replace_vault(m: &Mirror) {
-        apply(StoreOp::Write, &m.vault_id, &identities(m));
+        apply(
+            StoreOp::Write,
+            &m.vault_id,
+            &identities(m),
+            !m.suggest_logins,
+        );
     }
 
     /// A vault no longer listed: its identities go.
     pub(super) fn prune_vault(vault_id: &str) {
-        apply(StoreOp::Prune, vault_id, &[]);
+        apply(StoreOp::Prune, vault_id, &[], false);
     }
 
     /// The vault is deleted: its identities go too.
     pub(super) fn remove_vault(vault_id: &str) {
-        apply(StoreOp::Delete, vault_id, &[]);
+        apply(StoreOp::Delete, vault_id, &[], false);
     }
 }
 
@@ -769,6 +837,7 @@ mod tests {
         assert!(written.get("identities").is_none());
         assert!(written.get("passkeyIdentities").is_none());
         assert!(written.get("listedVaultIds").is_none());
+        assert!(written.get("suggestLogins").is_none());
         let names: Vec<_> = std::fs::read_dir(group.join(COPIES_DIR))
             .unwrap()
             .map(|e| e.unwrap().file_name().into_string().unwrap())
@@ -959,6 +1028,29 @@ mod tests {
         assert!(taken.is_some());
         drop(taken);
         assert_eq!(count(), before);
+    }
+
+    // macOS drops a provider's suggestions while it is off, so the moment it comes back on is when
+    // the open vault's are sent again. Not on the first look, which is not a change.
+    #[test]
+    fn tells_when_bramble_was_just_switched_on_in_autofill() {
+        assert!(became_enabled(Some(false), true));
+        assert!(!became_enabled(None, true));
+        assert!(!became_enabled(Some(true), true));
+        assert!(!became_enabled(Some(true), false));
+        assert!(!became_enabled(Some(false), false));
+    }
+
+    // Turning suggestions off takes every vault's logins and codes out of macOS; passkeys stay, as
+    // they are offered by credential, not shown under fields.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn tells_a_passkey_from_a_login_or_code_suggestion() {
+        let built = store::identities(&mirror());
+        let passkeys = built.iter().filter(|o| store::is_passkey(o)).count();
+        assert_eq!(passkeys, 1);
+        assert_eq!(built.len() - passkeys, built.len() - 1);
+        assert!(built.len() >= 2);
     }
 
     #[test]

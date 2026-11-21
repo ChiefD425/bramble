@@ -58,6 +58,8 @@ function makePlatform() {
 	const events: string[] = [];
 	// The vault each provider copy was written for (undefined: written without one).
 	const copies: (string | undefined)[] = [];
+	// Bramble switched on in AutoFill: macOS dropped what it held while Bramble was off.
+	const turnedOn = new Set<() => void>();
 	const autofill = (vaultId?: string) => ({
 		clearIndex: async () => {},
 		setIndex: async () => void copies.push(vaultId),
@@ -105,7 +107,13 @@ function makePlatform() {
 				locked = true;
 			},
 		},
-		autofill: autofill(),
+		autofill: {
+			...autofill(),
+			onProviderEnabled: (cb: () => void) => {
+				turnedOn.add(cb);
+				return () => turnedOn.delete(cb);
+			},
+		},
 		biometric: {
 			holdsKeyNatively: true,
 			isAvailable: async () => true,
@@ -131,7 +139,10 @@ function makePlatform() {
 		},
 		clipboard: {},
 	} as unknown as Platform;
-	return { platform, events, copies };
+	const turnOn = () => {
+		for (const cb of turnedOn) cb();
+	};
+	return { platform, events, copies, turnOn };
 }
 
 async function openOnNewVault() {
@@ -181,6 +192,20 @@ describe("the AutoFill extension's copy of the vault", () => {
 		await act(() => m.actions().unlock("pw"));
 		await act(() => m.actions().addEntry({ type: "note", name: "fresh" }));
 		expect(copies).toEqual(["vault-new", "vault-new"]);
+	});
+
+	it("is rewritten when Bramble is turned on in AutoFill, which had dropped it", async () => {
+		const { m, copies, turnOn } = await openOnNewVault();
+		await act(() => m.actions().unlock("pw"));
+		act(turnOn);
+		await waitFor(() => expect(copies).toEqual(["vault-new", "vault-new"]));
+	});
+
+	it("is left alone when Bramble is turned on while the vault is locked", async () => {
+		const { copies, turnOn } = await openOnNewVault();
+		act(turnOn);
+		await act(async () => {});
+		expect(copies).toEqual([]);
 	});
 
 	it("is rewritten when the master password changes, so the old one stops opening it", async () => {

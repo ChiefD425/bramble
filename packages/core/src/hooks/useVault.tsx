@@ -815,6 +815,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		await publishIndex(toAutofillIndex(latestRef.current.entries), lease);
 	}, [autofill, publishIndex]);
 
+	// Switched back on in AutoFill, macOS holds none of the open vault's suggestions: send them again.
+	useEffect(() => {
+		if (isLocked || !platformAutofill.onProviderEnabled) return;
+		return platformAutofill.onProviderEnabled(() => void refreshAutofillIndex());
+	}, [isLocked, platformAutofill, refreshAutofillIndex]);
+
 	/** Decrypt all entries and push the autofill index. */
 	// `vaultId` names the vault when the caller just created or selected it and this closure's
 	// `activeId` hasn't caught up (the restore screen's first-vault unlock).

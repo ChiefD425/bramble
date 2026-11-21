@@ -232,6 +232,11 @@ export interface AutofillAdapter {
 	 * vault: the recorded active vault still names the previous one partway through an unlock.
 	 */
 	withVault?(vaultId: string): AutofillAdapter;
+	/**
+	 * macOS: Bramble was just switched on in AutoFill. macOS drops a provider's suggestions while it
+	 * is off, so the open vault's are sent again. Returns an unsubscribe.
+	 */
+	onProviderEnabled?(callback: () => void): () => void;
 	/** Clear the pushed index (on lock). */
 	clearIndex(lease?: unknown): Promise<void>;
 	/**

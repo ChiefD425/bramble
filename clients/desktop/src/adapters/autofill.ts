@@ -18,6 +18,7 @@ import {
 } from "@core/vault/vault-registry";
 import { decodeVaultBlob } from "@core/vault-format";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { desktopCrypto } from "./crypto";
 import { desktopStorage } from "./storage";
 
@@ -62,6 +63,8 @@ async function mirrorForProvider(entries: IndexEntry[], vaultId: string): Promis
 			ciphertext: enc.ciphertext,
 			vaultId,
 			vaultName: picker.name,
+			// Off, every vault's login and code suggestions leave macOS, not only this vault's.
+			suggestLogins: quickType,
 			listedVaultIds: picker.listed,
 			slot,
 			passkeyIv: encPk.iv,
@@ -93,6 +96,20 @@ function desktopAutofillFor(vaultId?: string): AutofillAdapter {
 				);
 		},
 		withVault: (id) => desktopAutofillFor(id),
+		// Below sign-in fields in Safari, from the logins macOS holds for the AutoFill extension.
+		inlineSuggestionsAvailable: async () => onMac(),
+		onProviderEnabled: (callback) => {
+			let stop: (() => void) | null = null;
+			let gone = false;
+			void listen("autofill-provider-enabled", () => callback()).then((un) => {
+				if (gone) un();
+				else stop = un;
+			});
+			return () => {
+				gone = true;
+				stop?.();
+			};
+		},
 		// The mirror stays on lock, as on iOS: it is VEK-encrypted, and the extension unlocks on its own.
 		clearIndex: () => invoke<void>("link_clear_index"),
 		clearProviderData: async () => {

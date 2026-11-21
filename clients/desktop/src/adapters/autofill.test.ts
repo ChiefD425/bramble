@@ -3,7 +3,8 @@ import type { IndexEntry } from "@core/index";
 import { VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invoke, meta, encrypt, readVaultBlob } = vi.hoisted(() => ({
+const { invoke, meta, encrypt, readVaultBlob, events } = vi.hoisted(() => ({
+	events: new Map<string, () => void>(),
 	invoke: vi.fn(async (_cmd: string, _args?: unknown) => {}),
 	meta: new Map<string, unknown>(),
 	encrypt: vi.fn(async (plaintext: string) => ({ iv: "IV", ciphertext: plaintext })),
@@ -13,6 +14,12 @@ const { invoke, meta, encrypt, readVaultBlob } = vi.hoisted(() => ({
 	}),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+vi.mock("@tauri-apps/api/event", () => ({
+	listen: async (event: string, handler: () => void) => {
+		events.set(event, handler);
+		return () => events.delete(event);
+	},
+}));
 vi.mock("./crypto", () => ({ desktopCrypto: { encryptWithVek: encrypt } }));
 vi.mock("./storage", () => ({
 	desktopStorage: { getMeta: async (k: string) => meta.get(k), readVaultBlob },
@@ -41,6 +48,7 @@ const mirrorCall = () =>
 	invoke.mock.calls.find(([cmd]) => cmd === "autofill_provider_set")?.[1] as
 		| {
 				mirror: {
+					suggestLogins?: boolean;
 					ciphertext: string;
 					vaultId: string;
 					vaultName?: string;
@@ -182,5 +190,33 @@ describe("desktopAutofill", () => {
 		await desktopAutofill.setIndex([login]);
 		expect(invoke).toHaveBeenCalledWith("link_set_index", { entries: [login] });
 		expect(mirrorCall()).toBeUndefined();
+	});
+
+	it("offers AutoFill suggestions only on a Mac", async () => {
+		onMac(true);
+		expect(await desktopAutofill.inlineSuggestionsAvailable?.()).toBe(true);
+		onMac(false);
+		expect(await desktopAutofill.inlineSuggestionsAvailable?.()).toBe(false);
+	});
+
+	// Off, every vault's login and code suggestions leave macOS, not only the open vault's.
+	it("tells the copy whether login suggestions are on", async () => {
+		onMac(true);
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.suggestLogins).toBe(false);
+		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
+		invoke.mockClear();
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.suggestLogins).toBe(true);
+	});
+
+	it("hears Bramble being switched on in AutoFill, until unsubscribed", async () => {
+		const heard = vi.fn();
+		const stop = desktopAutofill.onProviderEnabled?.(heard);
+		await vi.waitFor(() => expect(events.has("autofill-provider-enabled")).toBe(true));
+		events.get("autofill-provider-enabled")?.();
+		expect(heard).toHaveBeenCalledTimes(1);
+		stop?.();
+		await vi.waitFor(() => expect(events.has("autofill-provider-enabled")).toBe(false));
 	});
 });
