@@ -273,11 +273,17 @@ pub fn autofill_restore_pending_passkeys(keep: Vec<Record>) -> Result<(), String
     }
 }
 
+/// One write at a time: each reads the store back, swaps a vault's identities, and writes through a
+/// temp file named for the vault, so two at once would leave stale identities or clobber the file.
+#[cfg(target_os = "macos")]
+static WRITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Replace the extension's mirror and the OS identities. Not on other platforms.
 #[tauri::command(async)]
 pub fn autofill_provider_set(mirror: Mirror) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
+        let _one = WRITES.lock().unwrap_or_else(|e| e.into_inner());
         let dir = group_dir().ok_or("no home directory")?;
         let now_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -304,6 +310,7 @@ pub fn autofill_provider_set(mirror: Mirror) -> Result<(), String> {
 pub fn autofill_provider_clear(vault_id: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
+        let _one = WRITES.lock().unwrap_or_else(|e| e.into_inner());
         clear_mirror(&group_dir().ok_or("no home directory")?, &vault_id)?;
         store::remove_vault(&vault_id);
     }
