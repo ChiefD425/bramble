@@ -27,7 +27,7 @@ RECURSOS
 - Gerador de senhas integrado.
 - Verificação opcional de vazamentos. Consulta Have I Been Pwned usando k-anonymity, para que nada sobre sua senha saia do seu computador. Desativada por padrão.
 - Bloqueio automático após 15 minutos ocioso (configurável).
-- Importe de 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Apple Passwords e Google Password Manager.
+- Troca fácil. Importe de outros gerenciadores de senhas ou de um arquivo KeePass.
 
 POR QUE LOCAL EM PRIMEIRO LUGAR
 
