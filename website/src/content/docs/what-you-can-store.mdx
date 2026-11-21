@@ -45,6 +45,9 @@ keywords:
   - compromised password
   - weak password
   - This password appeared in a known data breach.
+  - Checked for breaches
+  - Not checked for breaches yet
+  - how often
   - Add New
   - At Risk
   - Reused
@@ -113,6 +116,6 @@ Archive an item to keep it without seeing it every day. Archived items stay in y
 
 The **Overview** above your list counts **Total Items**, **At Risk** and **Strong**. Choose a count to list those items.
 
-**At Risk** shows logins whose password another login also uses, marked **Reused**, or whose password is in a known data breach. Bramble finds reused passwords on your device. The breach check is off by default: open **Settings → General** and turn on **Check passwords for breaches**. Bramble sends only the first 5 characters of a hash of each password to haveibeenpwned.com, never the password itself.
+**At Risk** shows logins whose password another login also uses, marked **Reused**, or whose password is in a known data breach. Bramble finds reused passwords on your device. The breach check is off by default: open **Settings → General** and turn on **Check passwords for breaches**. Bramble sends only the first 5 characters of a hash of each password to haveibeenpwned.com, never the password itself.<Since commit="8ffbb526"> Turning it on checks every login you have. After that, while Bramble is open and unlocked, it checks new and changed logins, and each login again every week. Archived logins are checked when you open them. Under **Password**, a login shows when it was last checked, such as **Checked for breaches 3 days ago**.</Since>
 
 A breached login shows **This password appeared in a known data breach.** Change the password on that site, then update it in Bramble. The [password generator](/docs/password-generator) can make a new one.
