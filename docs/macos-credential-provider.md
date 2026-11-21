@@ -303,9 +303,44 @@ extension for the secret when the user picks one.
 (which Touch ID item to read) and its name, which the sheet shows beside the brand as the app does.
 It is written for the vault being opened, through the adapter's `withVault` view, never from the
 recorded active vault: that still names the previous vault partway through an unlock, and a copy
-built from it paired one vault's logins with another's password and Touch ID (2026-11-20). With
-several vaults it is the last one opened in the app. A password change or removal rewrites it, so
-an old password stops opening it.
+built from it paired one vault's logins with another's password and Touch ID (2026-11-20). A
+password change or removal rewrites it, so an old password stops opening it. Today there is one
+copy, the last vault opened; [Several vaults](#several-vaults) is the design for one per vault.
+
+### Several vaults
+
+**Status: designed 2026-11-20, not built.** With one copy, the sheet only knows the last vault
+opened in the app. The browser extension's Tap to unlock key lives in the vault it unlocks, so
+after opening another vault in the app, Tap to unlock asks for the wrong vault and has no passkey
+to offer.
+
+- **One copy per vault**, `autofill/<vaultId>.json` in the group container, written whenever that
+  vault is open in the app, as today's copy is. Encrypted as now. In the clear beside it: the vault's
+  id and name, the passkey credential IDs it holds (already registered with macOS) and when it was
+  written. Every vault opened on this Mac then has an encrypted copy there, where today only the
+  last one does; each still opens only with that vault's master password or Touch ID item.
+- **The sheet picks the vault from the request.** A suggestion's record identifier carries its
+  vault (`<vaultId>:<id>`). A sign-in that names its credentials, as Tap to unlock does through
+  `allowCredentials`, goes to the vault holding one of them. Anything else starts on the copy
+  written last, with a vault menu on the unlock screen when there is more than one.
+- **macOS lists every vault's suggestions**, as it lists the last vault's today. Each vault's are
+  swapped on their own when its copy is written: on macOS 14.4+ the store reads back
+  (`getCredentialIdentitiesForService:credentialIdentityTypes:`), so the app removes the identities
+  tagged with that vault and saves the new ones, and keeps no list of its own. Before 14.4 there is
+  no read-back, so the store holds the last vault's only, as now.
+- **A vault leaves the sheet when it leaves the picker.** A deleted vault's copy and identities go
+  at once. Any other copy whose vault is no longer listed (hidden after a combine, removed
+  elsewhere) is pruned the next time a copy is written.
+- **Passkeys made in the sheet need no vault tag.** They are sealed under the key of the vault the
+  sheet unlocked, so only that vault opens them: the app merges them while that vault is open and
+  keeps them until then (`restore_pending`).
+- **The first write after updating** deletes the old single `autofill.json` and replaces the store
+  with that vault's tagged identities, which clears the untagged ones. Until then the sheet still
+  reads the old file.
+- **A vault without a copy** has not been opened since the update. The sheet cannot offer it, and a
+  request that needs it says to open that vault in Bramble first.
+- **iOS** can hold several vaults too and keeps one copy the same way. It gets this design after
+  macOS, in its own plan.
 
 ### Unlocking inside the extension
 
