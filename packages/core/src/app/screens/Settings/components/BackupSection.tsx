@@ -203,7 +203,7 @@ function ProviderTile({ def, onClick }: { def: ProviderDef; onClick: () => void 
 			</div>
 			<div className="min-w-0">
 				<p className="text-sm truncate">{def.name}</p>
-				<p className="text-xs text-muted-foreground mt-0.5">{def.blurb}</p>
+				<p className="text-xs text-muted-foreground mt-0.5 break-words">{def.blurb}</p>
 			</div>
 		</Button>
 	);
@@ -220,11 +220,14 @@ function ProviderGrid({ onPick }: { onPick: (def: ProviderDef) => void }) {
 		if (ga !== gb) return ga ? 1 : -1;
 		return a.name.localeCompare(b.name);
 	});
+	// Columns by the grid's own width, not the window's: the add-target modal is max-w-md everywhere.
 	return (
-		<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-			{providers.map((p) => (
-				<ProviderTile key={p.id} def={p} onClick={() => onPick(p)} />
-			))}
+		<div className="@container">
+			<div className="grid grid-cols-1 gap-2 @sm:grid-cols-2 @xl:grid-cols-3">
+				{providers.map((p) => (
+					<ProviderTile key={p.id} def={p} onClick={() => onPick(p)} />
+				))}
+			</div>
 		</div>
 	);
 }
