@@ -1017,6 +1017,14 @@ msgstr "Check these match your desktop app"
 msgid "Check this matches"
 msgstr "Check this matches"
 
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches {when}"
+msgstr "Checked for breaches {when}"
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches just now"
+msgstr "Checked for breaches just now"
+
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Checking…"
 msgstr "Checking…"
@@ -2394,7 +2402,7 @@ msgstr "Last backed up {0}"
 msgid "Last complete backup {0}"
 msgstr "Last complete backup {0}"
 
-#. placeholder {0}: relativeTime(lastSynced)
+#. placeholder {0}: formatAgo(lastSynced)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Last synced {0}"
 msgstr "Last synced {0}"
@@ -2738,6 +2746,10 @@ msgstr "Not backed up yet"
 #: packages/core/src/app/components/backup-blocked.tsx
 msgid "Not backed up: this vault's attachments can't be listed while it's locked. Unlock it once to resume."
 msgstr "Not backed up: this vault's attachments can't be listed while it's locked. Unlock it once to resume."
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Not checked for breaches yet"
+msgstr "Not checked for breaches yet"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."

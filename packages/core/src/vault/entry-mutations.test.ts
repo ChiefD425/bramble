@@ -105,10 +105,11 @@ const ENTRY_MUTATIONS: Mutation[] = [
 		},
 	],
 	[
-		"setBreach",
+		"setBreaches",
 		async (h: ReturnType<typeof harness>, s: VaultEntries) => {
 			const a = await h.mutations.add(s, login("x"));
-			return h.mutations.setBreach(a, a.entries[0]!.id, { leaked: false, checkedAt: 1 });
+			const breach = { leaked: false, checkedAt: 1 };
+			return h.mutations.setBreaches(a, [{ id: a.entries[0]!.id, password: "p", breach }]);
 		},
 	],
 ];
@@ -300,15 +301,16 @@ describe("createEntryMutations", () => {
 		expect(h.writes()).toBe(0);
 	});
 
-	// Opening a login re-checks a stale breach status and saves it; a restamp there would let
-	// viewing an entry on one device overwrite an edit made to it on another.
-	it("setBreach keeps the sync stamp and updatedAt", async () => {
+	// Breach checks run on unlock and on opening a login; a restamp there would let a check on one
+	// device overwrite an edit made to the login on another.
+	it("setBreaches keeps the sync stamp and updatedAt", async () => {
 		let t = 1000;
 		const h = harness(() => t);
 		const a = await h.mutations.add(empty(), login("a"));
 		const id = a.entries[0]!.id;
 		t = 9000;
-		const next = await h.mutations.setBreach(a, id, { leaked: true, checkedAt: 9000 });
+		const breach = { leaked: true, checkedAt: 9000 };
+		const next = await h.mutations.setBreaches(a, [{ id, password: "p", breach }]);
 		expect(next.entries[0]).toMatchObject({
 			breach: { leaked: true, checkedAt: 9000 },
 			updatedAt: 1000,
@@ -318,14 +320,44 @@ describe("createEntryMutations", () => {
 		expect(onDisk!.ciphertext).toContain('"leaked":true');
 	});
 
-	it("setBreach no-ops for an unknown id or a non-login", async () => {
+	it("setBreaches no-ops for an unknown id or a non-login", async () => {
 		const h = harness();
 		const a = await h.mutations.add(empty(), note("n"));
 		const writes = h.writes();
 		const breach = { leaked: true, checkedAt: 1 };
-		expect(await h.mutations.setBreach(a, "nope", breach)).toBe(a);
-		expect(await h.mutations.setBreach(a, a.entries[0]!.id, breach)).toBe(a);
+		expect(await h.mutations.setBreaches(a, [{ id: "nope", password: "p", breach }])).toBe(a);
+		const id = a.entries[0]!.id;
+		expect(await h.mutations.setBreaches(a, [{ id, password: "p", breach }])).toBe(a);
 		expect(h.writes()).toBe(writes);
+	});
+
+	// The password changed while the check was out: its result describes a password the login no
+	// longer has, and saving it would mark the new one breached (or clear a real warning).
+	it("setBreaches skips a login whose password changed since the check", async () => {
+		const h = harness();
+		const a = await h.mutations.add(empty(), loginWith("a", { password: "old" }));
+		const id = a.entries[0]!.id;
+		const writes = h.writes();
+		const breach = { leaked: true, checkedAt: 1 };
+		expect(await h.mutations.setBreaches(a, [{ id, password: "new", breach }])).toBe(a);
+		expect(h.writes()).toBe(writes);
+	});
+
+	it("setBreaches saves many results in one write", async () => {
+		const h = harness();
+		const a = await h.mutations.add(empty(), loginWith("a", { password: "pa" }));
+		const b = await h.mutations.add(a, loginWith("b", { password: "pb" }));
+		const writes = h.writes();
+		const [ea, eb] = b.entries;
+		const next = await h.mutations.setBreaches(b, [
+			{ id: ea!.id, password: "pa", breach: { leaked: true, checkedAt: 5 } },
+			{ id: eb!.id, password: "stale", breach: { leaked: true, checkedAt: 5 } },
+		]);
+		expect(h.writes()).toBe(writes + 1);
+		expect(next.entries.map((e) => (e as LoginEntryData).breach)).toEqual([
+			{ leaked: true, checkedAt: 5 },
+			undefined,
+		]);
 	});
 
 	it("rejects invalid entry data before writing", async () => {

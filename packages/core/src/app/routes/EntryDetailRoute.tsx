@@ -3,13 +3,11 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { usePrefs } from "../../hooks/usePrefs";
 import { useVault } from "../../hooks/useVault";
-import { checkPasswordBreach } from "../../util/pwned";
+import { checkPasswordBreach, isBreachCheckDue } from "../../util/pwned";
 import { duplicateEntry } from "../../vault/duplicate";
 import { useRouteBack } from "../hooks/useRouteBack";
 import { setPendingCreateEntry } from "../pending-create-entry";
 import { EntryDetail } from "../screens/EntryDetail/EntryDetail";
-
-const BREACH_STALE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /** Route for a single entry's detail view; lazily refreshes login breach status. */
 export function EntryDetailRoute() {
@@ -23,7 +21,7 @@ export function EntryDetailRoute() {
 		deleteEntry,
 		setEntriesArchived,
 		touchEntry,
-		setEntryBreach,
+		setEntriesBreach,
 		readConflictVersions,
 		resolveConflict,
 	} = useVault();
@@ -38,15 +36,16 @@ export function EntryDetailRoute() {
 		if (entry?.type !== "login" || !prefsLoaded) return;
 		if (!prefs.breachCheckEnabled) return;
 		if (refreshAttemptedRef.current === entry.id) return;
-		const stale = !entry.breach || Date.now() - entry.breach.checkedAt > BREACH_STALE_MS;
-		if (!stale) return;
+		if (!isBreachCheckDue(entry.breach, Date.now())) return;
 		refreshAttemptedRef.current = entry.id;
+		const { id, password } = entry;
 		void (async () => {
-			const breach = await checkPasswordBreach(entry.password);
+			const breach = await checkPasswordBreach(password);
 			if (!breach) return;
-			await setEntryBreach(entry.id, breach);
+			// Dropped if the vault locked meanwhile; the next unlock checks it again.
+			await setEntriesBreach([{ id, password, breach }]).catch(() => {});
 		})();
-	}, [entry, prefsLoaded, prefs.breachCheckEnabled, setEntryBreach]);
+	}, [entry, prefsLoaded, prefs.breachCheckEnabled, setEntriesBreach]);
 
 	if (!entry) return null;
 
@@ -77,6 +76,7 @@ export function EntryDetailRoute() {
 				conflict={conflicts.get(entryId)}
 				onReadConflictVersions={() => readConflictVersions(entryId)}
 				onResolveConflict={(choice) => resolveConflict(entryId, choice)}
+				breachChecks={prefs.breachCheckEnabled}
 			/>
 		</div>
 	);

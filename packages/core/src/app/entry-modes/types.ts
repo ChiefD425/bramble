@@ -12,6 +12,9 @@ export interface EntryFieldsProps {
 /** Props for a mode's detail-body component; the host owns chrome, header, footer, clipboard. */
 export interface EntryDetailBodyProps {
 	entry: Entry;
+	// Login-only: breach checks are on, so say when the password was last checked. Left out where
+	// a conflict's versions are compared.
+	breachChecks?: boolean;
 	// Label of the most recently copied field, or null.
 	copied: string | null;
 	copy: (label: string, value: string) => void;

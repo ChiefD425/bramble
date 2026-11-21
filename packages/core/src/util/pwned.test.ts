@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkPasswordBreach } from "./pwned";
+import { BREACH_RECHECK_MS, checkPasswordBreach, isBreachCheckDue } from "./pwned";
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -35,5 +35,23 @@ describe("checkPasswordBreach", () => {
 			vi.fn(async () => new Response("1E4C9B93F3F0682250B6CF8331B7EE68FD8:3861493\r\n")),
 		);
 		await expect(checkPasswordBreach("password")).resolves.toMatchObject({ leaked: true });
+	});
+});
+
+describe("isBreachCheckDue", () => {
+	const now = 10 * BREACH_RECHECK_MS;
+
+	it("is due when never checked", () => {
+		expect(isBreachCheckDue(undefined, now)).toBe(true);
+	});
+
+	it("holds a result for a week, then is due", () => {
+		expect(isBreachCheckDue({ checkedAt: now - BREACH_RECHECK_MS }, now)).toBe(false);
+		expect(isBreachCheckDue({ checkedAt: now - BREACH_RECHECK_MS - 1 }, now)).toBe(true);
+	});
+
+	// A result stamped by a clock that ran ahead would otherwise wait until the clock caught up.
+	it("is due when the result is stamped in the future", () => {
+		expect(isBreachCheckDue({ checkedAt: now + 1 }, now)).toBe(true);
 	});
 });

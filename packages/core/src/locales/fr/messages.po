@@ -1017,6 +1017,14 @@ msgstr "Vérifier que ceux-ci correspondent à votre application de bureau"
 msgid "Check this matches"
 msgstr "Vérifier la correspondance"
 
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches {when}"
+msgstr "Vérification des fuites de données {when}"
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches just now"
+msgstr "Vérification des fuites de données à l'instant"
+
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Checking…"
 msgstr "Vérification en cours…"
@@ -2394,7 +2402,7 @@ msgstr "Dernière sauvegarde {0}"
 msgid "Last complete backup {0}"
 msgstr "Dernière sauvegarde complète {0}"
 
-#. placeholder {0}: relativeTime(lastSynced)
+#. placeholder {0}: formatAgo(lastSynced)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Last synced {0}"
 msgstr "Dernière synchronisation {0}"
@@ -2738,6 +2746,10 @@ msgstr "Pas encore sauvegardé"
 #: packages/core/src/app/components/backup-blocked.tsx
 msgid "Not backed up: this vault's attachments can't be listed while it's locked. Unlock it once to resume."
 msgstr "Non sauvegardées : les pièces jointes de ce coffre ne peuvent pas être listées tant qu’il est verrouillé. Déverrouillez-le une fois pour reprendre."
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Not checked for breaches yet"
+msgstr "Pas encore de vérification des fuites de données"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."

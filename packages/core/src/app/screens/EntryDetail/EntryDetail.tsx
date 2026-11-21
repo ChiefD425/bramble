@@ -28,6 +28,8 @@ interface EntryDetailProps {
 	conflict?: EntryConflict;
 	onReadConflictVersions?: () => Promise<ConflictVersion[]>;
 	onResolveConflict?: (choice: ConflictChoice) => Promise<void>;
+	/** Breach checks are on: a login says when its password was last checked. */
+	breachChecks?: boolean;
 }
 
 /** Shared chrome for viewing any entry (banner, Edit header, archive/delete footer); the mode supplies the fields. */
@@ -42,6 +44,7 @@ export function EntryDetail({
 	conflict,
 	onReadConflictVersions,
 	onResolveConflict,
+	breachChecks,
 }: EntryDetailProps) {
 	const { clipboard } = usePlatform();
 	const { t } = useLingui();
@@ -163,7 +166,7 @@ export function EntryDetail({
 						</Button>
 					</div>
 
-					<Detail entry={entry} copied={copied} copy={copy} />
+					<Detail entry={entry} copied={copied} copy={copy} breachChecks={breachChecks} />
 
 					{entry.customFields && entry.customFields.length > 0 && (
 						<CustomFieldsDetail fields={entry.customFields} copied={copied} copy={copy} />

@@ -33,6 +33,21 @@ export function formatIn(ms: number): string {
 	return rtf.format(Math.round(hours / 24), "day");
 }
 
+/**
+ * Localized "now" / "5 minutes ago" / "yesterday" / "3 days ago" for a past epoch-ms, rounded to
+ * the largest unit that fits. Under a minute is "now", so a value that updates every few seconds
+ * doesn't flicker.
+ */
+export function formatAgo(at: number, now = Date.now()): string {
+	const rtf = new Intl.RelativeTimeFormat(i18n.locale || "en", { numeric: "auto" });
+	const sec = Math.round((at - now) / 1000);
+	const abs = Math.abs(sec);
+	if (abs < 60) return rtf.format(0, "second");
+	if (abs < 3600) return rtf.format(Math.round(sec / 60), "minute");
+	if (abs < 86_400) return rtf.format(Math.round(sec / 3600), "hour");
+	return rtf.format(Math.round(sec / 86_400), "day");
+}
+
 /** Localized medium date + time to the second, e.g. "Jan 13, 2026, 4:05:22 PM".
  * For the password changelog, where two rotations can land seconds apart. */
 export function formatDateTimeExact(value: number | Date): string {

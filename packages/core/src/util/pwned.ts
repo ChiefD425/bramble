@@ -2,6 +2,16 @@ const crypto = globalThis.crypto;
 
 const BREACH_CHECK_TIMEOUT_MS = 10_000;
 
+/** How long a breach result stands before it is checked again. */
+export const BREACH_RECHECK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Never checked, checked over a week ago, or stamped in the future by a wrong clock, which would
+ * otherwise never come due. */
+export function isBreachCheckDue(breach: { checkedAt: number } | undefined, now: number): boolean {
+	if (!breach || breach.checkedAt > now) return true;
+	return now - breach.checkedAt > BREACH_RECHECK_MS;
+}
+
 /** True if `password`'s SHA-1 appears in the HIBP range API (k-anonymity). Throws on network failure. */
 async function isPasswordLeaked(password: string) {
 	if (typeof password !== "string") throw new Error("Password must be a string");

@@ -909,6 +909,14 @@ msgstr "다음 항목이 데스크톱 앱과 일치하는지 확인하십시오.
 msgid "Check this matches"
 msgstr "이 항목이 일치하는지 확인하십시오."
 
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches {when}"
+msgstr "유출 검사 완료: {when}"
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches just now"
+msgstr "방금 유출 검사 완료"
+
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Checking…"
 msgstr "확인 중…"
@@ -2181,7 +2189,7 @@ msgstr "마지막 백업: {0}"
 msgid "Last complete backup {0}"
 msgstr "마지막 전체 백업: {0}"
 
-#. placeholder {0}: relativeTime(lastSynced)
+#. placeholder {0}: formatAgo(lastSynced)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Last synced {0}"
 msgstr "마지막 동기화: {0}"
@@ -2481,6 +2489,10 @@ msgstr "아직 백업되지 않음"
 #: packages/core/src/app/components/backup-blocked.tsx
 msgid "Not backed up: this vault's attachments can't be listed while it's locked. Unlock it once to resume."
 msgstr "백업되지 않음: 이 볼트가 잠겨 있는 동안에는 첨부 파일을 나열할 수 없습니다. 재개하려면 볼트를 한 번 잠금 해제하십시오."
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Not checked for breaches yet"
+msgstr "아직 유출 검사하지 않음"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"

@@ -27,12 +27,13 @@ import { usePlatform } from "../../context/PlatformContext";
 import { useAliasProvider } from "../../hooks/useAliasProvider";
 import { usePrefs } from "../../hooks/usePrefs";
 import type {
+	BreachStatus,
 	LoginEntry,
 	LoginEntryData,
 	PasskeyCredential,
 	PasswordChange,
 } from "../../hooks/useVault";
-import { formatDate, formatDateTimeExact } from "../../util/format-date";
+import { formatAgo, formatDate, formatDateTimeExact } from "../../util/format-date";
 import { generate } from "../../util/password-gen";
 import { classifyScannedQr, parseTotp, type QrScanFailure, totpAt } from "../../util/totp";
 import { launchableUrl } from "../../util/url";
@@ -637,7 +638,22 @@ function PasswordChangelogField({
 	);
 }
 
-function LoginDetail({ entry, copied, copy }: EntryDetailBodyProps) {
+/** When the password was last checked, so "no breach found" can be told apart from "not checked". */
+function BreachChecked({ breach }: { breach: BreachStatus | undefined }) {
+	const { t } = useLingui();
+	let text: string;
+	if (!breach) {
+		text = t`Not checked for breaches yet`;
+	} else if (Date.now() - breach.checkedAt < 60_000) {
+		text = t`Checked for breaches just now`;
+	} else {
+		const when = formatAgo(breach.checkedAt);
+		text = t`Checked for breaches ${when}`;
+	}
+	return <p className="text-xs text-muted-foreground">{text}</p>;
+}
+
+function LoginDetail({ entry, copied, copy, breachChecks }: EntryDetailBodyProps) {
 	const login = entry as LoginEntry;
 	const { t } = useLingui();
 	const [showPassword, setShowPassword] = useRevealState(false);
@@ -679,31 +695,34 @@ function LoginDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 				<DetailValue>{login.username || "-"}</DetailValue>
 			</DetailField>
 
-			<DetailField
-				label={t`Password`}
-				copied={copied}
-				copyName="password"
-				onCopy={() => copy("password", login.password)}
-				extraAction={
-					<Button
-						variant="ghost"
-						size="none"
-						onClick={() => setShowPassword((v) => !v)}
-						className="p-1.5 rounded-md"
-						aria-label={showPassword ? t`Hide password` : t`Show password`}
-					>
-						{showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-					</Button>
-				}
-			>
-				<DetailValue mono wrap={showPassword}>
-					{showPassword ? (
-						<NumberedChars value={login.password} />
-					) : (
-						"•".repeat(Math.min(login.password.length, 16))
-					)}
-				</DetailValue>
-			</DetailField>
+			<div className="space-y-1.5">
+				<DetailField
+					label={t`Password`}
+					copied={copied}
+					copyName="password"
+					onCopy={() => copy("password", login.password)}
+					extraAction={
+						<Button
+							variant="ghost"
+							size="none"
+							onClick={() => setShowPassword((v) => !v)}
+							className="p-1.5 rounded-md"
+							aria-label={showPassword ? t`Hide password` : t`Show password`}
+						>
+							{showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+						</Button>
+					}
+				>
+					<DetailValue mono wrap={showPassword}>
+						{showPassword ? (
+							<NumberedChars value={login.password} />
+						) : (
+							"•".repeat(Math.min(login.password.length, 16))
+						)}
+					</DetailValue>
+				</DetailField>
+				{breachChecks && login.password && <BreachChecked breach={login.breach} />}
+			</div>
 
 			{login.passwordChangelog && login.passwordChangelog.length > 0 && (
 				<PasswordChangelogField changelog={login.passwordChangelog} copied={copied} copy={copy} />

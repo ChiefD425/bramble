@@ -1,6 +1,6 @@
 import { i18n } from "@lingui/core";
 import { beforeAll, describe, expect, it } from "vitest";
-import { formatIn } from "./format-date";
+import { formatAgo, formatIn } from "./format-date";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -40,5 +40,24 @@ describe("formatIn", () => {
 		i18n.loadAndActivate({ locale: "de", messages: {} });
 		expect(formatIn(2 * HOUR)).toBe("in 2 Stunden");
 		i18n.loadAndActivate({ locale: "en", messages: {} });
+	});
+});
+
+describe("formatAgo", () => {
+	beforeAll(() => {
+		i18n.loadAndActivate({ locale: "en", messages: {} });
+	});
+
+	const now = 1_000 * DAY;
+
+	it("rounds to the largest unit that fits", () => {
+		expect(formatAgo(now - 5 * MIN, now)).toBe("5 minutes ago");
+		expect(formatAgo(now - 2 * HOUR, now)).toBe("2 hours ago");
+		expect(formatAgo(now - DAY, now)).toBe("yesterday");
+		expect(formatAgo(now - 3 * DAY, now)).toBe("3 days ago");
+	});
+
+	it("calls anything under a minute now", () => {
+		expect(formatAgo(now - 59_000, now)).toBe("now");
 	});
 });

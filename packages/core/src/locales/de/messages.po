@@ -1017,6 +1017,14 @@ msgstr "Prüfen Sie, ob diese mit Ihrer Desktop-App übereinstimmen."
 msgid "Check this matches"
 msgstr "Übereinstimmung prüfen"
 
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches {when}"
+msgstr "Auf Datenlecks überprüft {when}"
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Checked for breaches just now"
+msgstr "Gerade eben auf Datenlecks überprüft"
+
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Checking…"
 msgstr "Suche nach Updates…"
@@ -2394,7 +2402,7 @@ msgstr "Zuletzt gesichert {0}"
 msgid "Last complete backup {0}"
 msgstr "Letztes vollständiges Backup {0}"
 
-#. placeholder {0}: relativeTime(lastSynced)
+#. placeholder {0}: formatAgo(lastSynced)
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Last synced {0}"
 msgstr "Zuletzt synchronisiert {0}"
@@ -2738,6 +2746,10 @@ msgstr "Noch nicht gesichert"
 #: packages/core/src/app/components/backup-blocked.tsx
 msgid "Not backed up: this vault's attachments can't be listed while it's locked. Unlock it once to resume."
 msgstr "Nicht gesichert: Die Anhänge dieses Tresors können nicht aufgelistet werden, solange er gesperrt ist. Entsperren Sie ihn einmal, um fortzufahren."
+
+#: packages/core/src/app/entry-modes/login.tsx
+msgid "Not checked for breaches yet"
+msgstr "Noch nicht auf Datenlecks überprüft"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."

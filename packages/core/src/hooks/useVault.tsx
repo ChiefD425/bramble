@@ -39,6 +39,13 @@ export interface BreachStatus {
 	checkedAt: number;
 }
 
+/** A breach check's result, with the password it checked so a later edit isn't given it. */
+export interface BreachResult {
+	id: string;
+	password: string;
+	breach: BreachStatus;
+}
+
 export type EntryType = "login" | "card" | "note" | "ssh-key" | "unlock-key";
 /** The kinds a person ever sees; `unlock-key` is never listed, opened or offered. */
 export type VisibleEntryType = Exclude<EntryType, "unlock-key">;
@@ -479,8 +486,8 @@ export interface VaultActions {
 	setEntriesTags(ids: string[], change: { add?: string[]; remove?: string[] }): Promise<void>;
 	/** Record a use (copy/fill): bumps only the entry's `lastUsedAt`. */
 	touchEntry(id: string): Promise<void>;
-	/** Save a re-checked breach status on a login without restamping it (see `EntryMutations.setBreach`). */
-	setEntryBreach(id: string, breach: { leaked: boolean; checkedAt: number }): Promise<void>;
+	/** Save breach check results in one write, without restamping (see `EntryMutations.setBreaches`). */
+	setEntriesBreach(results: readonly BreachResult[]): Promise<void>;
 	/** The entry's sibling versions, decrypted, newest first. */
 	readConflictVersions(id: string): Promise<ConflictVersion[]>;
 	/** Resolve the entry's conflict; every version this device holds is superseded. */
@@ -1687,9 +1694,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		async (id: string) => commitEntries(await mutations.touch(snapshotEntries(), id)),
 		[mutations, snapshotEntries, commitEntries],
 	);
-	const setEntryBreach = useCallback(
-		async (id: string, breach: { leaked: boolean; checkedAt: number }) =>
-			commitEntries(await mutations.setBreach(snapshotEntries(), id, breach)),
+	const setEntriesBreach = useCallback(
+		async (results: readonly BreachResult[]) =>
+			commitEntries(await mutations.setBreaches(snapshotEntries(), results)),
 		[mutations, snapshotEntries, commitEntries],
 	);
 	// Decrypted on demand only: siblings never reach the list, autofill or the index.
@@ -2505,7 +2512,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			setEntriesArchived,
 			setEntriesTags,
 			touchEntry,
-			setEntryBreach,
+			setEntriesBreach,
 			readConflictVersions,
 			resolveConflict,
 			readEntries,
@@ -2563,7 +2570,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			setEntriesArchived,
 			setEntriesTags,
 			touchEntry,
-			setEntryBreach,
+			setEntriesBreach,
 			readConflictVersions,
 			resolveConflict,
 			readEntries,

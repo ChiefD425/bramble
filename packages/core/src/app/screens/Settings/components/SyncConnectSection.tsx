@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, Copy, Pencil, Plus, RefreshCw, Trash2, Unplug, Wifi, X } from "lucide-react";
@@ -17,7 +16,7 @@ import {
 } from "../../../../sync";
 import { deriveIceUrl } from "../../../../sync/transport/ice";
 import { DEFAULT_RELAY, relayOrDefault } from "../../../../sync/transport/relay-url";
-import { formatDate } from "../../../../util/format-date";
+import { formatAgo, formatDate } from "../../../../util/format-date";
 import { SasDisplay } from "../../../components/SasDisplay";
 import { AdvancedDisclosure } from "../../../components/ui/advanced-disclosure";
 import { Button } from "../../../components/ui/button";
@@ -49,20 +48,6 @@ const addedOn = (ms: number): string => formatDate(ms);
 /** m:ss for the invite countdown. */
 const mmss = (seconds: number): string =>
 	`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-
-// Locale-aware relative time ("just now" / "5 minutes ago" / "2 days ago") via Intl, so
-// "Last synced" reads at a glance. Coarsens by magnitude; refreshes on the next re-render.
-const relativeTime = (ms: number): string => {
-	const rtf = new Intl.RelativeTimeFormat(i18n.locale || "en", { numeric: "auto" });
-	const sec = Math.round((ms - Date.now()) / 1000); // negative = in the past
-	const abs = Math.abs(sec);
-	// Coarsen sub-minute to a stable "now": while both devices are connected they reconcile
-	// every few seconds, so second-precision would flicker "now" / "2 seconds ago".
-	if (abs < 60) return rtf.format(0, "second");
-	if (abs < 3600) return rtf.format(Math.round(sec / 60), "minute");
-	if (abs < 86_400) return rtf.format(Math.round(sec / 3600), "hour");
-	return rtf.format(Math.round(sec / 86_400), "day");
-};
 
 /** A device's name, edited in place. Enter or leaving the field saves; Escape cancels (null). */
 function DeviceNameField({
@@ -500,7 +485,7 @@ export function SyncConnectSection() {
 
 					{lastSynced && (
 						<p className="-mt-2 text-xs text-muted-foreground">
-							<Trans>Last synced {relativeTime(lastSynced)}</Trans>
+							<Trans>Last synced {formatAgo(lastSynced)}</Trans>
 						</p>
 					)}
 

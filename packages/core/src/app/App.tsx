@@ -10,6 +10,7 @@ import { CornerSavedToast } from "./components/CornerSavedToast";
 import { DevFlagsModal, useHydrateDevFlags } from "./components/DevFlagsModal";
 import { ToastProvider } from "./components/ui/toast";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { useBreachSweep } from "./hooks/useBreachSweep";
 import { PopOutProvider } from "./hooks/usePopOut";
 import { concealSecrets } from "./hooks/useRevealState";
 import { ThemeProvider } from "./hooks/useTheme";
@@ -81,6 +82,7 @@ function InnerApp({
 	// Mobile: persist passkeys the native provider minted, and apply the associations
 	// a confirmed "fill and save" pick handed over.
 	usePendingHandoffs();
+	useBreachSweep();
 
 	// Stash the current route so a closed-then-reopened popup resumes it (restore in the
 	// platform boot, gated on an unlocked session). Skip the "/" unlock/redirect route, so a

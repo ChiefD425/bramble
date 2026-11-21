@@ -7,7 +7,7 @@
 import type { AutofillAdapter } from "../adapters/autofill";
 import type { CryptoAdapter } from "../adapters/crypto";
 import type { StorageAdapter } from "../adapters/storage";
-import type { Entry, EntryData } from "../hooks/useVault";
+import type { BreachResult, Entry, EntryData } from "../hooks/useVault";
 import type {
 	Causal,
 	EntriesPayload,
@@ -182,12 +182,11 @@ export interface EntryMutations {
 	 * entry keeps its sync stamp, so the new `lastUsedAt` stays on this device until its next edit.
 	 */
 	touch(current: VaultEntries, id: string): Promise<VaultEntries>;
-	/** Save a re-checked breach status on a login. Not restamped, like `touch`: it is derived, per-device data. */
-	setBreach(
-		current: VaultEntries,
-		id: string,
-		breach: { leaked: boolean; checkedAt: number },
-	): Promise<VaultEntries>;
+	/**
+	 * Save breach check results in one write. Not restamped, like `touch`: it is derived, per-device
+	 * data. A result is skipped when its login is gone or no longer has the password it checked.
+	 */
+	setBreaches(current: VaultEntries, results: readonly BreachResult[]): Promise<VaultEntries>;
 	/**
 	 * Write one vault-scoped setting, stamped from this device's clock.
 	 *
@@ -822,12 +821,16 @@ export function createEntryMutations(deps: EntryMutationsDeps): EntryMutations {
 			return persist({ ...current, entries });
 		},
 
-		setBreach: async (current, id, breach) => {
-			if (!current.entries.some((e) => e.id === id && e.type === "login")) return current;
-			const entries = current.entries.map((e) =>
-				e.id === id && e.type === "login" ? { ...e, breach } : e,
-			);
-			return persist({ ...current, entries });
+		setBreaches: async (current, results) => {
+			const byId = new Map(results.map((r) => [r.id, r]));
+			let changed = false;
+			const entries = current.entries.map((e) => {
+				const result = byId.get(e.id);
+				if (!result || e.type !== "login" || e.password !== result.password) return e;
+				changed = true;
+				return { ...e, breach: result.breach };
+			});
+			return changed ? persist({ ...current, entries }) : current;
 		},
 
 		// Write a tombstone so the delete survives a merge instead of being re-added
