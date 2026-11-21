@@ -499,7 +499,7 @@ mod store {
         )
     }
 
-    fn shared() -> Option<Retained<AnyObject>> {
+    pub(super) fn shared() -> Option<Retained<AnyObject>> {
         let cls = AnyClass::get(c"ASCredentialIdentityStore")?;
         Some(unsafe { msg_send![cls, sharedStore] })
     }
@@ -572,8 +572,20 @@ mod store {
         }
     }
 
+    /// The read-back's completion, `void (^)(NSArray *)`, with its argument types spelled out:
+    /// macOS sends the block to another process over XPC, which refuses a block without them, and
+    /// a Rust block carries none unless given.
+    struct ListBlock;
+
+    // SAFETY: the encoding matches the closure's one object argument and void return (64-bit).
+    unsafe impl block2::ManualBlockEncoding for ListBlock {
+        type Arguments = (*mut AnyObject,);
+        type Return = ();
+        const ENCODING_CSTR: &'static std::ffi::CStr = c"v16@?0@\"NSArray\"8";
+    }
+
     /// Everything in the store, where macOS 14.4+ can say in time.
-    fn read_back(store: &AnyObject) -> (Read, Vec<Retained<AnyObject>>) {
+    pub(super) fn read_back(store: &AnyObject) -> (Read, Vec<Retained<AnyObject>>) {
         if !responds(
             store,
             sel!(getCredentialIdentitiesForService:credentialIdentityTypes:completionHandler:),
@@ -581,7 +593,7 @@ mod store {
             return (Read::Unsupported, Vec::new());
         }
         let (tx, rx) = mpsc::channel::<Handed>();
-        let got = RcBlock::new(move |list: *mut AnyObject| {
+        let got = RcBlock::with_encoding::<_, _, _, ListBlock>(move |list: *mut AnyObject| {
             let kept = unsafe { Retained::retain(list) };
             let _ = tx.send(Handed::new(
                 kept.map_or(std::ptr::null_mut(), Retained::into_raw),
@@ -916,6 +928,18 @@ mod tests {
         );
         let list = store::list(&built);
         assert_eq!(store::items(&list).map(|v| v.len()), Some(built.len()));
+    }
+
+    // macOS sends the read-back's block to another process, and refuses one without argument
+    // types: "Block was not compiled using a compiler that inserts type information" (2026-11-21).
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reading_the_store_back_hands_macos_a_block_it_can_send() {
+        let Some(store) = store::shared() else { return };
+        let thrown = store::guarded("read back", || {
+            let _ = store::read_back(&store);
+        });
+        assert_eq!(thrown, None);
     }
 
     // An answer that arrives after the wait is given up on is released, not leaked.
