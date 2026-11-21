@@ -21,7 +21,10 @@ keywords:
   - Touch ID isn't set up for this vault
   - Bramble has no passkey for this site
   - use Bramble in Safari
-updatedDate: 2026-11-19
+  - Bramble not showing in Safari
+  - User names and passwords
+  - Safari AutoFill settings
+updatedDate: 2026-11-21
 ---
 
 On a Mac, the Bramble desktop app fills your logins, 2FA codes and passkeys in Safari and other Mac apps through macOS AutoFill. It needs desktop app 0.20.0 or later.
@@ -37,8 +40,9 @@ To unlock AutoFill with Touch ID, open the desktop app's **Settings → Security
 ## Fill a login
 
 1. In Safari or an app, click a username or password field.
-2. Pick a login from Bramble in the list that appears, or choose Bramble to see all your logins.
+2. Choose Bramble in the list that appears.
 3. Unlock with Touch ID, or enter your master password and choose **Unlock**.
+4. Pick the login to fill.
 
 Bramble shows the logins for this site first. **Search logins** finds any other.
 
@@ -64,6 +68,21 @@ If the site asks for a code to finish setting up, enter the one Bramble shows.
 
 - **Chrome, Firefox and other browsers** don't ask macOS for passwords or 2FA codes. Use the [Bramble browser extension](/docs/autofill-in-the-browser) there. Passkeys can still come from AutoFill.
 - **Some apps** draw their own text fields and don't support macOS AutoFill, including many built with web technology.
+
+## Questions
+
+### Bramble doesn't show up in Safari?
+
+Safari has its own switch for filling passwords, and Bramble needs it on. Some password managers ask you to turn it off so Safari stops offering Apple Passwords.
+
+1. In Safari, choose **Safari → Settings** and click **AutoFill**.
+2. Select **User names and passwords**.
+
+Also check that **Bramble** is on under **AutoFill from** in **General → AutoFill & Passwords**.
+
+### Why does Safari show Bramble instead of my logins?
+
+On a Mac, Safari lists Bramble rather than each login. Choose it, and Bramble shows the logins for this site first.
 
 ## Messages
 
