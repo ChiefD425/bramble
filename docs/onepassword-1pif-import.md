@@ -16,11 +16,15 @@ zipped export folder, and anything else as the text of a `data.1pif`.
 ## Layout
 
 The export is a folder, `<name>.1pif/`, holding `data.1pif`, `attachments/<item uuid>/<file>` and
-`previews/` (thumbnails). A browser's file picker can't open a folder, so the user picks either
+`previews/` (thumbnails); the two subfolders are only there when some item has a file. It is a
+plain folder, not a package: 1Password 7 declares `.1pif` with `LSTypeIsPackage: false`, so a file
+picker opens it like any folder. A picker can't choose a folder, so the user picks either
 `data.1pif` or a `.zip` of the folder. Only the zip brings attachments: `data.1pif` doesn't
-mention them, so the preview always says they stay behind when given the bare file. A zip made by
-Finder can carry `__MACOSX/._data.1pif`, which isn't an export. A zip with two exports is refused
-rather than half read.
+mention them, so the preview always says they stay behind when given the bare file. Finder's
+Compress (as `ditto -c -k --sequesterRsrc --keepParent`) adds `__MACOSX/<name>.1pif/._data.1pif`
+whenever the file has extended attributes, as the real export below did (1Password 7 marks it
+quarantined): its name ends in `.1pif` too, so `__MACOSX/` is skipped. A zip with two exports is refused rather than half
+read.
 
 ## Records
 
@@ -73,6 +77,13 @@ every import but `.bramble` (only `password-changelog.ts` may write the changelo
 
 ## Evidence
 
-Checked against the public sample exports in github.com/juanii/OnePIF (`Sample vaults/`):
+A real export from 1Password 7.10.4 for Mac (2026-11-21, 5 logins and 4 notes, no files): LF line
+endings, no BOM, a separator after every record. Its data.1pif and a Finder-style zip of its
+folder both import all 9 items through the extension, and every value in the file but password
+history reaches an entry.
+
+Also checked against the public sample exports in github.com/juanii/OnePIF (`Sample vaults/`):
 1Password 7.2.4 for Mac (`1P7-macOS-Cloud.1pif`), 6.8.9 for Mac, 4.6 for Windows and 3.8 for Mac.
-Every item in each maps and none fails. Not yet run on a 1Password 7 for Windows export.
+Every item in each maps and none fails. The `attachments/` layout comes from those samples (as
+`attachments/<item uuid>/<file>`); no real 1Password 7 export with a file has been read, and none
+from 1Password 7 for Windows.
