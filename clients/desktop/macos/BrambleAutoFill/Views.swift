@@ -55,6 +55,9 @@ private struct Header: View {
 	let title: String
 	/// The vault, beside the brand as the app shows it.
 	var vault: String? = nil
+	/// Vaults to switch to instead, from a menu on the name.
+	var others: [(id: String, name: String)] = []
+	var onSwitch: (String) -> Void = { _ in }
 	let onCancel: () -> Void
 	var body: some View {
 		VStack(spacing: 0) {
@@ -63,7 +66,20 @@ private struct Header: View {
 				Text(title).font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.foreground)
 				if let vault {
 					Text(verbatim: "·").font(.system(size: 15)).foregroundColor(Theme.muted.opacity(0.5))
-					Text(vault).font(.system(size: 15)).foregroundColor(Theme.muted).lineLimit(1)
+					if others.isEmpty {
+						Text(vault).font(.system(size: 15)).foregroundColor(Theme.muted).lineLimit(1)
+					} else {
+						Menu {
+							ForEach(others, id: \.id) { other in
+								Button(other.name) { onSwitch(other.id) }
+							}
+						} label: {
+							Text(vault).font(.system(size: 15)).lineLimit(1)
+						}
+						.menuStyle(.borderlessButton)
+						.fixedSize()
+						.accessibilityLabel(Text("Choose a vault"))
+					}
 				}
 				Spacer(minLength: 8)
 				Button("Cancel", action: onCancel).buttonStyle(.plain).foregroundColor(Theme.muted)
@@ -167,16 +183,22 @@ final class UnlockModel: ObservableObject {
 	/// Touch ID first when the desktop has it on for this vault; the password is the fallback.
 	@Published var showPassword: Bool
 	let vault: String?
+	/// Other vaults with a copy, when the request leaves the choice to the user.
+	let others: [(id: String, name: String)]
 	let canTouchId: Bool
+	let onSwitch: (String) -> Void
 	let onTouchId: () -> Void
 	let onPassword: (String) -> Void
 	let onCancel: () -> Void
 
 	init(
-		vault: String?, canTouchId: Bool, onTouchId: @escaping () -> Void,
+		vault: String?, others: [(id: String, name: String)] = [], canTouchId: Bool,
+		onSwitch: @escaping (String) -> Void = { _ in }, onTouchId: @escaping () -> Void,
 		onPassword: @escaping (String) -> Void, onCancel: @escaping () -> Void
 	) {
 		self.vault = vault
+		self.others = others
+		self.onSwitch = onSwitch
 		self.canTouchId = canTouchId
 		self.showPassword = !canTouchId
 		self.onTouchId = onTouchId
@@ -192,7 +214,9 @@ struct UnlockView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			Header(title: "Bramble", vault: model.vault, onCancel: model.onCancel)
+			Header(
+				title: "Bramble", vault: model.vault, others: model.others, onSwitch: model.onSwitch,
+				onCancel: model.onCancel)
 			VStack(spacing: 14) {
 				Glyph(size: 44).padding(.top, 4)
 				Text(

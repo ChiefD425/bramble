@@ -20,16 +20,13 @@ private let appGroup = "BHGR3PP64J.group.app.bramble.desktop"
 private let touchIdService = "app.bramble.desktop.biometric"
 private let touchIdGroup = "BHGR3PP64J.app.bramble.desktop"
 
-private typealias Mirror = VaultCopy
-
 private func groupURL(_ name: String) -> URL? {
 	FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
 		.appendingPathComponent(name)
 }
 
-private func readMirror() -> Mirror? {
-	guard let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return nil }
-	return chooseCopy(readCopies(in: group), vaultId: nil, credentialIds: [])
+private func readGroupCopies() -> [VaultCopy] {
+	FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup).map(readCopies) ?? []
 }
 
 // MARK: - Controller
@@ -108,7 +105,8 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 			.passkeyGet(
 				PasskeyGet(
 					rpId: identity.relyingPartyIdentifier, clientDataHash: req.clientDataHash, allowed: [],
-					chosen: identity.credentialID.base64EncodedString(), prf: prf)))
+					chosen: identity.credentialID.base64EncodedString(), prf: prf)),
+			vault: untag(identity.recordIdentifier ?? "").vaultId)
 	}
 
 	@available(macOS 14.0, *)
@@ -155,22 +153,46 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	// MARK: Unlock
 
-	private func start(_ next: Pending) {
+	/// Open the vault the request needs: the one its identity names, else the one holding a passkey it
+	/// names, else the copy written last, with the others a menu away.
+	private func start(_ next: Pending, vault named: String? = nil) {
 		pending = next
-		guard let mirror = readMirror() else {
+		let (vaultId, credentialIds): (String?, [String]) = {
+			switch next {
+			case .passwords(_, let recordId), .codes(_, let recordId):
+				return (recordId.flatMap { untag($0).vaultId }, [])
+			case .passkeyGet(let req): return (named, req.chosen == nil ? req.allowed : [])
+			case .passkeyCreate: return (nil, [])
+			}
+		}()
+		let copies = readGroupCopies()
+		guard let copy = chooseCopy(copies, vaultId: vaultId, credentialIds: credentialIds) else {
 			show(
 				NoticeView(
 					title: String(localized: "Open Bramble first"),
-					message: String(localized: "Unlock Bramble Desktop once so AutoFill has your vault."),
+					message: copies.isEmpty
+						? String(localized: "Unlock Bramble Desktop once so AutoFill has your vault.")
+						: String(localized: "Unlock the vault that holds this in Bramble once, so AutoFill has it."),
 					onDone: { [weak self] in self?.cancel(.userCanceled) }))
 			return
 		}
-		vault = mirror.vaultName
+		let pinned = vaultId != nil || !credentialIds.isEmpty
+		open(copy, among: pinned ? [] : copies.filter { $0.vaultId != nil })
+	}
+
+	private func open(_ copy: VaultCopy, among copies: [VaultCopy]) {
+		vault = copy.vaultName
+		let others = copies.filter { $0.vaultId != copy.vaultId }
 		let model = UnlockModel(
-			vault: mirror.vaultName,
-			canTouchId: touchIdItemExists(vaultId: mirror.vaultId),
-			onTouchId: { [weak self] in self?.unlockWithTouchId(mirror) },
-			onPassword: { [weak self] in self?.unlockWithPassword($0, mirror) },
+			vault: copy.vaultName,
+			others: others.map { (id: $0.vaultId ?? "", name: $0.vaultName ?? "") },
+			canTouchId: touchIdItemExists(vaultId: copy.vaultId),
+			onSwitch: { [weak self] id in
+				guard let next = copies.first(where: { $0.vaultId == id }) else { return }
+				self?.open(next, among: copies)
+			},
+			onTouchId: { [weak self] in self?.unlockWithTouchId(copy) },
+			onPassword: { [weak self] in self?.unlockWithPassword($0, copy) },
 			onCancel: { [weak self] in self?.cancel(.userCanceled) })
 		unlock = model
 		show(UnlockView(model: model))
@@ -221,7 +243,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	// Authenticate, then read the item with that context, as the desktop app does, so a cancel is
 	// told apart from a key that is gone.
-	private func unlockWithTouchId(_ mirror: Mirror) {
+	private func unlockWithTouchId(_ mirror: VaultCopy) {
 		guard let vaultId = mirror.vaultId else { return }
 		let ctx = LAContext()
 		ctx.evaluatePolicy(
@@ -251,7 +273,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		}
 	}
 
-	private func unlockWithPassword(_ password: String, _ mirror: Mirror) {
+	private func unlockWithPassword(_ password: String, _ mirror: VaultCopy) {
 		guard let slot = mirror.slot, let magic = Data(base64Encoded: slot.magicVersionB64) else {
 			unlock?.busy = false
 			unlock?.error = String(localized: "This vault has no master password. Use Touch ID.")
@@ -276,7 +298,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	// MARK: After unlock
 
-	private func onUnlocked(_ mirror: Mirror) {
+	private func onUnlocked(_ mirror: VaultCopy) {
 		switch pending {
 		case .passwords(let hosts, let recordId):
 			offer(creds(mirror), hosts: hosts, recordId: recordId) { [weak self] in self?.fill($0) }
@@ -290,12 +312,12 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		}
 	}
 
-	private func creds(_ mirror: Mirror) -> [Cred] {
+	private func creds(_ mirror: VaultCopy) -> [Cred] {
 		guard let json = try? decryptWithVek(ivB64: mirror.iv, ciphertextB64: mirror.ciphertext) else { return [] }
 		return (try? JSONDecoder().decode([Cred].self, from: Data(json.utf8))) ?? []
 	}
 
-	private func passkeys(_ mirror: Mirror) -> [Passkey] {
+	private func passkeys(_ mirror: VaultCopy) -> [Passkey] {
 		guard let iv = mirror.passkeyIv, let ct = mirror.passkeyCiphertext,
 			let json = try? decryptWithVek(ivB64: iv, ciphertextB64: ct)
 		else { return [] }
@@ -318,7 +340,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 	}
 
 	private func offer(_ creds: [Cred], hosts: [String], recordId: String?, choose: @escaping (Cred) -> Void) {
-		if let recordId, let cred = creds.first(where: { $0.recordId == recordId }) {
+		if let recordId, let cred = creds.first(where: { $0.recordId == untag(recordId).id }) {
 			choose(cred)
 			return
 		}

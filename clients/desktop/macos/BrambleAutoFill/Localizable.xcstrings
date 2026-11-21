@@ -213,6 +213,53 @@
         }
       }
     },
+    "Choose a vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ভল্ট নির্বাচন করুন"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie einen Tresor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar una bóveda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir un coffre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selezionare un archivio"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함 선택"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolher um cofre"
+          }
+        }
+      }
+    },
     "Clear search": {
       "extractionState": "manual",
       "localizations": {
@@ -1344,6 +1391,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "একবার Bramble Desktop আনলক করুন, যাতে AutoFill-এ আপনার ভল্ট থাকে।"
+          }
+        }
+      }
+    },
+    "Unlock the vault that holds this in Bramble once, so AutoFill has it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এটি যে ভল্টে আছে, সেটি একবার Bramble-এ আনলক করুন, যাতে AutoFill-এ এটি থাকে।"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entsperren Sie den Tresor, in dem sich dies befindet, einmal in Bramble, damit AutoFill darauf zugreifen kann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desbloquee una vez en Bramble la bóveda que contiene esto para que AutoFill pueda acceder a ella."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déverrouillez une fois dans Bramble le coffre qui contient cet élément pour qu’AutoFill puisse y accéder."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sblocchi una volta in Bramble l’archivio che lo contiene affinché AutoFill ne disponga."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목이 있는 보관함을 Bramble에서 한 번 잠금 해제하면 AutoFill이 사용할 수 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desbloqueie uma vez no Bramble o cofre que contém isto para que o AutoFill o tenha."
           }
         }
       }
