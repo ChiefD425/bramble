@@ -939,6 +939,10 @@ const vcrypto = useMemo(() => crypto.withVault?.(activeId) ?? crypto, [crypto, a
 and uses `vcrypto` everywhere it uses `crypto` today (unlock, loadEntries, entry
 mutations, slot ops, verify, biometric).
 
+`AutofillAdapter` has the same optional `withVault`, for the copy a native credential provider keeps
+(macOS and iOS AutoFill). `useVault` scopes it the same way, and `loadEntries` binds the index to its
+target vault explicitly, for the same reason `createVault` binds crypto.
+
 **The trap the implementer must not fall into:** `createVault` calls `createRecord(label)`,
 which selects the new id via React state, but the closure it runs in still holds the
 wrapper memoized for the **previous** `activeId` (and the memoized

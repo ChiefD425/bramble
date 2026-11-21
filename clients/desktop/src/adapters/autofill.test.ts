@@ -1,25 +1,25 @@
 import { PREF_AUTOFILL_QUICKTYPE } from "@core/hooks/usePrefs";
 import type { IndexEntry } from "@core/index";
+import { VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invoke, meta, encrypt } = vi.hoisted(() => ({
+const { invoke, meta, encrypt, readVaultBlob } = vi.hoisted(() => ({
 	invoke: vi.fn(async (_cmd: string, _args?: unknown) => {}),
 	meta: new Map<string, unknown>(),
 	encrypt: vi.fn(async (plaintext: string) => ({ iv: "IV", ciphertext: plaintext })),
+	// No blob in the test store: the slot read swallows the throw and leaves the slot out.
+	readVaultBlob: vi.fn(async (_vaultId?: string): Promise<Uint8Array> => {
+		throw new Error("no vault stored");
+	}),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
-vi.mock("../sync/roster", () => ({ ACTIVE_VAULT_KEY: "active-vault" }));
 vi.mock("./crypto", () => ({ desktopCrypto: { encryptWithVek: encrypt } }));
 vi.mock("./storage", () => ({
-	desktopStorage: {
-		getMeta: async (k: string) => meta.get(k),
-		readVaultBlob: async () => {
-			throw new Error("no vault stored");
-		},
-	},
+	desktopStorage: { getMeta: async (k: string) => meta.get(k), readVaultBlob },
 }));
 
 const { desktopAutofill } = await import("./autofill");
+const personal = () => desktopAutofill.withVault?.("v1") ?? desktopAutofill;
 
 const login = {
 	type: "login",
@@ -39,21 +39,29 @@ const onMac = (yes: boolean) =>
 
 const mirrorCall = () =>
 	invoke.mock.calls.find(([cmd]) => cmd === "autofill_provider_set")?.[1] as
-		| { mirror: { ciphertext: string; vaultId: string; identities: unknown[] } }
+		| {
+				mirror: { ciphertext: string; vaultId: string; vaultName?: string; identities: unknown[] };
+		  }
 		| undefined;
 
 beforeEach(() => {
 	invoke.mockClear();
 	encrypt.mockClear();
+	readVaultBlob.mockClear();
 	meta.clear();
+	meta.set(VAULT_REGISTRY_KEY, {
+		vaults: [
+			{ id: "v0", label: "Work", number: 1, createdAt: 1 },
+			{ id: "v1", label: "Personal", number: 2, createdAt: 2 },
+		],
+	});
 });
 
 describe("desktopAutofill", () => {
 	it("mirrors the index for the macOS AutoFill extension", async () => {
 		onMac(true);
-		meta.set("active-vault", "v1");
 		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
-		await desktopAutofill.setIndex([login]);
+		await personal().setIndex([login]);
 		expect(invoke).toHaveBeenCalledWith("link_set_index", { entries: [login] });
 		const m = mirrorCall()?.mirror;
 		expect(m?.vaultId).toBe("v1");
@@ -66,13 +74,13 @@ describe("desktopAutofill", () => {
 	it("keeps the browser link when the mirror fails", async () => {
 		onMac(true);
 		encrypt.mockRejectedValueOnce(new Error("locked"));
-		await expect(desktopAutofill.setIndex([login])).resolves.toBeUndefined();
+		await expect(personal().setIndex([login])).resolves.toBeUndefined();
 		expect(invoke).toHaveBeenCalledWith("link_set_index", { entries: [login] });
 	});
 
 	it("does nothing for the provider off macOS", async () => {
 		onMac(false);
-		await desktopAutofill.setIndex([login]);
+		await personal().setIndex([login]);
 		expect(mirrorCall()).toBeUndefined();
 		expect(encrypt).not.toHaveBeenCalled();
 	});
@@ -95,9 +103,37 @@ describe("desktopAutofill", () => {
 				privateKey: "sk",
 			},
 		} as unknown as IndexEntry;
-		await desktopAutofill.setIndex([login, unlock]);
+		await personal().setIndex([login, unlock]);
 		expect(invoke).toHaveBeenCalledWith("link_set_index", { entries: [login] });
 		const m = mirrorCall()?.mirror as unknown as { passkeyIdentities: { rpId: string }[] };
 		expect(m.passkeyIdentities.map((p) => p.rpId)).toEqual(["bramble.sh"]);
+	});
+
+	// The active-vault setting still names the last vault partway through an unlock: a copy built
+	// from it pairs this vault's logins with another vault's password and Touch ID.
+	it("writes the copy for its own vault, whatever the active-vault setting says", async () => {
+		onMac(true);
+		meta.set("active-vault", "v0");
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.vaultId).toBe("v1");
+		expect(readVaultBlob.mock.calls.map(([id]) => id)).toEqual(["v1"]);
+	});
+
+	it("names the vault as the app does, so the sheet says which one it unlocks", async () => {
+		onMac(true);
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.vaultName).toBe("Personal");
+		meta.set(VAULT_REGISTRY_KEY, { vaults: [{ id: "v1", label: " ", number: 2, createdAt: 2 }] });
+		invoke.mockClear();
+		await personal().setIndex([login]);
+		expect(mirrorCall()?.mirror.vaultName).toBe("Vault 2");
+	});
+
+	it("writes no copy without a vault to write it for, but keeps the browser link", async () => {
+		onMac(true);
+		meta.set("active-vault", "v1");
+		await desktopAutofill.setIndex([login]);
+		expect(invoke).toHaveBeenCalledWith("link_set_index", { entries: [login] });
+		expect(mirrorCall()).toBeUndefined();
 	});
 });

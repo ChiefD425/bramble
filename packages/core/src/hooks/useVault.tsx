@@ -488,6 +488,8 @@ export interface VaultActions {
 	/** The current entries, read synchronously: includes writes committed before their
 	 * render has landed, so sequential mutations see their own earlier writes. */
 	readEntries(): Entry[];
+	/** Publish the open vault's autofill index again, after a change it carries that isn't an entry. */
+	refreshAutofillIndex(): Promise<void>;
 	/** The open vault as its disk has it. Another window's save reaches memory only if the background
 	 * made it, so anything that must not miss one reads here. */
 	readOpenVaultFromDisk(): Promise<DiskVault>;
@@ -597,7 +599,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	const {
 		storage: platformStorage,
 		crypto: platformCrypto,
-		autofill,
+		autofill: platformAutofill,
 		shell,
 		biometric,
 		exchange,
@@ -632,6 +634,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	const crypto = useMemo(
 		() => (activeId ? (platformCrypto.withVault?.(activeId) ?? platformCrypto) : platformCrypto),
 		[platformCrypto, activeId],
+	);
+	// And the autofill index, so a native provider's copy names the vault it was written from.
+	const autofill = useMemo(
+		() =>
+			activeId ? (platformAutofill.withVault?.(activeId) ?? platformAutofill) : platformAutofill,
+		[platformAutofill, activeId],
 	);
 	const [hasVault, setHasVault] = useState(false);
 	const [isLocked, setIsLocked] = useState(true);
@@ -783,17 +791,29 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	 * with the raw host token rendered in the password field: the VEK unwrapped, this threw, and
 	 * so `setIsLocked(false)` never ran. It survived every reopen, because the session generation
 	 * only resets when the worker restarts.
+	 *
+	 * `vaultId` binds the index to a vault this render's `autofill` may not know yet, as the
+	 * create/join binding trap does for crypto (docs/multiple-vaults.md).
 	 */
 	const publishIndex = useCallback(
-		async (entries: IndexEntry[], lease: unknown) => {
+		async (entries: IndexEntry[], lease: unknown, vaultId?: string) => {
+			const target = vaultId
+				? (platformAutofill.withVault?.(vaultId) ?? platformAutofill)
+				: autofill;
 			try {
-				await autofill.setIndex(entries, lease);
+				await target.setIndex(entries, lease);
 			} catch (e) {
 				console.warn("[vault] autofill index not updated for this load:", e);
 			}
 		},
-		[autofill],
+		[autofill, platformAutofill],
 	);
+
+	/** Publish the open vault's index again, for a change the index carries that isn't an entry. */
+	const refreshAutofillIndex = useCallback(async () => {
+		const lease = await autofill.beginIndexUpdate?.().catch(() => undefined);
+		await publishIndex(toAutofillIndex(latestRef.current.entries), lease);
+	}, [autofill, publishIndex]);
 
 	/** Decrypt all entries and push the autofill index. */
 	// `vaultId` names the vault when the caller just created or selected it and this closure's
@@ -822,7 +842,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 				setSyncedSettings(undefined);
 				setFiles([]);
 				setEntries([]);
-				await publishIndex([], indexLease);
+				await publishIndex([], indexLease, targetId);
 				return;
 			}
 			// A blob that decodes but won't decrypt is the issue-#27 signature; recover from the
@@ -939,7 +959,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			markLoaded(vaultKey(targetId));
 			setConflicts(conflictsOf(loaded));
 			setEntries(decrypted);
-			await publishIndex(toAutofillIndex(decrypted), indexLease);
+			await publishIndex(toAutofillIndex(decrypted), indexLease, targetId);
 		},
 		[readDecodedBlob, crypto, storage, autofill, ensureClock, publishIndex, activeId, markLoaded],
 	);
@@ -1814,8 +1834,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 				throw new Error(t`Couldn't save the master password. Please try again.`);
 			}
 			await refreshSlotMetadata();
+			// The provider's copy carries the password slot: the old password must stop opening it.
+			await refreshAutofillIndex();
 		},
-		[readDecodedBlob, wrapPasswordSlot, storage, crypto, refreshSlotMetadata, t],
+		[
+			readDecodedBlob,
+			wrapPasswordSlot,
+			storage,
+			crypto,
+			refreshSlotMetadata,
+			refreshAutofillIndex,
+			t,
+		],
 	);
 
 	/** Change the master password. Requires the vault unlocked; does not rotate the VEK. */
@@ -1861,7 +1891,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		const newBlob = removePasswordSlot(blob);
 		await storage.writeVaultBlob(encodeVaultBlob(newBlob));
 		await refreshSlotMetadata();
-	}, [crypto, readDecodedBlob, storage, syncKey, refreshSlotMetadata, t]);
+		await refreshAutofillIndex();
+	}, [crypto, readDecodedBlob, storage, syncKey, refreshSlotMetadata, refreshAutofillIndex, t]);
 
 	/**
 	 * Rotate the vault's encryption key: everything is re-encrypted under a fresh one.
@@ -2097,6 +2128,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			if (!biometric) throw new Error(t`Biometric unlock isn't available on this device.`);
 			if (!activeId) throw new Error(t`No vault is selected.`);
 			setError(null);
+			// See unlock(): record the active vault before the unwrap so sync-on-unlock targets it.
+			await shell.setActiveVault?.(activeId);
 			await biometricUnlockFlow({
 				crypto,
 				biometric,
@@ -2470,6 +2503,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			readConflictVersions,
 			resolveConflict,
 			readEntries,
+			refreshAutofillIndex,
 			readSetting,
 			writeSetting,
 			verifyMasterPassword,
@@ -2527,6 +2561,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			readConflictVersions,
 			resolveConflict,
 			readEntries,
+			refreshAutofillIndex,
 			readSetting,
 			writeSetting,
 			verifyMasterPassword,

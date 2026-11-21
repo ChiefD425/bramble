@@ -299,6 +299,14 @@ populated with metadata (service and username, never the password) so entries ap
 Apple's model is explicit that the store holds metadata only and the OS calls back into the
 extension for the secret when the user picks one.
 
+**One vault, named.** The copy is one vault's: its logins and passkeys, its password slot, its id
+(which Touch ID item to read) and its name, which the sheet shows beside the brand as the app does.
+It is written for the vault being opened, through the adapter's `withVault` view, never from the
+recorded active vault: that still names the previous vault partway through an unlock, and a copy
+built from it paired one vault's logins with another's password and Touch ID (2026-11-20). With
+several vaults it is the last one opened in the app. A password change or removal rewrites it, so
+an old password stops opening it.
+
 ### Unlocking inside the extension
 
 The extension is a separate process, so it cannot borrow the app's in-memory VEK. iOS solves this

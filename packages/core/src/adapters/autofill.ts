@@ -226,6 +226,12 @@ export interface AutofillAdapter {
 	beginIndexUpdate?(): Promise<unknown>;
 	/** Popup-side: push the unlocked vault's searchable index to the background so autofill works while the popup is closed. */
 	setIndex(entries: IndexEntry[], lease?: unknown): Promise<void>;
+	/**
+	 * A view whose `setIndex` is for `vaultId`, as `CryptoAdapter.withVault` is for keys. A native
+	 * credential provider (macOS, iOS) keeps a copy of one vault, and the copy must name its own
+	 * vault: the recorded active vault still names the previous one partway through an unlock.
+	 */
+	withVault?(vaultId: string): AutofillAdapter;
 	/** Clear the pushed index (on lock). */
 	clearIndex(lease?: unknown): Promise<void>;
 	/**

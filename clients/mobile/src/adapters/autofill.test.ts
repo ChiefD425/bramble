@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Everything setIndex touches: the native bridge, the VEK crypto, and the meta store the
 // QuickType opt-in lives in. sync-manager is stubbed too (importing it would drag in the
 // whole WebRTC/wasm stack for one constant).
-const { bridge, meta, platform } = vi.hoisted(() => ({
+const { bridge, meta, platform, readVaultBlob } = vi.hoisted(() => ({
 	bridge: {
 		sync: vi.fn(async (_payload: unknown) => {}),
 		clear: vi.fn(),
@@ -14,6 +14,10 @@ const { bridge, meta, platform } = vi.hoisted(() => ({
 	},
 	meta: new Map<string, unknown>(),
 	platform: { value: "ios" },
+	// No blob in the test store: readPasswordSlot swallows the throw and returns undefined.
+	readVaultBlob: vi.fn(async (_vaultId?: string): Promise<Uint8Array> => {
+		throw new Error("no vault stored");
+	}),
 }));
 
 vi.mock("@capacitor/core", () => ({
@@ -28,16 +32,11 @@ vi.mock("./crypto", () => ({
 	},
 }));
 vi.mock("./storage", () => ({
-	mobileStorage: {
-		getMeta: async (k: string) => meta.get(k),
-		// No blob in the test store: readPasswordSlot swallows the throw and returns undefined.
-		readVaultBlob: async () => {
-			throw new Error("no vault stored");
-		},
-	},
+	mobileStorage: { getMeta: async (k: string) => meta.get(k), readVaultBlob },
 }));
 
 const { mobileAutofill, startAutofillLockSync } = await import("./autofill");
+const personal = () => mobileAutofill.withVault?.("v1") ?? mobileAutofill;
 const { markLocked, markUnlocked } = await import("./vault-session");
 
 function login(over: Partial<IndexEntry> = {}): IndexEntry {
@@ -57,6 +56,7 @@ function lastSync() {
 	const call = bridge.sync.mock.calls.at(-1);
 	if (!call) throw new Error("sync was not called");
 	return call[0] as {
+		vaultId?: string;
 		identities?: { recordId: string; username: string; service: string }[];
 		oneTimeCodeIdentities?: { recordId: string; label: string; service: string }[];
 		ciphertext: string;
@@ -73,7 +73,7 @@ beforeEach(() => {
 describe("setIndex one-time-code identities", () => {
 	it("publishes a code identity per host for logins with a TOTP key", async () => {
 		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
-		await mobileAutofill.setIndex([
+		await personal().setIndex([
 			login({
 				totp: "otpauth://totp/x?secret=GEZDGNBVGY3TQOJQ",
 				hostnames: ["github.com", "www.gist.github.com"],
@@ -87,7 +87,7 @@ describe("setIndex one-time-code identities", () => {
 
 	it("omits logins with no TOTP key, while still publishing their password identity", async () => {
 		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
-		await mobileAutofill.setIndex([login()]);
+		await personal().setIndex([login()]);
 		const sent = lastSync();
 		expect(sent.oneTimeCodeIdentities).toEqual([]);
 		expect(sent.identities).toHaveLength(1);
@@ -96,7 +96,7 @@ describe("setIndex one-time-code identities", () => {
 	// The toggle is the privacy contract: with it off, nothing about which sites have 2FA
 	// may reach the OS store in the clear.
 	it("publishes nothing when the keyboard-suggestions opt-in is off", async () => {
-		await mobileAutofill.setIndex([login({ totp: "GEZDGNBVGY3TQOJQ" })]);
+		await personal().setIndex([login({ totp: "GEZDGNBVGY3TQOJQ" })]);
 		const sent = lastSync();
 		expect(sent.oneTimeCodeIdentities).toEqual([]);
 		expect(sent.identities).toEqual([]);
@@ -104,7 +104,7 @@ describe("setIndex one-time-code identities", () => {
 
 	it("falls back to the entry name when the login has no username", async () => {
 		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
-		await mobileAutofill.setIndex([login({ username: "", totp: "GEZDGNBVGY3TQOJQ" })]);
+		await personal().setIndex([login({ username: "", totp: "GEZDGNBVGY3TQOJQ" })]);
 		expect(lastSync().oneTimeCodeIdentities).toEqual([
 			{ recordId: "e1", label: "GitHub", service: "github.com" },
 		]);
@@ -112,17 +112,34 @@ describe("setIndex one-time-code identities", () => {
 
 	it("sends the seed inside the encrypted bundle, never as identity metadata", async () => {
 		meta.set(PREF_AUTOFILL_QUICKTYPE, true);
-		await mobileAutofill.setIndex([login({ totp: "GEZDGNBVGY3TQOJQ" })]);
+		await personal().setIndex([login({ totp: "GEZDGNBVGY3TQOJQ" })]);
 		const sent = lastSync();
 		expect(sent.ciphertext).toContain("GEZDGNBVGY3TQOJQ");
 		expect(JSON.stringify(sent.oneTimeCodeIdentities)).not.toContain("GEZDGNBVGY3TQOJQ");
 	});
 });
 
+// The active-vault setting still names the last vault partway through an unlock: a bundle built
+// from it pairs this vault's logins with another vault's password slot.
+describe("setIndex vault", () => {
+	it("writes the bundle for its own vault, whatever the active-vault setting says", async () => {
+		meta.set("active-vault", "v0");
+		await personal().setIndex([login()]);
+		expect(lastSync().vaultId).toBe("v1");
+		expect(readVaultBlob.mock.calls.map(([id]) => id)).toEqual(["v1"]);
+	});
+
+	it("writes no bundle without a vault to write it for", async () => {
+		meta.set("active-vault", "v1");
+		await mobileAutofill.setIndex([login()]);
+		expect(bridge.sync).not.toHaveBeenCalled();
+	});
+});
+
 describe("setIndex login bundle", () => {
 	// The iOS provider narrows its matches with it, as the extension does.
 	it("carries a login's subdomain match setting", async () => {
-		await mobileAutofill.setIndex([
+		await personal().setIndex([
 			login({ subdomainMatch: "exact" }),
 			login({ id: "e2", hostnames: ["gitlab.com"] }),
 		]);
@@ -136,7 +153,7 @@ describe("setIndex passkey bundle", () => {
 	// The credential provider evaluates PRF from this bundle; without the secrets it can't answer.
 	it("carries a passkey's PRF secrets into the encrypted passkey bundle", async () => {
 		const prf = { credWithUV: "S0VZVVY=", credWithoutUV: "S0VZTk9VVg==" };
-		await mobileAutofill.setIndex([
+		await personal().setIndex([
 			login({
 				passkeys: [
 					{

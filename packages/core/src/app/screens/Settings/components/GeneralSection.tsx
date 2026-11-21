@@ -18,7 +18,6 @@ import { useAutostart } from "../../../../hooks/useAutostart";
 import { usePrefs } from "../../../../hooks/usePrefs";
 import { useVaultActions } from "../../../../hooks/useVault";
 import { useVaultRegistry } from "../../../../hooks/useVaultRegistry";
-import { toAutofillIndex } from "../../../../vault/autofill-index";
 import { Button } from "../../../components/ui/button";
 import { SelectField } from "../../../components/ui/select-field";
 import { TextField } from "../../../components/ui/text-field";
@@ -47,7 +46,7 @@ export function GeneralSection() {
 	const hasImmediateAutoLock = useCan("immediateAutoLock");
 	const canSaveCapture = useCan("saveCapture");
 	const defaultManager = useDefaultPasswordManager();
-	const { readEntries } = useVaultActions();
+	const { refreshAutofillIndex } = useVaultActions();
 	const { t } = useLingui();
 	// Turning the passkey provider on can fail in the background (another extension already holds
 	// the browser's WebAuthn proxy), so the switch reverts and says why.
@@ -201,12 +200,8 @@ export function GeneralSection() {
 						checked={prefs.autofillQuickType}
 						onChange={(enabled) =>
 							void (async () => {
-								// Lease first: platforms that bind the cache to a vault session reject an
-								// unleased re-index rather than stamping it with whatever owner is current.
-								const lease = await autofill.beginIndexUpdate?.();
 								await update("autofillQuickType", enabled);
-								// The full list: the screen's entries leave out the hidden unlock key.
-								await autofill.setIndex(toAutofillIndex(readEntries()), lease);
+								await refreshAutofillIndex();
 							})()
 						}
 						label={t`Toggle keyboard suggestions`}

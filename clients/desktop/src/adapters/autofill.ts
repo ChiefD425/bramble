@@ -10,28 +10,39 @@ import type {
 } from "@core/adapters/autofill";
 import { PREF_AUTOFILL_QUICKTYPE } from "@core/hooks/usePrefs";
 import { buildProviderMirror, passwordSlotPayload } from "@core/vault/provider-mirror";
+import {
+	displayLabel,
+	listedVaults,
+	parseRegistry,
+	VAULT_REGISTRY_KEY,
+} from "@core/vault/vault-registry";
 import { decodeVaultBlob } from "@core/vault-format";
 import { invoke } from "@tauri-apps/api/core";
-import { ACTIVE_VAULT_KEY } from "../sync/roster";
 import { desktopCrypto } from "./crypto";
 import { desktopStorage } from "./storage";
 
 const onMac = () =>
 	typeof navigator !== "undefined" && /Macintosh|Mac OS X/.test(navigator.userAgent);
 
+/** What the app calls the vault next to its brand, so the sheet names the one it unlocks. */
+async function vaultName(vaultId: string): Promise<string | undefined> {
+	const vaults = listedVaults(parseRegistry(await desktopStorage.getMeta(VAULT_REGISTRY_KEY)));
+	const index = vaults.findIndex((v) => v.id === vaultId);
+	return index >= 0 ? displayLabel(vaults[index]!, index) : undefined;
+}
+
 /**
  * The macOS AutoFill extension's copy of the vault, the iOS mirror's shape: logins and passkeys
  * encrypted under the VEK, the password slot so it can unlock on its own, and the identities
  * the OS lists. See docs/macos-credential-provider.md.
  */
-async function mirrorForProvider(entries: IndexEntry[]): Promise<void> {
+async function mirrorForProvider(entries: IndexEntry[], vaultId: string): Promise<void> {
 	const quickType = (await desktopStorage.getMeta<boolean>(PREF_AUTOFILL_QUICKTYPE)) === true;
 	const m = buildProviderMirror(entries, { quickType, includeUnlockKeys: true });
 	const enc = await desktopCrypto.encryptWithVek(JSON.stringify(m.credentials));
 	const encPk = await desktopCrypto.encryptWithVek(JSON.stringify(m.passkeys));
-	const vaultId = (await desktopStorage.getMeta<string>(ACTIVE_VAULT_KEY)) ?? "";
 	const slot = await desktopStorage
-		.readVaultBlob(vaultId || undefined)
+		.readVaultBlob(vaultId)
 		.then((blob) => passwordSlotPayload(decodeVaultBlob(blob)))
 		.catch(() => undefined);
 	await invoke<void>("autofill_provider_set", {
@@ -39,6 +50,7 @@ async function mirrorForProvider(entries: IndexEntry[]): Promise<void> {
 			iv: enc.iv,
 			ciphertext: enc.ciphertext,
 			vaultId,
+			vaultName: await vaultName(vaultId),
 			slot,
 			passkeyIv: encPk.iv,
 			passkeyCiphertext: encPk.ciphertext,
@@ -49,34 +61,42 @@ async function mirrorForProvider(entries: IndexEntry[]): Promise<void> {
 	});
 }
 
-export const desktopAutofill: AutofillAdapter = {
-	// @core already pushes on unlock and clears on lock, which is exactly when the browser
-	// link's answers should start and stop being available, so no new plumbing was needed to
-	// keep the two in step. The index goes to the Rust side rather than staying in this
-	// window: the socket is served there, and a window the user closed must not take the
-	// browser link down with it.
-	setIndex: async (entries) => {
-		// The browser link never sees the unlock key; the AutoFill extension below does.
-		await invoke<void>("link_set_index", {
-			entries: entries.filter((e) => e.type !== "unlock-key"),
-		});
-		// A failed mirror must not take the browser link with it; the next change retries.
-		if (onMac())
-			await mirrorForProvider(entries).catch((e) => console.warn("[autofill] mirror:", e));
-	},
-	// The mirror stays on lock, as on iOS: it is VEK-encrypted, and the extension unlocks on its own.
-	clearIndex: () => invoke<void>("link_clear_index"),
-	clearProviderData: () => invoke<void>("autofill_provider_clear"),
+/** The adapter, for `vaultId` when there is one: only then does the AutoFill extension get a copy. */
+function desktopAutofillFor(vaultId?: string): AutofillAdapter {
+	return {
+		// @core already pushes on unlock and clears on lock, which is exactly when the browser
+		// link's answers should start and stop being available, so no new plumbing was needed to
+		// keep the two in step. The index goes to the Rust side rather than staying in this
+		// window: the socket is served there, and a window the user closed must not take the
+		// browser link down with it.
+		setIndex: async (entries) => {
+			// The browser link never sees the unlock key; the AutoFill extension below does.
+			await invoke<void>("link_set_index", {
+				entries: entries.filter((e) => e.type !== "unlock-key"),
+			});
+			// A failed mirror must not take the browser link with it; the next change retries.
+			if (vaultId && onMac())
+				await mirrorForProvider(entries, vaultId).catch((e) =>
+					console.warn("[autofill] mirror:", e),
+				);
+		},
+		withVault: (id) => desktopAutofillFor(id),
+		// The mirror stays on lock, as on iOS: it is VEK-encrypted, and the extension unlocks on its own.
+		clearIndex: () => invoke<void>("link_clear_index"),
+		clearProviderData: () => invoke<void>("autofill_provider_clear"),
 
-	query: async (): Promise<QueryResult> => ({
-		logins: [],
-		cards: [],
-		otps: [],
-		locked: false,
-		hasPotentialMatch: false,
-	}),
+		query: async (): Promise<QueryResult> => ({
+			logins: [],
+			cards: [],
+			otps: [],
+			locked: false,
+			hasPotentialMatch: false,
+		}),
 
-	fetchFill: (): Promise<FillPayload> => {
-		throw new Error("Autofill is not wired on desktop yet");
-	},
-};
+		fetchFill: (): Promise<FillPayload> => {
+			throw new Error("Autofill is not wired on desktop yet");
+		},
+	};
+}
+
+export const desktopAutofill: AutofillAdapter = desktopAutofillFor();

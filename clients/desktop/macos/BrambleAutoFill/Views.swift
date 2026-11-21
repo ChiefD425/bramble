@@ -53,13 +53,19 @@ struct Glyph: View {
 
 private struct Header: View {
 	let title: String
+	/// The vault, beside the brand as the app shows it.
+	var vault: String? = nil
 	let onCancel: () -> Void
 	var body: some View {
 		VStack(spacing: 0) {
 			HStack(spacing: 10) {
 				Glyph(size: 22)
 				Text(title).font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.foreground)
-				Spacer()
+				if let vault {
+					Text(verbatim: "·").font(.system(size: 15)).foregroundColor(Theme.muted.opacity(0.5))
+					Text(vault).font(.system(size: 15)).foregroundColor(Theme.muted).lineLimit(1)
+				}
+				Spacer(minLength: 8)
 				Button("Cancel", action: onCancel).buttonStyle(.plain).foregroundColor(Theme.muted)
 					.keyboardShortcut(.cancelAction)
 			}
@@ -160,15 +166,17 @@ final class UnlockModel: ObservableObject {
 	@Published var busy = false
 	/// Touch ID first when the desktop has it on for this vault; the password is the fallback.
 	@Published var showPassword: Bool
+	let vault: String?
 	let canTouchId: Bool
 	let onTouchId: () -> Void
 	let onPassword: (String) -> Void
 	let onCancel: () -> Void
 
 	init(
-		canTouchId: Bool, onTouchId: @escaping () -> Void, onPassword: @escaping (String) -> Void,
-		onCancel: @escaping () -> Void
+		vault: String?, canTouchId: Bool, onTouchId: @escaping () -> Void,
+		onPassword: @escaping (String) -> Void, onCancel: @escaping () -> Void
 	) {
+		self.vault = vault
 		self.canTouchId = canTouchId
 		self.showPassword = !canTouchId
 		self.onTouchId = onTouchId
@@ -184,7 +192,7 @@ struct UnlockView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			Header(title: "Bramble", onCancel: model.onCancel)
+			Header(title: "Bramble", vault: model.vault, onCancel: model.onCancel)
 			VStack(spacing: 14) {
 				Glyph(size: 44).padding(.top, 4)
 				Text(
@@ -281,6 +289,7 @@ struct UnlockView: View {
 // MARK: Logins
 
 struct LoginListView: View {
+	let vault: String?
 	let matches: [Cred]
 	let all: [Cred]
 	let requestedHost: String?
@@ -294,9 +303,10 @@ struct LoginListView: View {
 	private let listHeight: CGFloat
 
 	init(
-		matches: [Cred], all: [Cred], requestedHost: String?, onSelect: @escaping (Cred) -> Void,
-		onCancel: @escaping () -> Void
+		vault: String?, matches: [Cred], all: [Cred], requestedHost: String?,
+		onSelect: @escaping (Cred) -> Void, onCancel: @escaping () -> Void
 	) {
+		self.vault = vault
 		self.matches = matches
 		self.all = all
 		self.requestedHost = requestedHost
@@ -351,7 +361,7 @@ struct LoginListView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			Header(title: "Bramble", onCancel: onCancel)
+			Header(title: "Bramble", vault: vault, onCancel: onCancel)
 			if all.isEmpty {
 				Text("No logins saved yet. Add one in Bramble.")
 					.font(.system(size: 12)).foregroundColor(Theme.muted).multilineTextAlignment(.center)

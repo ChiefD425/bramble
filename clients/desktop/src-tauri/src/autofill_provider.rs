@@ -24,6 +24,9 @@ pub struct Mirror {
     pub ciphertext: String,
     #[serde(default)]
     pub vault_id: String,
+    /// What the app calls the vault, for the sheet to show before it unlocks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot: Option<serde_json::Value>,
     #[serde(default)]
@@ -354,7 +357,7 @@ mod tests {
 
     fn mirror() -> Mirror {
         serde_json::from_value(serde_json::json!({
-            "iv": "IV", "ciphertext": "CT", "vaultId": "v1",
+            "iv": "IV", "ciphertext": "CT", "vaultId": "v1", "vaultName": "Personal",
             "slot": { "saltB64": "s" },
             "passkeyIv": "PIV", "passkeyCiphertext": "PCT",
             "identities": [{ "recordId": "e1", "username": "me", "service": "github.com" }],
@@ -373,6 +376,7 @@ mod tests {
             serde_json::from_slice(&std::fs::read(group.join(MIRROR_FILE)).unwrap()).unwrap();
         assert_eq!(written["ciphertext"], "CT");
         assert_eq!(written["vaultId"], "v1");
+        assert_eq!(written["vaultName"], "Personal");
         assert_eq!(written["passkeyCiphertext"], "PCT");
         assert_eq!(written["slot"]["saltB64"], "s");
         // Identities go to the OS store, never to disk.

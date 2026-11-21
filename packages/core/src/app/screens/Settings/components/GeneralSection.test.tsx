@@ -10,6 +10,7 @@ import { GeneralSection } from "./GeneralSection";
 const h = vi.hoisted(() => ({
 	passkeyProviderEnabled: false,
 	update: (async () => {}) as (key: string, value: unknown) => Promise<void>,
+	refreshAutofillIndex: async () => {},
 }));
 
 vi.mock("../../../../hooks/usePrefs", () => ({
@@ -26,7 +27,7 @@ vi.mock("../../../../hooks/usePrefs", () => ({
 	}),
 }));
 vi.mock("../../../../hooks/useVault", () => ({
-	useVaultActions: () => ({ readEntries: () => [] }),
+	useVaultActions: () => ({ readEntries: () => [], refreshAutofillIndex: h.refreshAutofillIndex }),
 }));
 vi.mock("../../../../hooks/useVaultRegistry", () => ({
 	useVaultRegistry: () => ({ vaults: [], activeId: null }),
@@ -127,5 +128,27 @@ describe("GeneralSection passkey confirmation", () => {
 			expect(toggle()).toBeNull();
 			cleanup();
 		}
+	});
+});
+
+describe("GeneralSection keyboard suggestions", () => {
+	it("saves the choice, then has the AutoFill copy rewritten to carry it", async () => {
+		const calls: string[] = [];
+		h.update = async (key, value) => void calls.push(`update:${key}=${value}`);
+		h.refreshAutofillIndex = async () => void calls.push("refresh");
+		const platform = {
+			target: "ios",
+			autofill: { setKeepUnlocked: async () => {}, inlineSuggestionsAvailable: async () => true },
+			shell: {},
+		} as unknown as Platform;
+		render(
+			<I18nProvider i18n={i18n}>
+				<PlatformProvider platform={platform}>
+					<GeneralSection />
+				</PlatformProvider>
+			</I18nProvider>,
+		);
+		fireEvent.click(await screen.findByLabelText("Toggle keyboard suggestions"));
+		await vi.waitFor(() => expect(calls).toEqual(["update:autofillQuickType=true", "refresh"]));
 	});
 });

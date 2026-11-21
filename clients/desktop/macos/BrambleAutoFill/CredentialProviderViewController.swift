@@ -24,6 +24,8 @@ private struct Mirror: Decodable {
 	let iv: String
 	let ciphertext: String
 	let vaultId: String?
+	/// What the app calls the vault, so the sheet can say which one it unlocks.
+	let vaultName: String?
 	let slot: SlotPayload?
 	let passkeyIv: String?
 	let passkeyCiphertext: String?
@@ -61,6 +63,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	private var pending: Pending = .passwords(hosts: [], recordId: nil)
 	private var unlock: UnlockModel?
+	private var vault: String?
 	// Prompted once the view is on screen: before that, LocalAuthentication has nothing to sit over.
 	private var pendingTouchId = false
 	private var unlockResize: AnyCancellable?
@@ -180,7 +183,9 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 					onDone: { [weak self] in self?.cancel(.userCanceled) }))
 			return
 		}
+		vault = mirror.vaultName
 		let model = UnlockModel(
+			vault: mirror.vaultName,
 			canTouchId: touchIdItemExists(vaultId: mirror.vaultId),
 			onTouchId: { [weak self] in self?.unlockWithTouchId(mirror) },
 			onPassword: { [weak self] in self?.unlockWithPassword($0, mirror) },
@@ -343,6 +348,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		let rank = { (c: Cred) in AutofillMatch.hostRank(c.services.map(AutofillMatch.normalizeHost), hosts) }
 		show(
 			LoginListView(
+				vault: vault,
 				matches: matching.sorted { rank($0) < rank($1) },
 				all: creds.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending },
 				requestedHost: hosts.first, onSelect: choose,

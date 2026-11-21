@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Device } from "@capacitor/device";
 import { PREF_AUTOFILL_QUICKTYPE } from "@core/hooks/usePrefs";
-import type { AutofillAdapter } from "@core/index";
+import type { AutofillAdapter, IndexEntry } from "@core/index";
 import {
 	buildProviderMirror,
 	type OneTimeCodeIdentity,
@@ -11,7 +11,6 @@ import {
 	type SlotPayload,
 } from "@core/vault/provider-mirror";
 import { decodeVaultBlob } from "@core/vault-format";
-import { ACTIVE_VAULT_KEY } from "../sync/sync-manager";
 import { mobileCrypto } from "./crypto";
 import { mobileStorage } from "./storage";
 import { onVaultStateChange } from "./vault-session";
@@ -56,49 +55,56 @@ interface AutofillBridgePlugin {
 const Bridge = registerPlugin<AutofillBridgePlugin>("AutofillBridge");
 const isIos = Capacitor.getPlatform() === "ios";
 
-// The password slot from the ACTIVE vault's header, so the extension can run Argon2id and
-// unwrap the VEK from the master password. Must be the active vault: setIndex pushes the
-// active vault's entries (encrypted under its VEK), so the slot the extension derives the
-// VEK from has to belong to the same vault, else master-password unlock yields the wrong
-// VEK and can't decrypt the bundle. (readVaultBlob(undefined) falls back to the first/only
-// vault, matching sync-manager's activeVaultId.) Non-secret (the wrappedVek stays
-// AES-encrypted). Returns undefined for a passwordless vault or an unreadable blob.
-async function readPasswordSlot(): Promise<SlotPayload | undefined> {
+// The password slot from the bundle's vault, so the extension can run Argon2id and unwrap the
+// VEK from the master password. Must be the same vault as the entries (encrypted under its VEK),
+// else master-password unlock yields the wrong VEK and can't decrypt the bundle. Non-secret (the
+// wrappedVek stays AES-encrypted). Returns undefined for a passwordless vault or an unreadable blob.
+async function readPasswordSlot(vaultId: string): Promise<SlotPayload | undefined> {
 	try {
-		const activeId = await mobileStorage.getMeta<string>(ACTIVE_VAULT_KEY);
-		return passwordSlotPayload(decodeVaultBlob(await mobileStorage.readVaultBlob(activeId)));
+		return passwordSlotPayload(decodeVaultBlob(await mobileStorage.readVaultBlob(vaultId)));
 	} catch {
 		return undefined;
 	}
 }
 
-export const mobileAutofill: AutofillAdapter = {
-	async setIndex(entries) {
-		if (!isIos) return;
-		// QuickType identities (cleartext usernames + domains) only when the user opted in.
-		const quickType = (await mobileStorage.getMeta<boolean>(PREF_AUTOFILL_QUICKTYPE)) === true;
-		const m = buildProviderMirror(entries, { quickType });
-		// Encrypt the whole list under the VEK. The extension can read no entry data
-		// (names, usernames, passwords) until the user authenticates and it can decrypt
-		// this. Nothing about the vault is in the App Group in cleartext.
-		const enc = await mobileCrypto.encryptWithVek(JSON.stringify(m.credentials));
-		// Passkeys ride a second VEK-encrypted blob (private keys never at rest in clear).
-		const encPk = await mobileCrypto.encryptWithVek(JSON.stringify(m.passkeys));
-		await Bridge.sync({
-			iv: enc.iv,
-			ciphertext: enc.ciphertext,
-			// Which vault this bundle was encrypted for. The extension will only offer its cached-VEK
-			// unlock when this matches the vault that VEK was armed for; the mirror is un-suffixed and
-			// outlives both the vault and the install, so without this it opens onto an aead error.
-			vaultId: (await mobileStorage.getMeta<string>(ACTIVE_VAULT_KEY)) ?? "",
-			slot: await readPasswordSlot(),
-			identities: m.identities,
-			oneTimeCodeIdentities: m.oneTimeCodeIdentities,
-			passkeyIv: encPk.iv,
-			passkeyCiphertext: encPk.ciphertext,
-			passkeyIdentities: m.passkeyIdentities,
-		});
-	},
+/** The adapter, for `vaultId` when there is one: only then does the iOS extension get a bundle. */
+function mobileAutofillFor(vaultId?: string): AutofillAdapter {
+	return {
+		...mobileAutofillShared,
+		async setIndex(entries) {
+			if (isIos && vaultId) await syncBundle(entries, vaultId);
+		},
+		withVault: (id) => mobileAutofillFor(id),
+	};
+}
+
+async function syncBundle(entries: IndexEntry[], vaultId: string): Promise<void> {
+	// QuickType identities (cleartext usernames + domains) only when the user opted in.
+	const quickType = (await mobileStorage.getMeta<boolean>(PREF_AUTOFILL_QUICKTYPE)) === true;
+	const m = buildProviderMirror(entries, { quickType });
+	// Encrypt the whole list under the VEK. The extension can read no entry data
+	// (names, usernames, passwords) until the user authenticates and it can decrypt
+	// this. Nothing about the vault is in the App Group in cleartext.
+	const enc = await mobileCrypto.encryptWithVek(JSON.stringify(m.credentials));
+	// Passkeys ride a second VEK-encrypted blob (private keys never at rest in clear).
+	const encPk = await mobileCrypto.encryptWithVek(JSON.stringify(m.passkeys));
+	await Bridge.sync({
+		iv: enc.iv,
+		ciphertext: enc.ciphertext,
+		// Which vault this bundle was encrypted for. The extension will only offer its cached-VEK
+		// unlock when this matches the vault that VEK was armed for; the mirror is un-suffixed and
+		// outlives both the vault and the install, so without this it opens onto an aead error.
+		vaultId,
+		slot: await readPasswordSlot(vaultId),
+		identities: m.identities,
+		oneTimeCodeIdentities: m.oneTimeCodeIdentities,
+		passkeyIv: encPk.iv,
+		passkeyCiphertext: encPk.ciphertext,
+		passkeyIdentities: m.passkeyIdentities,
+	});
+}
+
+const mobileAutofillShared: Omit<AutofillAdapter, "setIndex" | "withVault"> = {
 	async clearIndex() {
 		// Deliberately a no-op on iOS. The bundle is VEK-encrypted (unreadable at rest)
 		// and must survive app lock so the provider can still unlock + fill on its own.
@@ -139,6 +145,8 @@ export const mobileAutofill: AutofillAdapter = {
 		throw new Error("system autofill is handled by the native iOS provider, not the webview");
 	},
 };
+
+export const mobileAutofill: AutofillAdapter = mobileAutofillFor();
 
 /** Lock the provider whenever the app locks. Returns an unsubscribe. */
 export function startAutofillLockSync(): () => void {
