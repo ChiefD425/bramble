@@ -84,6 +84,15 @@ class TrustedBrowsersTest {
     }
 
     @Test
+    fun edgePreviewChannelsShareTheStableKey() {
+        // Edge Canary users got no site match (only "Show all logins"): GPM signs every channel alike.
+        val stable = TrustedBrowsers.BROWSERS["com.microsoft.emmx"]
+        for (channel in listOf("beta", "dev", "canary")) {
+            assertEquals("com.microsoft.emmx.$channel", stable, TrustedBrowsers.BROWSERS["com.microsoft.emmx.$channel"])
+        }
+    }
+
+    @Test
     fun waterfoxTrustsBothItsStoreAndGithubKeys() {
         // #202: GPM's key and the GitHub release APK's key differ, and users install from either.
         val gpm = "29:39:99:7A:2D:8F:07:30:3C:EB:37:AD:68:10:AF:EF:0B:DA:71:0B:E2:11:64:76:E3:52:5A:73:79:EC:2E:1A"
