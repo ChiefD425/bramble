@@ -658,6 +658,10 @@ msgstr "Solicitar Touch ID ou Windows Hello assim que o Bramble abrir, sem toque
 msgid "Ask for your passcode as soon as the unlock screen appears, with no tap."
 msgstr "Solicitar seu código de acesso assim que a tela de desbloqueio aparecer, sem toque."
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Ask to save a sign-in that Bramble doesn't have yet."
+msgstr "Perguntar se deve salvar um login que o Bramble ainda não tem."
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "Em Risco"
@@ -3754,8 +3758,12 @@ msgid "Settings sections"
 msgstr "Seções de configurações"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
-msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
-msgstr "Mostrar um cartão para salvar/atualizar na página quando você fizer login com credenciais que o Cofre não possui."
+msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
+msgstr "Mostrar um cartão de salvar/atualizar no canto da página ao entrar com credenciais que o Bramble não tem."
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+#~ msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
+#~ msgstr "Mostrar um cartão para salvar/atualizar na página quando você fizer login com credenciais que o Cofre não possui."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Show archived items"

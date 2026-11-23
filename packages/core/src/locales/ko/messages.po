@@ -570,6 +570,10 @@ msgstr "Bramble이 열리면 탭 없이 Touch ID 또는 Windows Hello 인증을 
 msgid "Ask for your passcode as soon as the unlock screen appears, with no tap."
 msgstr "잠금 해제 화면이 나타나면 탭 없이 암호 입력을 요청합니다."
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Ask to save a sign-in that Bramble doesn't have yet."
+msgstr "Bramble에 아직 없는 로그인 정보 저장 여부 묻기"
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "위험"
@@ -3421,8 +3425,12 @@ msgid "Settings sections"
 msgstr "설정 섹션"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
-msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
-msgstr "보관함에 없는 자격 증명으로 로그인할 때 페이지 모서리에 저장/업데이트 카드를 표시합니다."
+msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
+msgstr "Bramble에 없는 자격 증명으로 로그인할 때 페이지 모서리에 저장/업데이트 카드를 표시합니다."
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+#~ msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
+#~ msgstr "보관함에 없는 자격 증명으로 로그인할 때 페이지 모서리에 저장/업데이트 카드를 표시합니다."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Show archived items"

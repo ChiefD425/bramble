@@ -658,6 +658,10 @@ msgstr "Solicitar Touch ID o Windows Hello al abrir Bramble, sin tocar."
 msgid "Ask for your passcode as soon as the unlock screen appears, with no tap."
 msgstr "Solicitar el código de acceso en cuanto aparezca la pantalla de desbloqueo, sin tocar."
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Ask to save a sign-in that Bramble doesn't have yet."
+msgstr "Preguntar si guardar un inicio de sesión que Bramble aún no tiene."
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "En riesgo"
@@ -3754,8 +3758,12 @@ msgid "Settings sections"
 msgstr "Secciones de configuración"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
-msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
-msgstr "Mostrar una tarjeta para guardar/actualizar en la esquina de la página cuando se inicia sesión con credenciales que la Bóveda no posee."
+msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
+msgstr "Mostrar una tarjeta para guardar o actualizar en la esquina de la página al iniciar sesión con credenciales que Bramble no tiene."
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+#~ msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
+#~ msgstr "Mostrar una tarjeta para guardar/actualizar en la esquina de la página cuando se inicia sesión con credenciales que la Bóveda no posee."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Show archived items"

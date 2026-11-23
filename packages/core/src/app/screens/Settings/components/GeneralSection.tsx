@@ -346,12 +346,16 @@ export function GeneralSection() {
 				</Row>
 			)}
 
-			{/* Corner-prompt card; only on platforms with a save-capture surface (not mobile). */}
+			{/* The extensions' corner card, or Android's own save prompt. */}
 			{canSaveCapture && (
 				<Row
 					icon={<ShieldCheck className="w-4 h-4 text-primary" />}
 					title={t`Offer to save logins`}
-					subtitle={t`Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have.`}
+					subtitle={
+						target === "android"
+							? t`Ask to save a sign-in that Bramble doesn't have yet.`
+							: t`Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have.`
+					}
 				>
 					<Toggle
 						checked={prefs.offerToSave}

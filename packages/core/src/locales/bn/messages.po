@@ -658,6 +658,10 @@ msgstr "Bramble খোলামাত্রই ট্যাপ ছাড়া�
 msgid "Ask for your passcode as soon as the unlock screen appears, with no tap."
 msgstr "আনলক স্ক্রিন আসামাত্রই ট্যাপ ছাড়াই আপনার পাসকোড চাওয়া হবে।"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Ask to save a sign-in that Bramble doesn't have yet."
+msgstr "Bramble-এ এখনও নেই এমন সাইন-ইন সংরক্ষণের জন্য জিজ্ঞাসা করুন।"
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "ঝুঁকিতে"
@@ -3734,8 +3738,12 @@ msgid "Settings sections"
 msgstr "সেটিংসের বিভাগ"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
-msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
-msgstr "ভল্টে নেই এমন লগইন তথ্য দিয়ে সাইন ইন করলে পেজের কোণে সেভ বা আপডেটের পপআপ দেখান।"
+msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
+msgstr "Bramble-এ নেই এমন শংসাপত্র দিয়ে সাইন ইন করার সময় পৃষ্ঠার কোণে একটি সংরক্ষণ/আপডেট কার্ড দেখানো হবে।"
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+#~ msgid "Show a save / update card in the corner of the page when you sign in with credentials Vault doesn't have."
+#~ msgstr "ভল্টে নেই এমন লগইন তথ্য দিয়ে সাইন ইন করলে পেজের কোণে সেভ বা আপডেটের পপআপ দেখান।"
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Show archived items"
