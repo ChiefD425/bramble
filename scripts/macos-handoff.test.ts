@@ -11,6 +11,8 @@ describe("macosHandoff", () => {
 		assert.ok(binaries.includes(`${appex}/MacOS/BrambleAutoFill`));
 		assert.ok(files.includes(`${appex}/Info.plist`));
 		assert.ok(!binaries.includes(`${appex}/Info.plist`));
+		assert.ok(files.includes(`${appex}/Resources`), "its translations");
+		assert.ok(!binaries.includes(`${appex}/Resources`));
 		for (const b of binaries) assert.ok(files.includes(b), b);
 	});
 

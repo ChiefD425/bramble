@@ -1,7 +1,7 @@
 // What the macOS compile job hands the signing job (scripts/release.ts): the lipo'd app binary,
 // the proxy in both places a universal build needs it (stage-proxy.mjs says why there are two),
-// and the unsigned AutoFill extension, which build-macos.ts signs. Relative to `root`, with no
-// `..`, because tar will not extract one.
+// and the unsigned AutoFill extension with its translations, which build-macos.ts signs. Relative
+// to `root`, with no `..`, because tar will not extract one.
 
 import { join } from "node:path";
 
@@ -25,6 +25,6 @@ export function macosHandoff(handoffDir: string): {
 		root: "clients/desktop",
 		tarball: join(handoffDir, "macos-universal.tar"),
 		binaries,
-		files: [...binaries, `${APPEX}/Info.plist`],
+		files: [...binaries, `${APPEX}/Info.plist`, `${APPEX}/Resources`],
 	};
 }

@@ -448,6 +448,8 @@ function assertKeychainEntitled(): void {
 	// Without the sandbox it registers and never appears in AutoFill & Passwords, with no error.
 	if (!entitlements(appex).includes("com.apple.security.app-sandbox"))
 		fail(`${appex} is not sandboxed; macOS would never list it.`);
+	if (!existsSync(join(appex, "Contents/Resources/de.lproj/Localizable.strings")))
+		fail(`${appex} has no translations; AutoFill would be English for everyone.`);
 	try {
 		execFileSync("codesign", ["--verify", "--strict", "--deep", app], { stdio: "pipe" });
 	} catch (e) {
