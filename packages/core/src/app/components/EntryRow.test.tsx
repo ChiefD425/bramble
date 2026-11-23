@@ -266,6 +266,29 @@ describe("EntryRow action arguments", () => {
 		await vi.waitFor(() => expect(onDelete).toHaveBeenCalledExactlyOnceWith("e1"));
 	});
 
+	it("passes the row's id to duplicate and attach, from the menu (#259, #260)", () => {
+		const onDuplicate = vi.fn();
+		const onAttach = vi.fn();
+		renderRow({ onDuplicate, onAttach });
+
+		fireEvent.click(screen.getByLabelText("More options"));
+		fireEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+		expect(onDuplicate).toHaveBeenCalledExactlyOnceWith("e1");
+
+		fireEvent.click(screen.getByLabelText("More options"));
+		fireEvent.click(screen.getByRole("button", { name: "Attach a file" }));
+		expect(onAttach).toHaveBeenCalledExactlyOnceWith("e1");
+		// Each item closes the menu.
+		expect(screen.queryByRole("button", { name: "Attach a file" })).toBeNull();
+	});
+
+	it("leaves Attach a file out where files can't be added", () => {
+		renderRow({ onDuplicate: () => {} });
+		fireEvent.click(screen.getByLabelText("More options"));
+		expect(screen.getByRole("button", { name: "Duplicate" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Attach a file" })).toBeNull();
+	});
+
 	// onUse drives touchEntry, which orders "Recently used". A mis-wired id here would
 	// silently promote the wrong entry, and nothing else in this file calls it.
 	it("passes the row's id to use, on a copy", async () => {

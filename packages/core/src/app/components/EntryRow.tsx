@@ -3,10 +3,12 @@ import {
 	AlertTriangle,
 	Check,
 	Copy,
+	CopyPlus,
 	KeyRound,
 	LogIn,
 	type LucideIcon,
 	MoreVertical,
+	Paperclip,
 	Pencil,
 	Trash2,
 } from "lucide-react";
@@ -43,6 +45,10 @@ interface EntryRowProps {
 	onSelect: (id: string) => void;
 	onEdit: (id: string) => void;
 	onDelete: (id: string) => Promise<void>;
+	/** Open a new entry seeded from this one (#259). */
+	onDuplicate?: (id: string) => void;
+	/** Attach a file to this entry (#260). Absent where files can't be added. */
+	onAttach?: (id: string) => void;
 	/** Called after a successful quick-copy, to record the entry as recently used. */
 	onUse?: (id: string) => void;
 	/** Fill this login into the page behind Bramble's window; set only on rows matched to it. */
@@ -77,6 +83,8 @@ export const EntryRow = memo(function EntryRow({
 	onSelect,
 	onEdit,
 	onDelete,
+	onDuplicate,
+	onAttach,
 	onUse,
 	onFill,
 	highlighted,
@@ -137,6 +145,15 @@ export const EntryRow = memo(function EntryRow({
 	const handleEdit = () => {
 		setMoreOpen(false);
 		onEdit(id);
+	};
+	const handleDuplicate = () => {
+		setMoreOpen(false);
+		onDuplicate?.(id);
+	};
+	// Called straight from the item's click: a file picker opens only on a user gesture.
+	const handleAttach = () => {
+		setMoreOpen(false);
+		onAttach?.(id);
 	};
 
 	const handleDelete = async () => {
@@ -361,6 +378,22 @@ export const EntryRow = memo(function EntryRow({
 												>
 													<Trans>Edit</Trans>
 												</MenuItem>
+												{onDuplicate && (
+													<MenuItem
+														icon={<CopyPlus className="w-3 h-3 text-muted-foreground" />}
+														onClick={handleDuplicate}
+													>
+														<Trans>Duplicate</Trans>
+													</MenuItem>
+												)}
+												{onAttach && (
+													<MenuItem
+														icon={<Paperclip className="w-3 h-3 text-muted-foreground" />}
+														onClick={handleAttach}
+													>
+														<Trans>Attach a file</Trans>
+													</MenuItem>
+												)}
 												<MenuItem
 													icon={<Trash2 className="w-3 h-3 text-destructive" />}
 													destructive

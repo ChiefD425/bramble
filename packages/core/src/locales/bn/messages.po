@@ -90,7 +90,7 @@ msgid "{0} · added {1}"
 msgstr "{0} · যোগ হয়েছে {1}"
 
 #. placeholder {0}: entry.name
-#: packages/core/src/app/routes/EntryDetailRoute.tsx
+#: packages/core/src/app/hooks/useDuplicateEntry.tsx
 msgid "{0} (copy)"
 msgstr "{0} (কপি)"
 
@@ -666,9 +666,15 @@ msgstr "Bramble-এ এখনও নেই এমন সাইন-ইন সং�
 msgid "At Risk"
 msgstr "ঝুঁকিতে"
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/entry-modes/attachments.tsx
 msgid "Attach a file"
 msgstr "ফাইল সংযুক্ত করুন"
+
+#. placeholder {0}: input.name
+#: packages/core/src/app/hooks/useListAttach.tsx
+msgid "Attached {0}"
+msgstr "সংযুক্ত {0}"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/hooks/useVault.tsx
@@ -1687,6 +1693,7 @@ msgstr "আপডেট ডাউনলোড করে Bramble আবার চ
 msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click Generate Private Duck Address, and copy the token that follows authorization: Bearer in the Network tab."
 msgstr "DuckDuckGo-তে API কি-র কোনো পেজ নেই। Autofill ট্যাব খুলুন, তারপর আপনার ব্রাউজারের ডেভেলপার টুলস খুলুন, Generate Private Duck Address-এ ক্লিক করুন, এবং Network ট্যাবে authorization: Bearer-এর পরের টোকেনটি কপি করুন।"
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Duplicate"
 msgstr "ডুপ্লিকেট করুন"
@@ -1734,6 +1741,7 @@ msgid "Encrypted on your device"
 msgstr "আপনার ডিভাইসে এনক্রিপ্ট করা"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
+#: packages/core/src/app/hooks/useListAttach.tsx
 msgid "Encrypting…"
 msgstr "এনক্রিপ্ট করা হচ্ছে…"
 

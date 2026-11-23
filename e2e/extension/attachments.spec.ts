@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 import {
+	createVault,
 	gotoBackups,
 	lock,
 	openExampleLogin,
 	optionsUrl,
+	popupUrl,
 	STRONG_PW,
+	seedExampleLogin,
 	selectVault,
 	unlock,
 } from "./helpers";
@@ -65,6 +68,69 @@ test("the attached popup hands attaching over to its own window", async ({
 		popup.getByRole("button", { name: "Popout to window to attach files" }),
 	).toBeVisible();
 	await expect(popup.locator('input[type="file"]')).toHaveCount(0);
+});
+
+/** The vault list with one login, in the toolbar popup or its detached window. */
+async function listWithExampleLogin(
+	context: Parameters<typeof openExampleLogin>[0],
+	extensionId: string,
+	detached: boolean,
+) {
+	await createVault(await context.newPage(), extensionId);
+	const popup = await context.newPage();
+	await popup.goto(`${popupUrl(extensionId)}${detached ? "?detached=1" : ""}`);
+	await expect(popup.locator("#root")).not.toBeEmpty();
+	await seedExampleLogin(popup);
+	return popup;
+}
+
+test("attaches a file from the list's menu (#260)", async ({ context, extensionId }) => {
+	const popup = await listWithExampleLogin(context, extensionId, true);
+
+	await popup.getByRole("button", { name: "More options" }).click();
+	const choosing = popup.waitForEvent("filechooser");
+	await popup.getByRole("button", { name: "Attach a file" }).click();
+	await (await choosing).setFiles({
+		name: "receipt.pdf",
+		mimeType: "application/pdf",
+		buffer: BODY,
+	});
+	await expect(popup.getByText("Attached receipt.pdf")).toBeVisible();
+
+	await popup.getByRole("button", { name: "Open Example Login" }).click();
+	await expect(popup.getByText("receipt.pdf")).toBeVisible();
+});
+
+test("the attached popup's menu attaches in a window, on that login", async ({
+	context,
+	extensionId,
+}) => {
+	const popup = await listWithExampleLogin(context, extensionId, false);
+
+	await popup.getByRole("button", { name: "More options" }).click();
+	await popup.getByRole("button", { name: "Attach a file" }).click();
+	// The window arrives as a new page; its url is empty at creation, so poll for it.
+	await expect
+		.poll(() => context.pages().filter((p) => p.url().includes("detached=1")).length, {
+			timeout: 20_000,
+		})
+		.toBe(1);
+	const window = context.pages().find((p) => p.url().includes("detached=1"))!;
+	await expect(window.getByText("Attach a file")).toBeVisible();
+	await expect(window.getByText("Example Login").first()).toBeVisible();
+});
+
+test("duplicates a login from the list's menu (#259)", async ({ context, extensionId }) => {
+	const popup = await listWithExampleLogin(context, extensionId, true);
+
+	await popup.getByRole("button", { name: "More options" }).click();
+	await popup.getByRole("button", { name: "Duplicate" }).click();
+	await expect(popup.getByLabel("Name", { exact: true })).toHaveValue("Example Login (copy)");
+	await popup.getByRole("button", { name: /Save Login/i }).click();
+	await expect(popup.getByRole("button", { name: "Open Example Login (copy)" })).toBeVisible();
+	await expect(
+		popup.getByRole("button", { name: "Open Example Login", exact: true }),
+	).toBeVisible();
 });
 
 // A backup of a vault with attachments is one ZIP carrying the files. Export it from one vault,

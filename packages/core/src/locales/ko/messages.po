@@ -80,7 +80,7 @@ msgid "{0} · added {1}"
 msgstr "{0} · {1} 추가됨"
 
 #. placeholder {0}: entry.name
-#: packages/core/src/app/routes/EntryDetailRoute.tsx
+#: packages/core/src/app/hooks/useDuplicateEntry.tsx
 msgid "{0} (copy)"
 msgstr "{0} (복사본)"
 
@@ -578,9 +578,15 @@ msgstr "Bramble에 아직 없는 로그인 정보 저장 여부 묻기"
 msgid "At Risk"
 msgstr "위험"
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/entry-modes/attachments.tsx
 msgid "Attach a file"
 msgstr "파일 첨부"
+
+#. placeholder {0}: input.name
+#: packages/core/src/app/hooks/useListAttach.tsx
+msgid "Attached {0}"
+msgstr "첨부된 {0}"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/hooks/useVault.tsx
@@ -1547,6 +1553,7 @@ msgstr "Bramble을 다운로드하고 다시 시작합니다. 보관함은 변�
 msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click Generate Private Duck Address, and copy the token that follows authorization: Bearer in the Network tab."
 msgstr "DuckDuckGo에는 API 키 페이지가 없습니다. 자동 완성 탭을 연 다음 브라우저 개발자 도구에서 Generate Private Duck Address를 클릭하고, 네트워크 탭의 authorization: Bearer 다음에 오는 토큰을 복사하세요."
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Duplicate"
 msgstr "복제"
@@ -1590,6 +1597,7 @@ msgid "Encrypted on your device"
 msgstr "기기에서 암호화됨"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
+#: packages/core/src/app/hooks/useListAttach.tsx
 msgid "Encrypting…"
 msgstr "암호화 중…"
 

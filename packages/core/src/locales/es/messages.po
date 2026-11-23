@@ -90,7 +90,7 @@ msgid "{0} · added {1}"
 msgstr "{0} · añadido {1}"
 
 #. placeholder {0}: entry.name
-#: packages/core/src/app/routes/EntryDetailRoute.tsx
+#: packages/core/src/app/hooks/useDuplicateEntry.tsx
 msgid "{0} (copy)"
 msgstr "{0} (copia)"
 
@@ -666,9 +666,15 @@ msgstr "Preguntar si guardar un inicio de sesión que Bramble aún no tiene."
 msgid "At Risk"
 msgstr "En riesgo"
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/entry-modes/attachments.tsx
 msgid "Attach a file"
 msgstr "Adjuntar un archivo"
+
+#. placeholder {0}: input.name
+#: packages/core/src/app/hooks/useListAttach.tsx
+msgid "Attached {0}"
+msgstr "Adjunto {0}"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/hooks/useVault.tsx
@@ -1695,6 +1701,7 @@ msgstr "Descarga y reinicia Bramble. Su bóveda no se modifica."
 msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click Generate Private Duck Address, and copy the token that follows authorization: Bearer in the Network tab."
 msgstr "DuckDuckGo no tiene una página de clave API. Abra la pestaña Autocompletar, luego las herramientas de desarrollo de su navegador, haga clic en Generate Private Duck Address y copie el token que sigue a authorization: Bearer en la pestaña Red."
 
+#: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -1742,6 +1749,7 @@ msgid "Encrypted on your device"
 msgstr "Cifrado en su dispositivo"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
+#: packages/core/src/app/hooks/useListAttach.tsx
 msgid "Encrypting…"
 msgstr "Cifrando…"
 

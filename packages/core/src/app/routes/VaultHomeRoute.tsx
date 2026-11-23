@@ -19,6 +19,8 @@ import { UpdateCard } from "../components/UpdateCard";
 import { useToast } from "../components/ui/toast";
 import { useAppUpdate } from "../hooks/useAppUpdate";
 import { useDefaultPasswordManager } from "../hooks/useDefaultPasswordManager";
+import { useDuplicateEntry } from "../hooks/useDuplicateEntry";
+import { useListAttach } from "../hooks/useListAttach";
 import { useReviewNudge } from "../hooks/useReviewNudge";
 import { toListItem } from "../screens/VaultHome/list-item";
 import {
@@ -138,6 +140,15 @@ export function VaultHomeRoute() {
 		[navigate],
 	);
 	const onUseEntry = useCallback((entryId: string) => void touchEntry(entryId), [touchEntry]);
+	const duplicate = useDuplicateEntry();
+	const onDuplicateEntry = useCallback(
+		(entryId: string) => {
+			const entry = entries.find((e) => e.id === entryId);
+			if (entry) duplicate(entry);
+		},
+		[entries, duplicate],
+	);
+	const onAttachEntry = useListAttach();
 	const onFillEntry = useMemo(() => {
 		if (!shell.fillLogin) return undefined;
 		return (entryId: string) => {
@@ -175,6 +186,8 @@ export function VaultHomeRoute() {
 			onSelectEntry={onSelectEntry}
 			onEditEntry={onEditEntry}
 			onDeleteEntry={deleteEntry}
+			onDuplicateEntry={onDuplicateEntry}
+			onAttachEntry={onAttachEntry}
 			entries={entries}
 			onUseEntry={onUseEntry}
 			onFillEntry={onFillEntry}

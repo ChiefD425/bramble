@@ -8,13 +8,14 @@ import {
 	Paperclip,
 	Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MAX_ATTACHMENT_BYTES } from "../../backup/archive";
 import { useCan, usePlatform } from "../../context/PlatformContext";
 import { useVaultActions, useVaultState } from "../../hooks/useVault";
 import type { FileRecord } from "../../sync";
 import type { FileTransferStatus } from "../../sync/transport/blob-sync";
 import {
+	type AttachInput,
 	AttachmentEntryGoneError,
 	AttachmentTooLargeError,
 	plaintextSize,
@@ -280,30 +281,92 @@ function AttachmentRow({
 
 const LIMIT_MB = Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024));
 
-function AttachButton({ entryId }: { entryId: string }) {
+/** The attach flow, shared by an entry's own Attach a file and the vault list's menu (#260). */
+export function useAttach() {
 	const { shell } = usePlatform();
 	const { attachFile, pickFile } = useVaultActions();
-	const { canPickFiles } = useVaultState();
+	const { canPickFiles, canAttachFiles } = useVaultState();
+	const canAdd = useCanAddFiles();
 	const { canPopOut, popOut } = usePopOut();
 	// Only the attached popup: the detached window it opens is a real window.
 	const needsWindow = useCan("filePickerNeedsWindow") && canPopOut;
 	const { t } = useLingui();
+	const describeError = useCallback(
+		(err: unknown) =>
+			err instanceof AttachmentTooLargeError
+				? t`Files over ${LIMIT_MB} MB can't be attached.`
+				: err instanceof AttachmentEntryGoneError
+					? t`This entry was deleted on another device, so the file wasn't attached.`
+					: (err as Error).message,
+		[t],
+	);
+	// Keeps the vault unlocked while the OS picker backgrounds the app. Without this an
+	// "Immediately" auto-lock drops the in-progress attach, and it presents as the app randomly
+	// locking rather than as anything to do with files.
+	const notifyPickerOpening = useCallback(() => shell.notifyFilePickerOpening?.(), [shell]);
+	const pick = useCallback(async () => {
+		notifyPickerOpening();
+		return pickFile();
+	}, [notifyPickerOpening, pickFile]);
+	// Stable, so the list's memoized rows don't redraw on every render.
+	return useMemo(
+		() => ({
+			/** Files can be attached here at all. */
+			available: canAttachFiles && canAdd,
+			/** The popup would close under the file picker, so attaching continues in a window. */
+			needsWindow,
+			popOut,
+			/** The platform has its own dialog (`pick`); elsewhere an `<input type=file>` picks. */
+			canPickFiles,
+			pick,
+			notifyPickerOpening,
+			attach: attachFile,
+			describeError,
+		}),
+		[
+			canAttachFiles,
+			canAdd,
+			needsWindow,
+			popOut,
+			canPickFiles,
+			pick,
+			notifyPickerOpening,
+			attachFile,
+			describeError,
+		],
+	);
+}
+
+/** What an `<input type=file>` picked, as an attach for `entryId`. */
+export function fileToAttach(file: File, entryId: string): AttachInput {
+	return {
+		source: { kind: "blob", blob: file },
+		name: file.name,
+		mime: file.type || "application/octet-stream",
+		entryId,
+	};
+}
+
+function AttachButton({ entryId }: { entryId: string }) {
+	const {
+		needsWindow,
+		popOut,
+		canPickFiles,
+		pick,
+		notifyPickerOpening,
+		attach: attachFile,
+		describeError,
+	} = useAttach();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const attach = async (input: Parameters<typeof attachFile>[0]) => {
+	const attach = async (input: AttachInput) => {
 		setBusy(true);
 		setError(null);
 		try {
 			await attachFile(input);
 		} catch (err) {
-			setError(
-				err instanceof AttachmentTooLargeError
-					? t`Files over ${LIMIT_MB} MB can't be attached.`
-					: err instanceof AttachmentEntryGoneError
-						? t`This entry was deleted on another device, so the file wasn't attached.`
-						: (err as Error).message,
-			);
+			setError(describeError(err));
 		} finally {
 			setBusy(false);
 		}
@@ -342,10 +405,9 @@ function AttachButton({ entryId }: { entryId: string }) {
 					className={frame}
 					disabled={busy}
 					onClick={async () => {
-						shell.notifyFilePickerOpening?.();
-						let picked: Awaited<ReturnType<typeof pickFile>>;
+						let picked: Awaited<ReturnType<typeof pick>>;
 						try {
-							picked = await pickFile();
+							picked = await pick();
 						} catch (err) {
 							setError((err as Error).message);
 							return;
@@ -361,21 +423,13 @@ function AttachButton({ entryId }: { entryId: string }) {
 						type="file"
 						className="hidden"
 						disabled={busy}
-						// Keep the vault unlocked while the OS picker backgrounds the app. Without this
-						// an "Immediately" auto-lock drops the in-progress attach, and it presents as
-						// the app randomly locking rather than as anything to do with files.
-						onClick={() => shell.notifyFilePickerOpening?.()}
+						onClick={notifyPickerOpening}
 						onChange={async (e) => {
 							const input = e.currentTarget;
 							const file = input.files?.[0];
 							input.value = ""; // so re-picking the same file fires change again
 							if (!file) return;
-							await attach({
-								source: { kind: "blob", blob: file },
-								name: file.name,
-								mime: file.type || "application/octet-stream",
-								entryId,
-							});
+							await attach(fileToAttach(file, entryId));
 						}}
 					/>
 					{label}

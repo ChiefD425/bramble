@@ -79,6 +79,9 @@ interface VaultHomeProps {
 	onSelectEntry: (id: string) => void;
 	onEditEntry: (id: string) => void;
 	onDeleteEntry: (id: string) => Promise<void>;
+	onDuplicateEntry?: (id: string) => void;
+	/** Absent where files can't be added. */
+	onAttachEntry?: (id: string) => void;
 	/**
 	 * The decrypted entries behind `items`. Bulk actions run on real entries (an export
 	 * needs the secrets, a delete needs the passkey count), which a list projection drops.
@@ -111,6 +114,8 @@ export function VaultHome({
 	onSelectEntry,
 	onEditEntry,
 	onDeleteEntry,
+	onDuplicateEntry,
+	onAttachEntry,
 	entries,
 	onUseEntry,
 	onFillEntry,
@@ -342,6 +347,8 @@ export function VaultHome({
 											onSelect={onSelectEntry}
 											onEdit={onEditEntry}
 											onDelete={onDeleteEntry}
+											onDuplicate={onDuplicateEntry}
+											onAttach={onAttachEntry}
 											onUse={onUseEntry}
 											onFill={
 												item.type === "login" && matchedIds?.has(item.id) ? onFillEntry : undefined
