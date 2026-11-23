@@ -71,22 +71,43 @@ async function draft(subjects) {
 	return answer.trim() || null;
 }
 
+/** Where each target's What's new text is written before its release (docs/whats-new.md). */
+export const whatsNewPath = (platform) => `packages/core/src/app/release-notes/en/${platform}.md`;
+
+/**
+ * The summary a target's committed What's new notes give its release: their text, below the front
+ * matter, when they are for `version`. Otherwise null, with the version they are for (null if
+ * there is no file or no version), so the dispatch can say why.
+ */
+export function whatsNewSummary(md, version) {
+	const front = md?.replace(/\r\n/g, "\n").match(/^---\n([\s\S]*?)\n---\n/);
+	const found = front?.[1].match(/^version:\s*["']?([^"'\s]+)["']?\s*$/m)?.[1] ?? null;
+	const body = front ? md.replace(/\r\n/g, "\n").slice(front[0].length).trim() : "";
+	return { found, summary: found === version && body ? body : null };
+}
+
 /**
  * Draft, then open in $EDITOR. Returns the body to publish.
  *
  * `full` is appended in full, so nothing the summary leaves out is lost and the page reads without
  * anyone having to expand it.
+ *
+ * `summary` is the release's committed What's new text, already approved and translated, and
+ * inside the build: it is used as it is, with no draft and no editor, so the release page cannot
+ * say something the app does not.
  */
-export async function composeNotes({ subjects, footer, edit = true }) {
+export async function composeNotes({ subjects, footer, edit = true, summary: committed = null }) {
 	const full = groupSubjects(subjects);
-	let summary = null;
-	try {
-		summary = await draft(subjects);
-		if (summary) console.log(`\nrelease notes drafted by ${modelInfo}`);
-	} catch (e) {
-		// Never fatal. A release that cannot go out because a model was unreachable is a worse
-		// failure than a release with a plain changelog.
-		console.error(`note: could not draft release notes (${e.message}); using the commit list.`);
+	let summary = committed;
+	if (!summary) {
+		try {
+			summary = await draft(subjects);
+			if (summary) console.log(`\nrelease notes drafted by ${modelInfo}`);
+		} catch (e) {
+			// Never fatal. A release that cannot go out because a model was unreachable is a worse
+			// failure than a release with a plain changelog.
+			console.error(`note: could not draft release notes (${e.message}); using the commit list.`);
+		}
 	}
 
 	const body =
@@ -94,7 +115,7 @@ export async function composeNotes({ subjects, footer, edit = true }) {
 			.filter(Boolean)
 			.join("\n\n") || "_No notable changes._";
 
-	if (!edit || !process.stdin.isTTY) return body;
+	if (committed || !edit || !process.stdin.isTTY) return body;
 	return openInEditor(body);
 }
 

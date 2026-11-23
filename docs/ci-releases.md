@@ -175,6 +175,16 @@ Neither the dispatch order nor the approval order matters: each release commits 
 version bumps (see the release commit, above), and retries if two land in the same second. `all`
 still does not exist: four approvals and four sets of notes, to save one command.
 
+## The release page summary
+
+The text above "All changes" on a release page is the target's What's new notes,
+`packages/core/src/app/release-notes/en/<target>.md`, when they name the version being released:
+written and approved before the dispatch, translated, committed, and shown in the app after the
+update (docs/whats-new.md). The dispatch uses them as they are, with no draft and no editor, so the
+page, the email and the blog post below cannot say something the app does not. Without notes for
+the version the dispatch warns, drafts the summary from the commits as before, and that release
+shows no card.
+
 ## Publishing release notes
 
 `--publish-release-notes` on a GitHub-route release (`pnpm release desktop minor
@@ -187,7 +197,8 @@ got, then Desktop, Browser extensions and Mobile, merged by DeepSeek (without it
 lists its own notes). The draft is in that run's summary, and the publish job waits for an approval
 in the `release-notes` environment. Approving it emails Buttondown subscribers and posts the same
 text on the blog (`website/src/content/blog/whats-new-<date>.md`, committed to main by the release
-app, which deploys the site). At most one email goes out every seven days, checked when drafting
+app, which deploys the site). The post's `releases:` lists the tags it covers, which is where the
+apps' "Read more" lands (`/whats-new/<target>/<version>`, website/functions/whats-new). At most one email goes out every seven days, checked when drafting
 and again when publishing; hand-written emails count. iOS never takes part, since it publishes
 after App Store review. To draft again after rejecting one: `gh workflow run
 publish-release-notes.yml`.

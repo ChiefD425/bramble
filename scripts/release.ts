@@ -30,7 +30,9 @@
 // route that happens HERE, before the dispatch, and the text travels as a workflow input, because
 // a runner has neither a terminal nor the model. --no-edit publishes the draft unedited, and no
 // model or no terminal falls back to the grouped commit list: a release must never block on a
-// summary.
+// summary. A target whose What's new notes (packages/core/src/app/release-notes/en/<target>.md)
+// name the version being released skips all that: their text, approved and translated before the
+// dispatch and already inside the build, is the summary (docs/whats-new.md).
 //
 // The version arg is an explicit version (1.2.0 / v1.2.0) or a semver bump keyword
 // (patch/minor/major) that increments the SELECTED target's current version. Targets version
@@ -76,7 +78,7 @@ import { CWS_ITEM_ID } from "./cws-ids.ts";
 import { signingKey } from "./desktop-signing-key.ts";
 import { commitOverReleases, createTag } from "./github-commit.ts";
 import { macosHandoff } from "./macos-handoff.ts";
-import { composeNotes } from "./release-notes.mjs";
+import { composeNotes, whatsNewPath, whatsNewSummary } from "./release-notes.mjs";
 import { watchDesktopRelease } from "./release-watch.ts";
 import { isUpdaterArtifact, logToSigsum } from "./sigsum-log.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
@@ -894,7 +896,7 @@ async function dispatchRelease(
 	// The notes are written here, before anything is dispatched: this is the only step of a
 	// release that wants a person, and the runner that would otherwise write them has neither a
 	// terminal nor the model. A dry run publishes nothing, so it is not asked for.
-	const notes = dryRun ? "" : await notesForDispatch(platform, tag);
+	const notes = dryRun ? "" : await notesForDispatch(platform, tag, version);
 
 	// A run created before this instant is somebody else's. gh returns before the run exists.
 	const since = new Date(Date.now() - 5_000).toISOString();
@@ -2006,6 +2008,15 @@ async function releaseIos(version: string, ipaOnly: boolean, ci = false) {
 	}
 
 	if (!ipaOnly) gate(); // a dry run only tests build + signing, so skip the slow CI gate
+	if (!ipaOnly) {
+		let md: string | undefined;
+		try {
+			md = ci ? readFromMain(whatsNewPath("ios")) : readFileSync(whatsNewPath("ios"), "utf8");
+		} catch {
+			// No file yet: whatsNew says so.
+		}
+		whatsNew("ios", version, md);
+	}
 
 	// Bump MARKETING_VERSION + CURRENT_PROJECT_VERSION across ALL build configs. The app + the
 	// AutoFillProbe extension must share both or App Store validation rejects the upload, so replace
@@ -2662,13 +2673,39 @@ function fetchMain(): void {
  * this platform, then opened in $EDITOR. This is the one step of a release that wants a person, so
  * it happens on the person's machine and travels to the runner as a workflow input.
  */
-async function notesForDispatch(platform: string, tag: string): Promise<string> {
+async function notesForDispatch(platform: string, tag: string, version: string): Promise<string> {
 	fetchMain();
 	const { prev, subjects } = changesSince(platform, "FETCH_HEAD", "FETCH_HEAD");
 	const footer = prev
 		? `**Full Changelog**: https://github.com/${REPO}/compare/${prev}...${tag}`
 		: "";
-	return composeNotes({ subjects, footer, edit: !flags.has("--no-edit") });
+	let md: string | undefined;
+	try {
+		md = capture(`git show FETCH_HEAD:${whatsNewPath(platform)} 2>/dev/null`);
+	} catch {
+		// No file yet: whatsNew says so.
+	}
+	return composeNotes({
+		subjects,
+		footer,
+		edit: !flags.has("--no-edit"),
+		summary: whatsNew(platform, version, md),
+	});
+}
+
+/**
+ * The release's committed What's new text (docs/whats-new.md), which is also its release page
+ * summary. Without text for this version the release still goes out, but shows no card, so say so.
+ */
+function whatsNew(target: string, version: string, md: string | undefined): string | null {
+	const { found, summary } = whatsNewSummary(md, version);
+	if (!summary)
+		console.warn(
+			`\nnote: ${whatsNewPath(target)} is ${found ? `for ${found}` : "missing"}, not ${version}.` +
+				" This release shows no What's new card" +
+				(target === "ios" ? "." : ", and its release page summary is drafted from the commits."),
+		);
+	return summary;
 }
 
 // Draft -> upload -> publish, so the `release: published` event fires only once the
