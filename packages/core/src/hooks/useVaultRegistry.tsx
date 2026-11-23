@@ -8,6 +8,7 @@ import {
 	useState,
 } from "react";
 import type { StorageAdapter } from "../adapters/storage";
+import { markFreshInstall } from "../app/whats-new";
 import { usePlatform } from "../context/PlatformContext";
 import { syncKeyFor } from "../sync/sync-keys";
 import {
@@ -158,11 +159,15 @@ export function VaultRegistryProvider({
 			// Fresh: another window's delete or add since this render would otherwise be undone, or
 			// its number handed out twice.
 			const current = parseRegistry(await storage.getMeta(VAULT_REGISTRY_KEY));
+			// Before the registry changes, which is what has the prefs re-read it. Never in the way of
+			// the vault itself: at worst a new user sees one What's new card.
+			if (current.vaults.length === 0)
+				await markFreshInstall(storage, shell.version ?? "").catch(() => {});
 			await persist(addVault(current, { id, label, createdAt: Date.now() }));
 			setActiveId(id);
 			return id;
 		},
-		[storage, persist],
+		[storage, shell, persist],
 	);
 	// rename/remove only ever act on the active vault (no target id), so a vault can never
 	// rename or delete another vault.

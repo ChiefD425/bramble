@@ -51,6 +51,7 @@ comments point here instead of repeating it.
 | [firefox-port.md](firefox-port.md) | Firefox MV3 port feasibility and the filesystem-sync gap P2P sync fills |
 | [mobile-port.md](mobile-port.md) | Capacitor mobile port feasibility; native autofill + biometric-unlock constraints |
 | [mobile-update-notice.md](mobile-update-notice.md) | The mobile apps' once-a-day version check: the vault-list card, App Store vs GitHub APK, and the Settings switch |
+| [whats-new.md](whats-new.md) | The card after an update: the per-target notes file that is also the GitHub release summary, when it shows, and the vault list's one-card-per-open rule |
 | [desktop-port.md](desktop-port.md) | Plan: Tauri 2 desktop app; the spotlight mini app, browser IPC over native messaging, auto-type, SSH agent |
 | [desktop-link-onboarding.md](desktop-link-onboarding.md) | Plan: link the desktop app from the setup screen and end with one vault (combine or keep separate); one emoji check and no code, all over the local link; each browser vault pairs with one desktop vault; security review |
 | [windows-release-checklist.md](windows-release-checklist.md) | What CI and a scripted install already cover on Windows, and the human checklist for a release: SmartScreen, tray, autostart, browser pairing, updater, both uninstall answers |

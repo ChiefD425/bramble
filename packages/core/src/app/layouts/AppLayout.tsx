@@ -9,6 +9,7 @@ import { BrambleGlyph } from "../components/BrambleGlyph";
 import { PasskeySavedToast } from "../components/PasskeySavedToast";
 import { BackButton } from "../components/ui/back-button";
 import { Button } from "../components/ui/button";
+import { CardSlotProvider } from "../hooks/useCardSlot";
 import { usePopOut } from "../hooks/usePopOut";
 import { useRouteBack } from "../hooks/useRouteBack";
 import { useVaultNameSync } from "../hooks/useVaultName";
@@ -116,7 +117,9 @@ export function AppLayout() {
 					</div>
 				</div>
 			</header>
-			<Outlet />
+			<CardSlotProvider>
+				<Outlet />
+			</CardSlotProvider>
 			<PasskeySavedToast />
 		</div>
 	);

@@ -9,8 +9,9 @@ apps cannot, so they only say a newer version exists and point at it. Code:
 - Once a day at most, while the vault list is open, the app fetches
   `https://bramble.sh/ios/latest.json` or `https://bramble.sh/android/latest.json` (Pages Functions,
   see `website/README.md`). The request has no cookies and carries nothing from the vault or device.
-- If that version is newer than the installed one, the vault list shows a card, ahead of the review
-  and default-manager cards, since an update may carry a security fix.
+- If that version is newer than the installed one, the vault list shows a card, ahead of the
+  What's new, review and default-manager cards, since an update may carry a security fix. One card
+  shows at a time, and none for the rest of an open once one is closed (docs/whats-new.md).
 - **iOS:** "Update now" opens the App Store listing. The URL is a constant in the app, not read from
   the manifest. The iOS endpoint reports what Apple says is live, so a build still in review or
   TestFlight never triggers the card, and a TestFlight build ahead of the store reads as current.

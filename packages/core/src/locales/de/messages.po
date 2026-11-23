@@ -165,6 +165,10 @@ msgstr "{count, plural, one {# ausgewählt} other {# ausgewählt}}"
 #~ msgid "{count, plural, one {Delete # entry?} other {Delete # entries?}}"
 #~ msgstr "{count, plural, one {# Eintrag löschen?} other {# Einträge löschen?}}"
 
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "{count, plural, one {Show # change} other {Show # changes}}"
+msgstr "{count, plural, one {# Änderung anzeigen} other {# Änderungen anzeigen}}"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{duplicates} more were already in your vault and will not be added again."
 msgstr "{duplicates} weitere befanden sich bereits in Ihrem Tresor und werden nicht erneut hinzugefügt."
@@ -1666,6 +1670,7 @@ msgstr "Trennen Sie dieses Gerät von der Synchronisierung, bevor Sie das Master
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
+#: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
 msgstr "Schließen"
 
@@ -2125,6 +2130,10 @@ msgstr "Authentifikator-Schlüssel ausblenden"
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide card number"
 msgstr "Kartennummer ausblenden"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Hide changes"
+msgstr "Änderungen ausblenden"
 
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide CVV"
@@ -3281,6 +3290,10 @@ msgstr "Bramble bewerten"
 #: packages/core/src/app/screens/VaultSetup/components/PasswordCard.tsx
 msgid "Re-enter the password"
 msgstr "Geben Sie das Passwort erneut ein"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Read more"
+msgstr "Weiterlesen"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -5104,6 +5117,10 @@ msgstr "Wöchentlich"
 #: packages/core/src/app/screens/Auth/Auth.tsx
 msgid "Welcome to {appName}"
 msgstr "Willkommen bei {appName}"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "What's new in {version}"
+msgstr "Neu in {version}"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Windows Hello"

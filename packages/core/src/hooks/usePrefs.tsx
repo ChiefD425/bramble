@@ -15,6 +15,7 @@ import {
 	type ReviewNudgeState,
 } from "../app/review-nudge";
 import { DEFAULT_SEARCH, isSortKey, type SortKey } from "../app/screens/VaultHome/vault-search";
+import { normalizeWhatsNewState, PREF_WHATS_NEW, type WhatsNewState } from "../app/whats-new";
 import { usePlatform } from "../context/PlatformContext";
 import { syncKeyFor } from "../sync/sync-keys";
 import {
@@ -155,6 +156,8 @@ export interface Prefs {
 	updateCheck: boolean;
 	// Mobile: the last check's result and the version the notice was closed for.
 	appUpdate: AppUpdateState;
+	// The version the "What's new" card was last closed for.
+	whatsNew: WhatsNewState;
 }
 
 /** Each pref's storage key. A map rather than a ternary chain: the type makes it exhaustive, so
@@ -182,6 +185,7 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	reviewNudge: PREF_REVIEW_NUDGE,
 	updateCheck: PREF_UPDATE_CHECK,
 	appUpdate: PREF_APP_UPDATE,
+	whatsNew: PREF_WHATS_NEW,
 };
 
 /**
@@ -235,6 +239,7 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	// Device: they describe this install's version, not the vault.
 	updateCheck: "device",
 	appUpdate: "device",
+	whatsNew: "device",
 };
 
 const VAULT_SCOPED = (Object.keys(PREF_SCOPE) as (keyof Prefs)[]).filter(
@@ -300,6 +305,7 @@ const DEFAULT_PREFS: Prefs = {
 	reviewNudge: freshReviewNudgeState(Date.now()),
 	updateCheck: DEFAULT_UPDATE_CHECK,
 	appUpdate: {},
+	whatsNew: {},
 };
 
 export interface UsePrefs {
@@ -398,7 +404,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v] = await Promise.all([
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w] = await Promise.all([
 				storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
 				storage.getMeta<boolean>(PREF_BREACH_CHECK),
 				storage.getMeta<number>(PREF_CLIPBOARD_SECONDS),
@@ -430,6 +436,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				storage.getMeta<unknown>(PREF_APP_UPDATE),
 				storage.getMeta<unknown>(PREF_VAULT_SORT),
 				storage.getMeta<boolean>(PREF_COPY_TOTP_ON_FILL),
+				storage.getMeta<unknown>(PREF_WHATS_NEW),
 			]);
 			if (cancelled) return;
 			// One `now` for the read: a fresh install's clock starts here rather than at whichever
@@ -466,6 +473,9 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 					typeof p === "boolean" ? p : DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED,
 				updateCheck: typeof r === "boolean" ? r : DEFAULT_UPDATE_CHECK,
 				appUpdate: normalizeAppUpdateState(s),
+				// Re-read when the first vault arrives, which is when a fresh install records its version
+				// (markFreshInstall): `vaults.length` is in this effect's dependencies.
+				whatsNew: normalizeWhatsNewState(w),
 			}));
 			setLoaded(true);
 		})();

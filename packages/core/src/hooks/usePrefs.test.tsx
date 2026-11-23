@@ -168,6 +168,46 @@ describe("the vault list's sort order", () => {
 	});
 });
 
+describe("the What's new record", () => {
+	function Seen() {
+		const { prefs, loaded } = usePrefs();
+		return <div>{loaded ? `seen:${prefs.whatsNew.seen ?? "none"}` : "loading"}</div>;
+	}
+	const show = (platform: Platform) =>
+		render(
+			<PlatformProvider platform={platform}>
+				<PrefsProvider>
+					<Seen />
+				</PrefsProvider>
+			</PlatformProvider>,
+		);
+
+	it("reads the version the card was last closed for", async () => {
+		const { platform, store } = makePlatform();
+		store.set("pref.whatsNew", { seen: "1.40.0" });
+		show(platform);
+		expect(await screen.findByText("seen:1.40.0")).toBeTruthy();
+	});
+
+	it("reads no record as none, and writes nothing on its own", async () => {
+		const { platform, store } = makePlatform();
+		show(platform);
+		expect(await screen.findByText("seen:none")).toBeTruthy();
+		expect(store.has("pref.whatsNew")).toBe(false);
+	});
+
+	it("picks up the record a fresh install writes with its first vault", async () => {
+		const { platform, store } = makePlatform();
+		show(platform);
+		expect(await screen.findByText("seen:none")).toBeTruthy();
+		store.set("pref.whatsNew", { seen: "1.42.0" });
+		reg.vaults = [{ id: "v1" }];
+		cleanup();
+		show(platform);
+		expect(await screen.findByText("seen:1.42.0")).toBeTruthy();
+	});
+});
+
 describe("per-vault prefs", () => {
 	function mount(platform: Platform) {
 		function Reader() {

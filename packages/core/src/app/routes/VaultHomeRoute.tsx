@@ -13,15 +13,15 @@ import { isLogin, useVault } from "../../hooks/useVault";
 import { useVaultRegistry } from "../../hooks/useVaultRegistry";
 import { reusedPasswordIds } from "../../vault/password-reuse";
 import { allTags } from "../../vault/tags";
-import { DefaultManagerCard } from "../components/DefaultManagerCard";
-import { ReviewNudgeCard } from "../components/ReviewNudgeCard";
-import { UpdateCard } from "../components/UpdateCard";
 import { useToast } from "../components/ui/toast";
+import { VaultListCard } from "../components/VaultListCard";
 import { useAppUpdate } from "../hooks/useAppUpdate";
+import { useCardSlot } from "../hooks/useCardSlot";
 import { useDefaultPasswordManager } from "../hooks/useDefaultPasswordManager";
 import { useDuplicateEntry } from "../hooks/useDuplicateEntry";
 import { useListAttach } from "../hooks/useListAttach";
 import { useReviewNudge } from "../hooks/useReviewNudge";
+import { useWhatsNew } from "../hooks/useWhatsNew";
 import { toListItem } from "../screens/VaultHome/list-item";
 import {
 	VAULT_LIST_SCROLL_ID,
@@ -96,11 +96,16 @@ export function VaultHomeRoute() {
 		};
 	}, [shell, entries]);
 
+	const appUpdate = useAppUpdate();
+	const whatsNew = useWhatsNew();
+	const slot = useCardSlot();
 	// The store-review ask. Called unconditionally (it counts sessions whether or not it ever
 	// asks) and usually null. Entries are the whole vault, archived included: an archived entry
-	// is still one this person put there, which is all the signal is measuring.
-	const reviewNudge = useReviewNudge(entries.length);
-	const appUpdate = useAppUpdate();
+	// is still one this person put there, which is all the signal is measuring. iOS's own prompt
+	// waits while the list has a card, may get one (the notes still loading), or closed one.
+	const reviewNudge = useReviewNudge(entries.length, {
+		hold: slot.closed || !!appUpdate || whatsNew !== null,
+	});
 	const defaultManager = useDefaultPasswordManager();
 	const offerDefaultManager =
 		prefsLoaded && !prefs.defaultManagerPromptDismissed && defaultManager?.state === "browser";
@@ -202,18 +207,20 @@ export function VaultHomeRoute() {
 			onLeave={(offset) => {
 				lockedAt = locking.current ? { vault: activeId, href, offset } : undefined;
 			}}
-			// The update first: it may carry a security fix.
 			nudge={
-				appUpdate ? (
-					<UpdateCard update={appUpdate} />
-				) : reviewNudge ? (
-					<ReviewNudgeCard nudge={reviewNudge} />
-				) : offerDefaultManager ? (
-					<DefaultManagerCard
-						onAccept={() => defaultManager?.set(true)}
-						onDismiss={() => void update("defaultManagerPromptDismissed", true)}
-					/>
-				) : undefined
+				<VaultListCard
+					cards={{
+						appUpdate,
+						whatsNew,
+						reviewNudge,
+						defaultManager: offerDefaultManager
+							? {
+									onAccept: () => defaultManager?.set(true),
+									onDismiss: () => void update("defaultManagerPromptDismissed", true),
+								}
+							: null,
+					}}
+				/>
 			}
 		/>
 	);

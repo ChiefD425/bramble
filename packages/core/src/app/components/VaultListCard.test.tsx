@@ -1,0 +1,156 @@
+/** @vitest-environment happy-dom */
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { CardSlotProvider } from "../hooks/useCardSlot";
+import { VaultListCard, type VaultListCards } from "./VaultListCard";
+
+beforeAll(() => {
+	i18n.load("en", {});
+	i18n.activate("en");
+});
+
+afterEach(cleanup);
+
+/** Every card on offer at once, each going away once acted on, as their hooks' state does. */
+function Cards({ only }: { only?: (keyof VaultListCards)[] }) {
+	const [gone, setGone] = useState<Set<string>>(new Set());
+	const end = (k: string) => () => setGone((g) => new Set(g).add(k));
+	const offer = (k: keyof VaultListCards) => !gone.has(k) && (!only || only.includes(k));
+	return (
+		<VaultListCard
+			cards={{
+				appUpdate: offer("appUpdate")
+					? { version: "0.34.0", url: "https://example.com/a.apk", onDismiss: end("appUpdate") }
+					: null,
+				whatsNew: offer("whatsNew")
+					? {
+							version: "1.42.0",
+							notes: { version: "1.42.0", headline: "Headline.", items: ["One."] },
+							url: "https://bramble.sh/whats-new/chromium/1.42.0",
+							onClose: end("whatsNew"),
+						}
+					: null,
+				reviewNudge: offer("reviewNudge")
+					? {
+							reviewUrl: "https://example.com/r",
+							onRated: end("reviewNudge"),
+							onDismiss: end("reviewNudge"),
+						}
+					: null,
+				defaultManager: offer("defaultManager")
+					? { onAccept: end("defaultManager"), onDismiss: end("defaultManager") }
+					: null,
+			}}
+		/>
+	);
+}
+
+function mount(only?: (keyof VaultListCards)[]) {
+	return render(
+		<I18nProvider i18n={i18n}>
+			<CardSlotProvider>
+				<Cards only={only} />
+			</CardSlotProvider>
+		</I18nProvider>,
+	);
+}
+
+const showing = () => ({
+	update: !!screen.queryByText(/is available/),
+	whatsNew: !!screen.queryByText(/What's new in/),
+	review: !!screen.queryByText(/Say something nice/),
+	defaultManager: !!screen.queryByText(/default password manager/),
+});
+
+describe("VaultListCard", () => {
+	it("shows one card, the update first, then what's new, the review ask, the default manager", () => {
+		mount();
+		expect(showing()).toEqual({
+			update: true,
+			whatsNew: false,
+			review: false,
+			defaultManager: false,
+		});
+		cleanup();
+		mount(["whatsNew", "reviewNudge", "defaultManager"]);
+		expect(showing()).toEqual({
+			update: false,
+			whatsNew: true,
+			review: false,
+			defaultManager: false,
+		});
+		cleanup();
+		mount(["reviewNudge", "defaultManager"]);
+		expect(showing()).toEqual({
+			update: false,
+			whatsNew: false,
+			review: true,
+			defaultManager: false,
+		});
+		cleanup();
+		mount(["defaultManager"]);
+		expect(showing().defaultManager).toBe(true);
+	});
+
+	it("leaves the spot empty for the rest of the open once a card is closed", () => {
+		mount();
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(showing()).toEqual({
+			update: false,
+			whatsNew: false,
+			review: false,
+			defaultManager: false,
+		});
+		expect(screen.queryByRole("button")).toBeNull();
+	});
+
+	it("counts Read more, a review and accepting as acting on the card", () => {
+		mount(["whatsNew", "reviewNudge"]);
+		fireEvent.click(screen.getByRole("link", { name: /read more/i }));
+		expect(screen.queryByText(/Say something nice/)).toBeNull();
+		cleanup();
+		mount(["reviewNudge", "defaultManager"]);
+		fireEvent.click(screen.getByRole("link", { name: /leave a review/i }));
+		expect(showing().defaultManager).toBe(false);
+		cleanup();
+		mount(["defaultManager"]);
+		fireEvent.click(screen.getByRole("button", { name: /make default/i }));
+		expect(screen.queryByRole("button")).toBeNull();
+	});
+
+	it("still runs the card's own action", () => {
+		const onClose = vi.fn();
+		render(
+			<I18nProvider i18n={i18n}>
+				<CardSlotProvider>
+					<VaultListCard
+						cards={{
+							appUpdate: null,
+							whatsNew: {
+								version: "1.42.0",
+								notes: { version: "1.42.0", items: [] },
+								url: "https://bramble.sh/whats-new/chromium/1.42.0",
+								onClose,
+							},
+							reviewNudge: null,
+							defaultManager: null,
+						}}
+					/>
+				</CardSlotProvider>
+			</I18nProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(onClose).toHaveBeenCalledOnce();
+	});
+
+	it("starts empty-handed again on the next open", () => {
+		mount();
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		cleanup();
+		mount(["whatsNew"]);
+		expect(showing().whatsNew).toBe(true);
+	});
+});

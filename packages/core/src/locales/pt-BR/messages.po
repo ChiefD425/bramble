@@ -165,6 +165,10 @@ msgstr "{count, plural, one {# selecionado} other {# selecionados}}"
 #~ msgid "{count, plural, one {Delete # entry?} other {Delete # entries?}}"
 #~ msgstr "{count, plural, one {Excluir # entrada?} other {Excluir # entradas?}}"
 
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "{count, plural, one {Show # change} other {Show # changes}}"
+msgstr "{count, plural, one {Mostrar # alteração} other {Mostrar # alterações}}"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{duplicates} more were already in your vault and will not be added again."
 msgstr "{duplicates} mais já estavam no seu cofre e não serão adicionados novamente."
@@ -1666,6 +1670,7 @@ msgstr "Desconecte este dispositivo da sincronização antes de desativar a senh
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
+#: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
 msgstr "Dispensar"
 
@@ -2125,6 +2130,10 @@ msgstr "Ocultar chave do autenticador"
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide card number"
 msgstr "Ocultar número do cartão"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Hide changes"
+msgstr "Ocultar alterações"
 
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide CVV"
@@ -3281,6 +3290,10 @@ msgstr "Avaliar o Bramble"
 #: packages/core/src/app/screens/VaultSetup/components/PasswordCard.tsx
 msgid "Re-enter the password"
 msgstr "Reinsira a senha"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Read more"
+msgstr "Ler mais"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -5104,6 +5117,10 @@ msgstr "Semanalmente"
 #: packages/core/src/app/screens/Auth/Auth.tsx
 msgid "Welcome to {appName}"
 msgstr "Bem-vindo ao {appName}"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "What's new in {version}"
+msgstr "Novidades da versão {version}"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Windows Hello"

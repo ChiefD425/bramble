@@ -250,6 +250,69 @@ describe("VaultRegistryProvider", () => {
 	});
 });
 
+describe("the first vault on a device", () => {
+	function mountWith(stored: unknown, store: Map<string, unknown>, version = "1.42.0") {
+		store.set(VAULT_REGISTRY_KEY, stored);
+		const storage = {
+			getMeta: vi.fn(async (k: string) => store.get(k)),
+			setMeta: vi.fn(async (k: string, v: unknown) => void store.set(k, v)),
+		};
+		const platform = {
+			storage,
+			shell: { version, getActiveVault: async () => null },
+		} as unknown as Platform;
+		let value: VaultRegistryValue | null = null;
+		function Consumer() {
+			value = useVaultRegistry();
+			return null;
+		}
+		render(
+			<PlatformProvider platform={platform}>
+				<VaultRegistryProvider>
+					<Consumer />
+				</VaultRegistryProvider>
+			</PlatformProvider>,
+		);
+		return async () => {
+			await act(async () => {
+				await (value as unknown as VaultRegistryValue).createRecord("");
+			});
+		};
+	}
+
+	it("starts a fresh install on its version, so a new user gets no What's new card", async () => {
+		const store = new Map<string, unknown>();
+		const create = mountWith(undefined, store);
+		await act(async () => {});
+		await create();
+		expect(store.get("pref.whatsNew")).toEqual({ seen: "1.42.0" });
+	});
+
+	it("leaves an install that already had a vault alone", async () => {
+		const store = new Map<string, unknown>();
+		const create = mountWith(one, store);
+		await act(async () => {});
+		await create();
+		expect(store.has("pref.whatsNew")).toBe(false);
+	});
+
+	it("keeps a record already there, from before every vault was deleted", async () => {
+		const store = new Map<string, unknown>([["pref.whatsNew", { seen: "1.30.0" }]]);
+		const create = mountWith(undefined, store);
+		await act(async () => {});
+		await create();
+		expect(store.get("pref.whatsNew")).toEqual({ seen: "1.30.0" });
+	});
+
+	it("records nothing for a dev build, whose placeholder version is not a release", async () => {
+		const store = new Map<string, unknown>();
+		const create = mountWith(undefined, store, "0.0.0");
+		await act(async () => {});
+		await create();
+		expect(store.has("pref.whatsNew")).toBe(false);
+	});
+});
+
 describe("makeVaultScopedStorage", () => {
 	it("binds the vault id to blob methods and passes metadata through", async () => {
 		const seen: Record<string, unknown> = {};

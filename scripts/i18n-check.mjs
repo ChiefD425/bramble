@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // CI / release gate: fail if any locale catalog has missing entries. Pure and
 // model-free. Covers every surface: Lingui .po, Android strings.xml, iOS
-// .xcstrings, the Chrome extension _locales, the desktop app's native menus, and
-// fastlane store metadata (presence + App Store length caps).
+// .xcstrings, the Chrome extension _locales, the desktop app's native menus,
+// fastlane store metadata (presence + App Store length caps), and the What's new
+// card's release notes.
 //
 //   node scripts/i18n-check.mjs            # validate committed catalogs
 //   node scripts/i18n-check.mjs --extract  # run `lingui extract` first (CI),
@@ -21,6 +22,7 @@ import {
 	FASTLANE_DIR,
 	LOCALES,
 	PO_CATALOG,
+	RELEASE_NOTES_DIR,
 	TAURI_LOCALES_DIR,
 	XCSTRINGS,
 } from "./i18n/locales.mjs";
@@ -181,6 +183,20 @@ for (const { appStore } of [{ appStore: "en-US" }, ...LOCALES]) {
 	}
 }
 
+// --- Release notes: each locale has each target's notes, for the same release as the English ---
+// The app shows English for a missing or older translation, so only this check catches the gap.
+const releaseVersion = (path) =>
+	existsSync(path) ? readFileSync(path, "utf8").match(/^version:\s*["']?([^"'\s]+)/m)?.[1] : undefined;
+const notesSource = join(RELEASE_NOTES_DIR, "en");
+for (const file of existsSync(notesSource) ? readdirSync(notesSource).filter((f) => f.endsWith(".md")) : []) {
+	const version = releaseVersion(join(notesSource, file));
+	for (const { code } of LOCALES) {
+		const found = releaseVersion(join(RELEASE_NOTES_DIR, code, file));
+		if (found !== version)
+			note(`release-notes[${code}/${file}]: ${found ? `is for ${found}, not ${version}` : "missing"} (run pnpm i18n:native)`);
+	}
+}
+
 if (problems.length) {
 	console.error(`\n✗ i18n check failed (${problems.length} issue(s)):`);
 	for (const p of problems) console.error(`  - ${p}`);
@@ -188,5 +204,5 @@ if (problems.length) {
 	process.exit(1);
 }
 console.log(
-	"✓ i18n check passed: all locales complete across po, android, xcstrings, chrome _locales, tauri menus, fastlane (iOS + Android)",
+	"✓ i18n check passed: all locales complete across po, android, xcstrings, chrome _locales, tauri menus, fastlane (iOS + Android), release notes",
 );

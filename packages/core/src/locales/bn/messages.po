@@ -165,6 +165,10 @@ msgstr "{count, plural, one {#টি বাছাই করা হয়েছ�
 #~ msgid "{count, plural, one {Delete # entry?} other {Delete # entries?}}"
 #~ msgstr "{count, plural, one {Delete # entry?} other {Delete # entries?}}"
 
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "{count, plural, one {Show # change} other {Show # changes}}"
+msgstr "{count, plural, one {#টি পরিবর্তন দেখান} other {#টি পরিবর্তন দেখান}}"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{duplicates} more were already in your vault and will not be added again."
 msgstr "আরও {duplicates}টি আগে থেকেই আপনার ভল্টে আছে, তাই আবার যোগ করা হবে না।"
@@ -1658,6 +1662,7 @@ msgstr "মাস্টার পাসওয়ার্ড বন্ধ কর
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
+#: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
 msgstr "সরিয়ে দিন"
 
@@ -2117,6 +2122,10 @@ msgstr "অথেনটিকেটর কি লুকান"
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide card number"
 msgstr "কার্ড নম্বর লুকান"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Hide changes"
+msgstr "পরিবর্তন লুকান"
 
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Hide CVV"
@@ -3269,6 +3278,10 @@ msgstr "Bramble-কে রেটিং দিন"
 #: packages/core/src/app/screens/VaultSetup/components/PasswordCard.tsx
 msgid "Re-enter the password"
 msgstr "পাসওয়ার্ডটি আবার দিন"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "Read more"
+msgstr "আরও পড়ুন"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -5072,6 +5085,10 @@ msgstr "প্রতি সপ্তাহে"
 #: packages/core/src/app/screens/Auth/Auth.tsx
 msgid "Welcome to {appName}"
 msgstr "{appName}-এ স্বাগতম"
+
+#: packages/core/src/app/components/WhatsNewCard.tsx
+msgid "What's new in {version}"
+msgstr "{version} সংস্করণে নতুন কী আছে"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Windows Hello"

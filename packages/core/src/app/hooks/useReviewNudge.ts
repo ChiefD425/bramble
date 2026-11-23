@@ -28,8 +28,12 @@ export interface ReviewNudge {
  * listing (Android, desktop), which has no URL in the first place.
  *
  * `entryCount` is the open vault's size, one of the signals the policy reads (review-nudge.ts).
+ * `hold` keeps iOS's prompt back while the vault list has, or has just closed, a card of its own.
  */
-export function useReviewNudge(entryCount: number): ReviewNudge | null {
+export function useReviewNudge(
+	entryCount: number,
+	{ hold = false }: { hold?: boolean } = {},
+): ReviewNudge | null {
 	const { target, shell } = usePlatform();
 	const { prefs, loaded, update } = usePrefs();
 	const state = prefs.reviewNudge;
@@ -57,11 +61,11 @@ export function useReviewNudge(entryCount: number): ReviewNudge | null {
 	// ask is recorded either way, because we are never told.
 	const askedNatively = useRef(false);
 	useEffect(() => {
-		if (!native || !shouldAsk || askedNatively.current) return;
+		if (!native || !shouldAsk || hold || askedNatively.current) return;
 		askedNatively.current = true;
 		void update("reviewNudge", recordAsk(state, Date.now()));
 		void shell.requestStoreReview?.();
-	}, [native, shouldAsk, state, update, shell]);
+	}, [native, shouldAsk, hold, state, update, shell]);
 
 	if (!reviewUrl || native || !shouldAsk) return null;
 	return {
