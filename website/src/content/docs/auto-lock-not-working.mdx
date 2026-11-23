@@ -27,7 +27,7 @@ keywords:
   - Lock vault after inactivity
   - Stays unlocked until you lock it or quit the browser
   - Stays unlocked until you lock it or the app is closed
-updatedDate: 2026-11-12
+updatedDate: 2026-11-22
 ---
 
 ## Check these first
@@ -73,7 +73,7 @@ A linked browser unlocks through the desktop app, so lock the desktop app when y
 
 ### Autofill on your phone still fills
 
-Phone autofill keeps its own timer, set by **Auto-lock timeout**. Locking the app locks autofill too. With **Until app closes**, autofill stays unlocked until you lock the app. To make autofill ask every time, choose **Immediate**.
+Phone autofill keeps its own timer, set by **Auto-lock timeout**, and each fill restarts it. <Since commit="a56d8488" on="android ios">So autofill can stay unlocked after the app auto-locks. Locking the app yourself locks autofill too.</Since><Until commit="a56d8488" on="android ios">Locking the app locks autofill too.</Until> With **Until app closes**, autofill stays unlocked until you lock the app. To make autofill ask every time, choose **Immediate**.
 
 ## Still not right?
 

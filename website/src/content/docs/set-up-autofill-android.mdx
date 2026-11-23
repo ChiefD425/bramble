@@ -47,7 +47,7 @@ keywords:
   - 2FA code
   - one-time code
   - TOTP
-updatedDate: 2026-11-19
+updatedDate: 2026-11-22
 ---
 
 Bramble fills logins and 2FA codes in apps and browsers on Android 8 and later.
@@ -72,7 +72,7 @@ Bramble always lets you pick, even when only one login matches.
 
 After you unlock, Bramble stays unlocked for autofill for as long as your **Auto-lock timeout** in **Settings → General**. While it's unlocked, the suggestions list the matching logins directly, plus **Show all logins** to search your whole vault.
 
-With **Immediate**, Bramble asks you to unlock every time. With **Never**, it stays unlocked until you lock the app.
+With **Immediate**, Bramble asks you to unlock every time. With **Until app closes**, it stays unlocked until you lock the app.
 
 ### Which logins match
 
@@ -116,7 +116,7 @@ A browser tells Bramble which site you're on. Bramble trusts that only from brow
 
 - Chrome
 - Firefox, and Firefox from F-Droid
-- Microsoft Edge
+- Microsoft Edge<Since commit="6adf74b6" on="android">, including Beta, Dev and Canary</Since>
 - Brave
 - DuckDuckGo
 - Opera Mini

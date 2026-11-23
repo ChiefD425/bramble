@@ -64,7 +64,7 @@ If you pick a login that isn't saved for this site, Bramble asks **Save to Bramb
 
 ## Stay unlocked between fills
 
-After you unlock in AutoFill, Bramble stays unlocked there for as long as your **Auto-lock timeout** in **Settings → General**. Within that time, Bramble fills without asking again. Locking the app locks AutoFill too.
+After you unlock in AutoFill, Bramble stays unlocked there for as long as your **Auto-lock timeout** in **Settings → General**. Within that time, Bramble fills without asking again. <Since commit="a56d8488" on="ios">Each fill restarts that time, even after the app auto-locks. Locking the app yourself locks AutoFill too.</Since><Until commit="a56d8488" on="ios">Locking the app locks AutoFill too.</Until>
 
 With **Immediate**, you unlock every time.
 
