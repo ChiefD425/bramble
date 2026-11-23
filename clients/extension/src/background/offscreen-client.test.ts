@@ -35,6 +35,21 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("offscreen document", () => {
+	it("creates it in a browser whose chrome.offscreen has no Reason enum (#255)", async () => {
+		const createDocument = vi.fn(async () => {});
+		vi.stubGlobal("chrome", {
+			runtime: {},
+			offscreen: { hasDocument: async () => false, createDocument },
+		});
+		const client = await import("./offscreen-client");
+		await client.ensureOffscreen();
+		expect(createDocument).toHaveBeenCalledWith(
+			expect.objectContaining({ reasons: ["WORKERS", "CLIPBOARD", "WEB_RTC"] }),
+		);
+	});
+});
+
 describe("lazy in-process sync host", () => {
 	it("registers the bridge before dispatch, without loading the host at registration", async () => {
 		const client = await import("./offscreen-client");

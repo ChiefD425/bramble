@@ -29,14 +29,15 @@ export async function ensureOffscreen(): Promise<void> {
 	if (!useOffscreenDoc) return;
 	if (await api.offscreen.hasDocument?.()) return;
 	if (!creating) {
+		// WebKit browsers that run Chrome extensions can ship chrome.offscreen without its Reason
+		// enum (#255). Chrome's values are the names themselves, so those stand in.
+		const reasons = (["WORKERS", "CLIPBOARD", "WEB_RTC"] as const).map(
+			(r) => api.offscreen.Reason?.[r] ?? r,
+		) as chrome.offscreen.Reason[];
 		creating = api.offscreen
 			.createDocument({
 				url: OFFSCREEN_URL,
-				reasons: [
-					api.offscreen.Reason.WORKERS,
-					api.offscreen.Reason.CLIPBOARD,
-					api.offscreen.Reason.WEB_RTC,
-				],
+				reasons,
 				justification:
 					"Hosts the Vault WASM crypto module, clears the clipboard after a copy, and runs the WebRTC sync transport.",
 			})
