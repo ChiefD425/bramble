@@ -26,6 +26,9 @@ keywords:
   - Bramble not showing in Safari
   - User names and passwords
   - Safari AutoFill settings
+  - asks for master password every time
+  - Touch ID every time
+  - stay unlocked
 updatedDate: 2026-11-21
 ---
 
@@ -37,13 +40,17 @@ On a Mac, the Bramble desktop app fills your logins, 2FA codes and passkeys in S
 2. Open System Settings and go to **General → AutoFill & Passwords**. On older macOS versions, look for the same setting under **Passwords**.
 3. Under **AutoFill from**, turn on **Bramble**.
 
-To unlock AutoFill with Touch ID, open the desktop app's **Settings → Security** and turn on **Touch ID**. Otherwise AutoFill asks for your master password.
+To unlock AutoFill with Touch ID, open the desktop app's **Settings → Security** and turn on **Touch ID**. Otherwise AutoFill asks for your master password.<Since commit="34767a18" on="desktop"> While the desktop app is unlocked, AutoFill fills logins and 2FA codes without asking.</Since>
+
+## Stay unlocked between fills
+
+<Since commit="34767a18" on="desktop">AutoFill follows the desktop app. While the app is unlocked, picking a login or code fills it straight away, and each fill counts as using Bramble, so it restarts the **Auto-lock timeout** in **Settings → General**. Once the app locks, whether you lock it, it auto-locks or you quit it, AutoFill asks for Touch ID or your master password again. Passkeys always ask.</Since><Until commit="34767a18" on="desktop">AutoFill asks for Touch ID or your master password every time, even while the desktop app is unlocked.</Until>
 
 ## Fill a login
 
 1. In Safari or an app, click a username or password field.
 2. Choose Bramble in the list that appears.
-3. Unlock with Touch ID, or enter your master password and choose **Unlock**.
+3. <Since commit="34767a18" on="desktop">If the desktop app is locked, unlock</Since><Until commit="34767a18" on="desktop">Unlock</Until> with Touch ID, or enter your master password and choose **Unlock**.
 4. Pick the login to fill.
 
 Bramble shows the logins for this site first. **Search logins** finds any other.
