@@ -941,6 +941,7 @@ msgstr "Não é possível salvar este código"
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -1059,6 +1060,10 @@ msgstr "Escolher uma senha mestra"
 #: packages/core/src/hooks/useVault.tsx
 msgid "Choose a password for the exported file."
 msgstr "Escolha uma senha para o arquivo exportado."
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Choose a vault to delete"
+msgstr "Escolha um cofre para excluir"
 
 #: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Choose a vault to unlock"
@@ -1541,6 +1546,19 @@ msgstr "Gerenciador de senhas padrão"
 msgid "Delete"
 msgstr "Excluir"
 
+#. placeholder {0}: vault.label
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Delete {0}?"
+msgstr "Excluir {0}?"
+
+#: packages/core/src/app/components/VaultChoiceList.tsx
+msgid "Delete {label}"
+msgstr "Excluir {label}"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Delete a vault"
+msgstr "Excluir um cofre"
+
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Delete entry"
 msgstr "Excluir entrada"
@@ -1570,6 +1588,7 @@ msgid "Delete this vault"
 msgstr "Excluir este cofre"
 
 #: packages/core/src/app/screens/Settings/components/DeleteVaultSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Delete vault"
 msgstr "Excluir cofre"
 
@@ -1577,6 +1596,7 @@ msgstr "Excluir cofre"
 #: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 #: packages/core/src/app/screens/Settings/components/DeleteVaultSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Deleting…"
 msgstr "Excluindo..."
 
@@ -1653,6 +1673,7 @@ msgstr "Cachorro"
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Done"
 msgstr "Concluir"
 
@@ -1829,6 +1850,10 @@ msgstr "eTLD+1 (padrão, corresponde a todos os subdomínios)"
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "Every selected entry already has this tag."
 msgstr "Todas as entradas selecionadas já têm esta tag."
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Everything in it is deleted from this device and can't be recovered here. Copies on your other devices and in backups aren't affected."
+msgstr "Tudo nele será excluído deste dispositivo e não poderá ser recuperado aqui. As cópias nos seus outros dispositivos e nos backups não serão afetadas."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Everything in that transfer is already in your vault, so there is nothing to import."
@@ -2518,6 +2543,10 @@ msgstr "Bloquear"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Lock the vault and require autofill auth after inactivity"
 msgstr "Bloquear o cofre e exigir autenticação de preenchimento automático após a inatividade"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Lock this vault first, or delete it from Settings."
+msgstr "Bloqueie este cofre primeiro ou exclua-o em Configurações."
 
 #: packages/core/src/app/layouts/AppLayout.tsx
 msgid "Lock vault"
@@ -4649,6 +4678,11 @@ msgstr "Tartaruga"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Type"
 msgstr "Tipo"
+
+#. placeholder {0}: vault.label
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Type {0} to confirm"
+msgstr "Digite {0} para confirmar"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Umbrella"

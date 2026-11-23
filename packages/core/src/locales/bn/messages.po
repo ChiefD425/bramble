@@ -933,6 +933,7 @@ msgstr "এই কোড সেভ করা যাচ্ছে না"
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Cancel"
 msgstr "বাতিল"
 
@@ -1051,6 +1052,10 @@ msgstr "একটি মাস্টার পাসওয়ার্ড বে
 #: packages/core/src/hooks/useVault.tsx
 msgid "Choose a password for the exported file."
 msgstr "এক্সপোর্ট করা ফাইলের জন্য একটি পাসওয়ার্ড বেছে নিন।"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Choose a vault to delete"
+msgstr "মুছে ফেলতে একটি ভল্ট নির্বাচন করুন"
 
 #: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Choose a vault to unlock"
@@ -1533,6 +1538,19 @@ msgstr "ডিফল্ট পাসওয়ার্ড ম্যানেজ�
 msgid "Delete"
 msgstr "মুছুন"
 
+#. placeholder {0}: vault.label
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Delete {0}?"
+msgstr "{0} মুছবেন?"
+
+#: packages/core/src/app/components/VaultChoiceList.tsx
+msgid "Delete {label}"
+msgstr "{label} মুছুন"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Delete a vault"
+msgstr "একটি ভল্ট মুছুন"
+
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Delete entry"
 msgstr "এন্ট্রি মুছুন"
@@ -1562,6 +1580,7 @@ msgid "Delete this vault"
 msgstr "এই ভল্ট মুছুন"
 
 #: packages/core/src/app/screens/Settings/components/DeleteVaultSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Delete vault"
 msgstr "ভল্ট মুছুন"
 
@@ -1569,6 +1588,7 @@ msgstr "ভল্ট মুছুন"
 #: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 #: packages/core/src/app/screens/Settings/components/DeleteVaultSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Deleting…"
 msgstr "মোছা হচ্ছে…"
 
@@ -1645,6 +1665,7 @@ msgstr "কুকুর"
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Done"
 msgstr "সম্পন্ন"
 
@@ -1821,6 +1842,10 @@ msgstr "eTLD+1 (ডিফল্ট, সব সাবডোমেইনের স
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "Every selected entry already has this tag."
 msgstr "বাছাই করা সব এন্ট্রিতে এই ট্যাগ আগে থেকেই আছে।"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Everything in it is deleted from this device and can't be recovered here. Copies on your other devices and in backups aren't affected."
+msgstr "এতে থাকা সবকিছু এই ডিভাইস থেকে মুছে ফেলা হয় এবং এখানে তা পুনরুদ্ধার করা যায় না। আপনার অন্যান্য ডিভাইসে ও ব্যাকআপে থাকা কপিগুলি প্রভাবিত হয় না।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "Everything in that transfer is already in your vault, so there is nothing to import."
@@ -2506,6 +2531,10 @@ msgstr "লক"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Lock the vault and require autofill auth after inactivity"
 msgstr "কিছুক্ষণ ব্যবহার না করলে ভল্ট লক করুন এবং অটোফিলের জন্য পরিচয় যাচাই চালু করুন"
+
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Lock this vault first, or delete it from Settings."
+msgstr "প্রথমে এই ভল্টটি লক করুন, অথবা সেটিংস থেকে এটি মুছুন।"
 
 #: packages/core/src/app/layouts/AppLayout.tsx
 msgid "Lock vault"
@@ -4617,6 +4646,11 @@ msgstr "কচ্ছপ"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Type"
 msgstr "ধরন"
+
+#. placeholder {0}: vault.label
+#: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
+msgid "Type {0} to confirm"
+msgstr "নিশ্চিত করতে {0} টাইপ করুন"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Umbrella"

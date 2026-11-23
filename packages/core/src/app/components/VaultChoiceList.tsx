@@ -1,5 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Trash2 } from "lucide-react";
 import { useVaultRegistry } from "../../hooks/useVaultRegistry";
 import { formatDate } from "../../util/format-date";
 import { displayLabel } from "../../vault/vault-registry";
@@ -17,7 +17,14 @@ export function initials(label: string): string {
  * The vault rows, shared by the launch-time picker and the import screen so a user choosing
  * where a credential transfer lands sees the same list they know from unlocking.
  */
-export function VaultChoiceList({ onSelect }: { onSelect: (id: string) => void }) {
+export function VaultChoiceList({
+	onSelect,
+	deleting = false,
+}: {
+	onSelect: (id: string, label: string) => void;
+	/** Rows pick a vault to delete rather than to open (the picker's "Delete a vault"). */
+	deleting?: boolean;
+}) {
 	const { vaults } = useVaultRegistry();
 	const { t } = useLingui();
 
@@ -31,7 +38,8 @@ export function VaultChoiceList({ onSelect }: { onSelect: (id: string) => void }
 						variant="secondary"
 						size="none"
 						fullWidth
-						onClick={() => onSelect(v.id)}
+						onClick={() => onSelect(v.id, label)}
+						aria-label={deleting ? t`Delete ${label}` : undefined}
 						className="group flex gap-3 rounded-xl border-border/60 bg-card/50 backdrop-blur-sm p-4 text-left hover:bg-primary/5 active:scale-[0.99]"
 					>
 						<span className="flex-none w-11 h-11 rounded-full bg-primary/10 text-primary text-sm font-medium flex items-center justify-center">
@@ -43,7 +51,11 @@ export function VaultChoiceList({ onSelect }: { onSelect: (id: string) => void }
 								{t`Created on ${formatDate(v.createdAt)}`}
 							</span>
 						</span>
-						<ChevronRight className="flex-none w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+						{deleting ? (
+							<Trash2 className="flex-none w-4 h-4 text-destructive" />
+						) : (
+							<ChevronRight className="flex-none w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+						)}
 					</Button>
 				);
 			})}

@@ -395,6 +395,12 @@ export interface VaultActions {
 	 * security-key ceremony errors.
 	 */
 	deleteVault(auth: DeleteVaultAuth): Promise<boolean>;
+	/**
+	 * Delete a closed vault from the unlock screen, without opening it (#261): one a delete on
+	 * another device left listed here, one that won't open, or one whose password is gone. Returns
+	 * false, deleting nothing, for the open vault, which deleteVault handles behind a re-auth.
+	 */
+	deleteLockedVault(id: string): Promise<boolean>;
 	/** Remove a vault linking left empty (never the open one; re-checks emptiness). */
 	deleteEmptyVault(
 		id: string,
@@ -627,6 +633,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		createRecord,
 		dropActiveRecord,
 		forgetEmptyRecord,
+		forgetRecord,
 		selectVault,
 		refresh: refreshRegistry,
 	} = useVaultRegistry();
@@ -2454,6 +2461,26 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		[activeId, storage, eraseVaultData, forgetEmptyRecord],
 	);
 
+	// No re-auth: nothing is open to protect, and the bytes are no more reachable this way than
+	// through the OS's own "clear data". The unlock screen has the user type the vault's name.
+	const deleteLockedVault = useCallback(
+		async (id: string): Promise<boolean> => {
+			const { activeId: active, isLocked: locked } = latestRef.current;
+			if (id === active && !locked) return false;
+			// Only a per-vault view can clear another vault's provider copy; the shared adapter would
+			// clear whichever vault it serves.
+			const provider =
+				platformAutofill.withVault?.(id) ?? (id === active ? platformAutofill : undefined);
+			await provider?.clearProviderData?.().catch(() => {});
+			await eraseVaultData(id);
+			await forgetRecord(id);
+			// The recorded active vault is sticky; see deleteVault.
+			if (id === active) await shell.setActiveVault?.(null);
+			return true;
+		},
+		[platformAutofill, eraseVaultData, forgetRecord, shell],
+	);
+
 	const readOpenVaultFromDisk = useCallback(async (): Promise<DiskVault> => {
 		const store = createEntriesBlobStore({ crypto, storage, readDecodedBlob });
 		const payload = await store.readEntriesPayload();
@@ -2488,6 +2515,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			lock,
 			createVault,
 			deleteVault,
+			deleteLockedVault,
 			deleteEmptyVault,
 			readOpenVaultFromDisk,
 			exportVault,
@@ -2546,6 +2574,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			lock,
 			createVault,
 			deleteVault,
+			deleteLockedVault,
 			deleteEmptyVault,
 			readOpenVaultFromDisk,
 			exportVault,

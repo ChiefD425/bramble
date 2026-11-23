@@ -206,3 +206,77 @@ describe("deleteVault erases the vault's attachments", () => {
 		expect(shell.setActiveVault).toHaveBeenLastCalledWith(null);
 	});
 });
+
+// #261: a vault can be deleted from the unlock screen without opening it, the same erase as
+// Settings' delete minus the re-auth. Never the open vault, which keeps its re-auth.
+describe("deleteLockedVault", () => {
+	const twoVaults = () => {
+		const made = makePlatform();
+		let registry: { vaults: { id: string; label: string; createdAt: number }[] } = {
+			vaults: [
+				{ id: VAULT_ID, label: "", createdAt: 1 },
+				{ id: "v1", label: "Old", createdAt: 2 },
+			],
+		};
+		made.storage.getMeta.mockImplementation(async (k: string) =>
+			k === VAULT_REGISTRY_KEY ? registry : undefined,
+		);
+		made.storage.setMeta.mockImplementation((async (k: string, v: typeof registry) => {
+			if (k === VAULT_REGISTRY_KEY) registry = v;
+		}) as never);
+		const ids = () => registry.vaults.map((v) => v.id);
+		return { ...made, ids };
+	};
+
+	it("erases a closed vault and drops it from the list", async () => {
+		const { platform, storage, biometric, shell, ids } = twoVaults();
+		const getActions = mountVaultActions(platform);
+		await act(async () => {});
+
+		let ok: boolean | undefined;
+		await act(async () => {
+			ok = await getActions().deleteLockedVault("v1");
+		});
+
+		expect(ok).toBe(true);
+		expect(storage.deleteVaultBlob).toHaveBeenCalledWith("v1");
+		expect(biometric.disable).toHaveBeenCalledWith("v1");
+		for (const k of PER_VAULT_SYNC_KEYS) {
+			expect(storage.removeMeta).toHaveBeenCalledWith(`${k}:v1`);
+		}
+		expect(ids()).toEqual([VAULT_ID]);
+		expect(shell.setActiveVault).not.toHaveBeenCalledWith(null);
+	});
+
+	it("takes the selected vault too while it is locked, and clears the recorded one", async () => {
+		const { platform, storage, shell, ids } = twoVaults();
+		const getActions = mountVaultActions(platform);
+		await act(async () => {});
+
+		await act(async () => {
+			await getActions().deleteLockedVault(VAULT_ID);
+		});
+
+		expect(storage.deleteVaultBlob).toHaveBeenCalledWith(VAULT_ID);
+		expect(ids()).toEqual(["v1"]);
+		expect(shell.setActiveVault).toHaveBeenLastCalledWith(null);
+	});
+
+	it("refuses the open vault, which deletes from Settings behind a re-auth", async () => {
+		const { platform, storage, ids } = twoVaults();
+		const getActions = mountVaultActions(platform);
+		await act(async () => {});
+		await act(async () => {
+			await getActions().unlock("pw");
+		});
+
+		let ok: boolean | undefined;
+		await act(async () => {
+			ok = await getActions().deleteLockedVault(VAULT_ID);
+		});
+
+		expect(ok).toBe(false);
+		expect(storage.deleteVaultBlob).not.toHaveBeenCalled();
+		expect(ids()).toContain(VAULT_ID);
+	});
+});

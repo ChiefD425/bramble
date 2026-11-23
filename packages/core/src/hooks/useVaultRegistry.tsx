@@ -63,6 +63,9 @@ export interface VaultRegistryValue {
 	/** Forget the record of a vault deleteEmptyVault has erased. Never the active one: that is
 	 * dropActiveRecord's, behind a re-auth. */
 	forgetEmptyRecord: (id: string) => Promise<void>;
+	/** Forget the record of a closed vault deleteLockedVault has erased, the selected one
+	 * included (deselecting it as dropActiveRecord does). */
+	forgetRecord: (id: string) => Promise<void>;
 }
 
 // Value when no provider is mounted (e.g. isolated hook tests): the registry is "ready"
@@ -82,6 +85,7 @@ const DEFAULT: VaultRegistryValue = {
 	refresh: async () => {},
 	hide: async () => {},
 	forgetEmptyRecord: async () => {},
+	forgetRecord: async () => {},
 };
 
 const VaultRegistryContext = createContext<VaultRegistryValue>(DEFAULT);
@@ -199,6 +203,15 @@ export function VaultRegistryProvider({
 		[activeId, storage, persist],
 	);
 
+	const forgetRecord = useCallback(
+		async (id: string) => {
+			const next = removeVault(parseRegistry(await storage.getMeta(VAULT_REGISTRY_KEY)), id);
+			await persist(next);
+			if (id === activeId) setActiveId(soleVaultId(next));
+		},
+		[storage, persist, activeId],
+	);
+
 	const value = useMemo<VaultRegistryValue>(
 		() => ({
 			ready,
@@ -214,6 +227,7 @@ export function VaultRegistryProvider({
 			refresh,
 			hide,
 			forgetEmptyRecord,
+			forgetRecord,
 		}),
 		[
 			ready,
@@ -228,6 +242,7 @@ export function VaultRegistryProvider({
 			refresh,
 			hide,
 			forgetEmptyRecord,
+			forgetRecord,
 		],
 	);
 

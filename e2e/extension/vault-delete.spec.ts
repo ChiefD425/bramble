@@ -43,3 +43,29 @@ test("a deleted vault's name leaves the picker, and the rest keep theirs", async
 	await expect(reopened.getByRole("button", { name: /Vault 2/ })).toBeVisible();
 	await expect(reopened.getByRole("button", { name: /Vault 3/ })).toBeVisible();
 });
+
+// #261: a vault leaves from the unlock screen without being opened, confirmed by typing its name,
+// and the others still open.
+test("deletes a vault from the picker without unlocking it", async ({ context, extensionId }) => {
+	for (let i = 0; i < 3; i++) await createVault(await context.newPage(), extensionId);
+
+	const popup = await context.newPage();
+	await openPopup(popup, extensionId);
+	await lockToPicker(popup);
+	await waitOutPickerClickGuard(popup);
+
+	await popup.getByRole("button", { name: "Delete a vault" }).click();
+	await popup.getByRole("button", { name: "Delete Vault 1" }).click();
+	const confirm = popup.getByRole("button", { name: "Delete vault", exact: true });
+	await expect(confirm).toBeDisabled();
+	await popup.getByLabel("Type Vault 1 to confirm").fill("Vault 1");
+	await confirm.click();
+
+	const rows = popup.getByRole("button", { name: /^V\d\s*Vault \d/ });
+	await expect(rows).toHaveCount(2);
+	await expect(rows.nth(0)).toContainText("Vault 2");
+	await expect(rows.nth(1)).toContainText("Vault 3");
+
+	// Unlocks it with its own password, and waits for it to open.
+	await selectVault(popup, /Vault 2/);
+});
