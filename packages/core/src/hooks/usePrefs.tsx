@@ -92,6 +92,12 @@ export const DEFAULT_CLIPBOARD_SECONDS = 30;
 export const DEFAULT_OFFER_TO_SAVE = true;
 export const DEFAULT_AUTOFILL_ENABLED = true;
 const DEFAULT_NEVER_SAVE_SITES: string[] = [];
+
+/** How long a copied secret stays, from the stored "Clipboard auto-clear" seconds. For the
+ * mobile and desktop clipboards, which read it at each copy. */
+export function clipboardClearMs(stored: unknown): number {
+	return (typeof stored === "number" && stored > 0 ? stored : DEFAULT_CLIPBOARD_SECONDS) * 1000;
+}
 const DEFAULT_BIOMETRIC_AUTO_PROMPT = false;
 const DEFAULT_BIOMETRIC_PASSCODE_FALLBACK = false;
 const DEFAULT_AUTOFILL_QUICKTYPE = false;
