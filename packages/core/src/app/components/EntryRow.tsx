@@ -159,6 +159,20 @@ export const EntryRow = memo(function EntryRow({
 		enabled: touch && !!onLongPress,
 	});
 
+	const risk = (leaked || reused) && (
+		<span
+			className={`inline-flex items-center gap-1 rounded-md text-[10px] uppercase tracking-wide bg-destructive/10 text-destructive border border-destructive/20 pointer-events-none ${
+				touch
+					? "shrink-0 px-1 py-px leading-none"
+					: "px-1.5 py-0.5 row-start-1 col-start-1 justify-self-end self-center opacity-100 group-hover:opacity-0 group-focus-within:opacity-0 transition-opacity"
+			}`}
+			title={leaked ? t`Password found in a known data breach` : t`Another item uses this password`}
+		>
+			<AlertTriangle className="w-3 h-3" />
+			{leaked ? <Trans>Breached</Trans> : <Trans>Reused</Trans>}
+		</span>
+	);
+
 	return (
 		<div
 			// Marks the row while a dropdown is open. The list virtualizer positions each row with a
@@ -236,30 +250,26 @@ export const EntryRow = memo(function EntryRow({
 							</span>
 						)}
 					</div>
-					<p className="text-xs text-muted-foreground truncate mt-0.5">{secondary}</p>
+					{touch && risk ? (
+						// Touch keeps the badge off the right slot, where its actions already sit and a
+						// long translation squeezed the name to a letter (#266). It fits the line's 16px,
+						// since the list relies on rows being exactly 60px.
+						<div className="flex items-center gap-1.5 mt-0.5 h-4 min-w-0">
+							{risk}
+							<p className="text-xs text-muted-foreground truncate">{secondary}</p>
+						</div>
+					) : (
+						<p className="text-xs text-muted-foreground truncate mt-0.5">{secondary}</p>
+					)}
 				</div>
 			</button>
 
 			{/* Right slot. On a pointer surface the "Breached" badge and the action
 				controls share one grid cell, swapping on hover, so the row's right edge
-				never shifts. Touch has no hover to swap on, so the two sit side by side
-				and the actions are always reachable. */}
+				never shifts. Touch has no hover to swap on, so the badge moves under the
+				name and the actions are always reachable. */}
 			<div className={touch ? "shrink-0 flex items-center gap-1.5" : "relative shrink-0 grid"}>
-				{(leaked || reused) && (
-					<span
-						className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide bg-destructive/10 text-destructive border border-destructive/20 pointer-events-none ${
-							touch
-								? ""
-								: "row-start-1 col-start-1 justify-self-end self-center opacity-100 group-hover:opacity-0 group-focus-within:opacity-0 transition-opacity"
-						}`}
-						title={
-							leaked ? t`Password found in a known data breach` : t`Another item uses this password`
-						}
-					>
-						<AlertTriangle className="w-3 h-3" />
-						{leaked ? <Trans>Breached</Trans> : <Trans>Reused</Trans>}
-					</span>
-				)}
+				{!touch && risk}
 				{/* Dropped in selection mode: the row's job is then the checkbox, and a
 					single-entry copy or delete would be an ambiguous tap. Unmounted rather
 					than `hidden`, which a display utility on the same element would override. */}

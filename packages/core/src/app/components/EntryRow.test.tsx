@@ -89,6 +89,16 @@ describe("EntryRow risk badge", () => {
 		expect(screen.getByText("Breached")).toBeTruthy();
 		expect(screen.queryByText("Reused")).toBeNull();
 	});
+
+	it("sits under the name on a phone, leaving the name the row's width (#266)", () => {
+		renderRow({ reused: true, target: "ios" });
+		expect(rowButton().contains(screen.getByText("Reused"))).toBe(true);
+	});
+
+	it("shares the right slot with the actions on a pointer surface", () => {
+		renderRow({ reused: true });
+		expect(rowButton().contains(screen.getByText("Reused"))).toBe(false);
+	});
 });
 
 describe("EntryRow action controls", () => {
