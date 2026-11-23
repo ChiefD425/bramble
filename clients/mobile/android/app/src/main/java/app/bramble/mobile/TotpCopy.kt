@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
+import android.os.SystemClock
 import android.util.Log
 
 // "Copy 2FA codes when filling" (#99): filling a login that has an authenticator key puts its
@@ -15,6 +16,9 @@ import android.util.Log
 object TotpCopy {
     private const val LABEL = "Bramble 2FA code"
     private const val DEFAULT_CLEAR_SECONDS = 30
+    private val handler = Handler(Looper.getMainLooper())
+    // The pending clear's token: a newer copy cancels it, or it would clear that copy early.
+    private val CLEAR = Any()
 
     /** Off unless the user turned it on: it puts a secret on the clipboard. */
     fun enabled(context: Context): Boolean =
@@ -37,7 +41,9 @@ object TotpCopy {
             Log.w(BrambleAutofill.LOG_TAG, "2FA code not copied", e)
             return
         }
-        Handler(Looper.getMainLooper()).postDelayed({
+        handler.removeCallbacksAndMessages(CLEAR)
+        // postAtTime takes the token on every API level; postDelayed only from 28.
+        handler.postAtTime({
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     clipboard.clearPrimaryClip()
@@ -45,7 +51,7 @@ object TotpCopy {
                     clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
                 }
             } catch (_: Exception) {}
-        }, clearSeconds(context) * 1000L)
+        }, CLEAR, SystemClock.uptimeMillis() + clearSeconds(context) * 1000L)
     }
 
     private fun clearSeconds(context: Context): Int =
