@@ -94,6 +94,12 @@ own WebRTC, the browser link, and the whole release and packaging story below.
   the Wayland section), a tray icon is the route back, and on macOS the Dock icon follows the
   window via the activation policy (`Regular` ↔ `Accessory`). Needed for the spotlight to be
   reachable at all, and the same scaffolding the sync hub will want.
+- **One copy at a time.** Opening the app while it runs shows its window. macOS does this for
+  any app bundle; on Linux and Windows `tauri-plugin-single-instance` does (a D-Bus name, a
+  named mutex), registered before any other plugin so a second copy exits before it builds a
+  window. Without it a second copy panicked on the taken global shortcut, and with that made
+  non-fatal it would have taken the browser socket over from the first and written the same
+  vault files. Stock GNOME has no tray, so a closed window looked like a quit app (#164).
 
 Not yet wired, and deliberately loud about it rather than silently broken: the passkey *provider*
 role, autofill of any kind, and biometric unlock. The security-key slot commands *are* wired since

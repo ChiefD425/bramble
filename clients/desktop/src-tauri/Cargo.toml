@@ -87,6 +87,9 @@ tauri-plugin-process = "2.3.1"
 # the app (#138); see autostart.rs.
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 tauri-plugin-autostart = "2.5.1"
+# Opening the app while it runs in the background shows its window rather than starting a second
+# copy over the same vault files (#164). macOS already does this for an app bundle.
+tauri-plugin-single-instance = "2.5.5"
 
 [dev-dependencies]
 # Each storage test gets its own data dir, so they can run in parallel and clean up after

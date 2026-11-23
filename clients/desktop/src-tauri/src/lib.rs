@@ -109,7 +109,25 @@ pub fn purge_secrets() -> usize {
 }
 
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // First, so a second copy exits before it builds a window or touches the vault files.
+    // Closing the window leaves Bramble running, unseen where there is no tray (stock GNOME), so
+    // opening it again shows that window (#164). On Linux this runs on D-Bus's thread, and the
+    // window is built on the main thread, as the tray does.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        if args.iter().any(|arg| arg == autostart::HIDDEN_FLAG) {
+            return;
+        }
+        log::info!("opened again: showing the running copy");
+        let handle = app.clone();
+        if let Err(e) = app.run_on_main_thread(move || lifetime::show_main(&handle)) {
+            log::error!("could not show the vault window: {e}");
+        }
+    }));
+
+    let builder = builder
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init());
