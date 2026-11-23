@@ -11,9 +11,12 @@ import { loadWasm } from "../wasm-loader";
 // The crypto adapter reports transitions via markLocked/markUnlocked; it no longer
 // owns this machinery.
 
+/** "auto" is an auto-lock timeout; "user" is every other lock (the Lock button, a delete). */
+export type LockCause = "user" | "auto";
+
 const lockListeners = new Set<() => void>();
 const changeListeners = new Set<() => void>();
-const stateListeners = new Set<(locked: boolean) => void>();
+const stateListeners = new Set<(locked: boolean, cause?: LockCause) => void>();
 
 export function onExternalLock(cb: () => void): () => void {
 	lockListeners.add(cb);
@@ -23,7 +26,7 @@ export function onExternalChange(cb: () => void): () => void {
 	changeListeners.add(cb);
 	return () => changeListeners.delete(cb);
 }
-export function onVaultStateChange(cb: (locked: boolean) => void): () => void {
+export function onVaultStateChange(cb: (locked: boolean, cause?: LockCause) => void): () => void {
 	stateListeners.add(cb);
 	return () => stateListeners.delete(cb);
 }
@@ -33,8 +36,8 @@ export function markUnlocked(): void {
 	for (const fn of stateListeners) fn(false);
 }
 /** Reported by the crypto adapter after a lock. */
-export function markLocked(): void {
-	for (const fn of stateListeners) fn(true);
+export function markLocked(cause: LockCause = "user"): void {
+	for (const fn of stateListeners) fn(true, cause);
 }
 /** A sync merge wrote new entries out-of-band; tell the UI to reload. */
 export function notifyExternalChange(): void {
@@ -48,5 +51,5 @@ export async function lockForLifecycle(): Promise<void> {
 	const crypto = Capacitor.isNativePlatform() ? await loadNativeCrypto() : await loadWasm();
 	await crypto.lock();
 	for (const fn of lockListeners) fn();
-	markLocked();
+	markLocked("auto");
 }

@@ -194,6 +194,17 @@ describe("provider lock", () => {
 		expect(bridge.lock).toHaveBeenCalledTimes(1);
 	});
 
+	it("leaves the provider unlocked when the app auto-locks", () => {
+		// The provider keeps its own timer, which fills keep alive; the app's can't see them.
+		const stop = startAutofillLockSync();
+		markUnlocked();
+		markLocked("auto");
+		expect(bridge.lock).not.toHaveBeenCalled();
+		markLocked("user");
+		expect(bridge.lock).toHaveBeenCalledTimes(1);
+		stop();
+	});
+
 	it("locks the provider on Android when the vault is deleted", async () => {
 		platform.value = "android";
 		vi.resetModules();

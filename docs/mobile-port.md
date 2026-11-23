@@ -176,10 +176,12 @@ ground truth of what exists.
     min = that window; Never = stay unlocked. The old separate "keep autofill unlocked" toggle was removed.
     Mapping to the extension (a device-unlock-gated, time-stamped Keychain session): Immediately -> 0 (off),
     N -> N, Never -> -1 (never expire). "Immediately" is mobile-gated (the browser extension is untouched).
-    Every app lock (the Lock button or auto-lock) also ends the provider's session (`AutofillBridge.lock`,
-    from `startAutofillLockSync`): iOS deletes the session Keychain items; Android deletes the Keystore key
-    that wraps `KeepUnlockedStore`'s copy, which works across the `:autofill` process boundary where a prefs
-    write from the app process would not.
+    Every app lock except an auto-lock timeout (the Lock button, a delete) also ends the provider's session
+    (`AutofillBridge.lock`, from `startAutofillLockSync`): iOS deletes the session Keychain items; Android
+    deletes the Keystore key that wraps `KeepUnlockedStore`'s copy, which works across the `:autofill` process
+    boundary where a prefs write from the app process would not. An auto-lock (`lockForLifecycle`, cause
+    `"auto"`) leaves it: the provider's window runs on the same timeout and each fill slides it, which the
+    app's timer can't see, so ending it there logged autofill out mid-use whenever the app was opened.
   - **Domain filtering + QuickType opt-in (build 204423099).** The list now **filters to the page's logins**:
     the requested service id (Safari passes the full page URL) and the stored hostnames are normalized to a
     bare host before matching, with a "Show all items" fallback. Previously it only *sorted* by match, and

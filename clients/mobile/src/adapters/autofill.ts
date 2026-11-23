@@ -148,9 +148,11 @@ const mobileAutofillShared: Omit<AutofillAdapter, "setIndex" | "withVault"> = {
 
 export const mobileAutofill: AutofillAdapter = mobileAutofillFor();
 
-/** Lock the provider whenever the app locks. Returns an unsubscribe. */
+/** Lock the provider whenever the app locks, except on an auto-lock timeout. Returns an unsubscribe.
+ * The provider times out on its own after the same setting, counting fills as activity, which the
+ * app's timer can't see: ending it here logged autofill out mid-use whenever the app was opened. */
 export function startAutofillLockSync(): () => void {
-	return onVaultStateChange((locked) => {
-		if (locked) void Bridge.lock().catch(() => {});
+	return onVaultStateChange((locked, cause) => {
+		if (locked && cause !== "auto") void Bridge.lock().catch(() => {});
 	});
 }
