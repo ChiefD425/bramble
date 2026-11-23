@@ -8,6 +8,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Copy,
+	Dices,
 	Eye,
 	EyeOff,
 	Globe,
@@ -16,7 +17,6 @@ import {
 	Loader2,
 	Plus,
 	RefreshCw,
-	Sparkles,
 	X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -345,7 +345,7 @@ function LoginFields({ initialBreach }: EntryFieldsProps) {
 							onClick={() => setGeneratorOpen(true)}
 							className="mt-3 flex items-center gap-2 px-3 py-1.5 text-xs border-primary/50 bg-primary/5 text-primary hover:bg-primary/10"
 						>
-							<Sparkles className="w-3.5 h-3.5" />
+							<Dices className="w-3.5 h-3.5" />
 							<Trans>Generate strong password</Trans>
 						</Button>
 
