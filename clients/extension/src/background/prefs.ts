@@ -112,9 +112,24 @@ export async function getNeverSaveSites(): Promise<Set<string>> {
 	return new Set();
 }
 
-export async function appendNeverSaveSite(etld1: string): Promise<void> {
+/** Mutes the page's own host, not its whole domain, so muting one internal site leaves the
+ * others under the same domain prompting (#264). */
+export async function appendNeverSaveSite(hostname: string): Promise<void> {
 	const current = await getNeverSaveSites();
-	if (current.has(etld1)) return;
-	current.add(etld1);
+	if (current.has(hostname)) return;
+	current.add(hostname);
 	await api.storage.local.set({ [PREF_NEVER_SAVE_SITES]: Array.from(current) });
+}
+
+/** A host is muted if it, or a domain above it, is on the list. Entries from before #264 are
+ * registrable domains, so they keep muting every subdomain as they always did. */
+export function isMutedSite(hostname: string, muted: ReadonlySet<string>): boolean {
+	let h = hostname.toLowerCase();
+	while (h) {
+		if (muted.has(h)) return true;
+		const dot = h.indexOf(".");
+		if (dot < 0) return false;
+		h = h.slice(dot + 1);
+	}
+	return false;
 }

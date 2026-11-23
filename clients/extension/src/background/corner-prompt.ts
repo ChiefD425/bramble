@@ -26,7 +26,7 @@ import {
 } from "./autofill-index";
 import { sendToOffscreen } from "./offscreen-client";
 import { openUnlockView } from "./popout";
-import { appendNeverSaveSite, getNeverSaveSites, getOfferToSavePref } from "./prefs";
+import { appendNeverSaveSite, getNeverSaveSites, getOfferToSavePref, isMutedSite } from "./prefs";
 import { type MessageEnvelope, on } from "./router";
 import { refreshActiveVaultId, requireActiveVaultId, vaultLocked } from "./session";
 import { nextStamp } from "./sync-clock";
@@ -279,8 +279,7 @@ async function dispatchCornerPromptForCapture(
 ): Promise<CornerPromptPayload | null> {
 	const offerToSave = await getOfferToSavePref();
 	if (!offerToSave) return null;
-	const muted = await getNeverSaveSites();
-	if (muted.has(capture.etld1)) return null;
+	if (isMutedSite(capture.hostname, await getNeverSaveSites())) return null;
 
 	await hydrateAutofillIndexFromDisk();
 	const locked = vaultLocked();
@@ -387,7 +386,7 @@ async function cornerPromptResponse(
 		const capture = etld1 ? await readPendingCapture(etld1) : null;
 		if (!capture || capture.promptId !== response.promptId) {
 			// Stale or missing prompt: honor dismiss/never but commit nothing.
-			if (response.action === "never" && etld1) await appendNeverSaveSite(etld1);
+			if (response.action === "never" && hostname) await appendNeverSaveSite(hostname);
 			if (etld1) await clearPendingCapture(etld1);
 			return { ok: true, data: null };
 		}
@@ -397,7 +396,7 @@ async function cornerPromptResponse(
 			return { ok: true, data: null };
 		}
 		if (response.action === "never") {
-			await appendNeverSaveSite(etld1);
+			await appendNeverSaveSite(hostname);
 			await clearPendingCapture(etld1);
 			return { ok: true, data: null };
 		}

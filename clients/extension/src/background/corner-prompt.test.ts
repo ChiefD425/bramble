@@ -121,6 +121,27 @@ describe("CORNER_PROMPT_CAPTURE dedupe", () => {
 		);
 		expect(resp).toEqual({ ok: true, data: null });
 	});
+
+	it("a muted domain still mutes its subdomains", async () => {
+		// Entries from before #264 are registrable domains and keep meaning the whole domain.
+		const bg = await unlocked({ localSeed: { "pref.neverSaveSites": ["newsite.com"] } });
+		const { resp } = await bg.send(
+			{ type: "CORNER_PROMPT_CAPTURE", payload: { username: "bob", password: "pw" } },
+			pageSender("intranet.newsite.com", 5),
+		);
+		expect(resp).toEqual({ ok: true, data: null });
+	});
+
+	it("a muted subdomain leaves its parent and siblings prompting (#264)", async () => {
+		const bg = await unlocked({ localSeed: { "pref.neverSaveSites": ["wiki.newsite.com"] } });
+		for (const host of ["newsite.com", "git.newsite.com"]) {
+			const { resp } = await bg.send(
+				{ type: "CORNER_PROMPT_CAPTURE", payload: { username: "bob", password: "pw" } },
+				pageSender(host, 5),
+			);
+			expect(resp.data?.kind, host).toBe("save-login");
+		}
+	});
 });
 
 describe("CORNER_PROMPT_QUERY (post-navigation poll)", () => {
@@ -177,6 +198,22 @@ describe("CORNER_PROMPT_RESPONSE (non-committing actions)", () => {
 		);
 		expect(bg.state.local["pref.neverSaveSites"]).toEqual(["newsite.com"]);
 		expect(bg.state.session["capture.pending.newsite.com"]).toBeUndefined();
+	});
+
+	it("never records the page's own host, not its whole domain (#264)", async () => {
+		const bg = await unlocked();
+		const cap = await bg.send(
+			{ type: "CORNER_PROMPT_CAPTURE", payload: { username: "bob", password: "pw" } },
+			pageSender("wiki.newsite.com", 5),
+		);
+		await bg.send(
+			{
+				type: "CORNER_PROMPT_RESPONSE",
+				payload: { promptId: cap.resp.data.promptId, action: "never" },
+			},
+			pageSender("wiki.newsite.com", 5),
+		);
+		expect(bg.state.local["pref.neverSaveSites"]).toEqual(["wiki.newsite.com"]);
 	});
 
 	it("a stale promptId commits nothing but still clears the stash", async () => {
