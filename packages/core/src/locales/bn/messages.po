@@ -1331,7 +1331,7 @@ msgstr "{0} কপি করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Copy 2FA codes when filling"
-msgstr ""
+msgstr "ফিল করার সময় 2FA কোডগুলো কপি করা"
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Copy address"
@@ -1973,7 +1973,7 @@ msgstr "পূরণ করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time."
-msgstr ""
+msgstr "অথেন্টিকেটর কী আছে এমন একটি লগইন ফিল করলে এর কোডও কপি হয়, পরবর্তী পৃষ্ঠায় পেস্ট করার জন্য প্রস্তুত। আপনার ক্লিপবোর্ড অটো-ক্লিয়ার সময়ের পরে এটি মুছে যায়।"
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Filter by type"
@@ -4545,7 +4545,7 @@ msgstr "প্রতিবার আনলকে একবার পাসকি
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle copy 2FA codes when filling"
-msgstr ""
+msgstr "ফিল করার সময় 2FA কোডগুলো কপি করার টগল"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle default password manager"

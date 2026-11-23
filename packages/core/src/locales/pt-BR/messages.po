@@ -1339,7 +1339,7 @@ msgstr "Copiar {0}"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Copy 2FA codes when filling"
-msgstr ""
+msgstr "Copiar códigos 2FA ao preencher"
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Copy address"
@@ -1981,7 +1981,7 @@ msgstr "Preencher"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time."
-msgstr ""
+msgstr "Ao preencher um login que possua uma chave do autenticador, o código correspondente também é copiado, pronto para colar na próxima página. O código é apagado após o tempo de limpeza automática da área de transferência."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Filter by type"
@@ -4569,7 +4569,7 @@ msgstr "Alternar confirmação de passkeys uma vez por desbloqueio"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle copy 2FA codes when filling"
-msgstr ""
+msgstr "Alternar a cópia de códigos 2FA ao preencher"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle default password manager"

@@ -1219,7 +1219,7 @@ msgstr "{0} 복사"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Copy 2FA codes when filling"
-msgstr ""
+msgstr "자동 완성 시 2FA 코드 복사"
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Copy address"
@@ -1809,7 +1809,7 @@ msgstr "채우기"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time."
-msgstr ""
+msgstr "인증기 키가 있는 로그인을 채우면 해당 코드도 복사되어 다음 페이지에 붙여넣을 수 있습니다. 클립보드 자동 삭제 시간이 지나면 삭제됩니다."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Filter by type"
@@ -4147,7 +4147,7 @@ msgstr "잠금 해제마다 한 번 패스키 확인 켜기/끄기"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle copy 2FA codes when filling"
-msgstr ""
+msgstr "자동 완성 시 2FA 코드 복사 전환"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle default password manager"
