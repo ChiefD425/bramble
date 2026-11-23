@@ -158,11 +158,10 @@ pub fn run() {
                     .build(),
             )?;
 
-            // Registered here rather than in the builder chain because with_shortcuts is
-            // fallible and setup is where a `?` has somewhere to go.
+            // The handler serves whichever shortcut Settings chose; `spotlight::apply` registers
+            // it once the tray, which shows it, exists.
             app.handle().plugin(
                 tauri_plugin_global_shortcut::Builder::new()
-                    .with_shortcuts([spotlight::HOTKEY])?
                     .with_handler(|app, _shortcut, event| {
                         // Fires on press AND release; acting on both would toggle twice and
                         // leave the panel exactly as it was.
@@ -177,6 +176,12 @@ pub fn run() {
                 spotlight::apply_backdrop(&window);
             }
             lifetime::install_tray(app.handle())?;
+            // Logged, not fatal: another app holding the keys must not stop Bramble starting.
+            if let Err(e) =
+                spotlight::apply(app.handle(), spotlight::configured(app.handle()).as_deref())
+            {
+                log::warn!("quick access shortcut not registered: {e}");
+            }
 
             // Updating in place. A password manager distributed outside an app store has no other
             // way to get a fix to the people running it, so this is not a convenience.
@@ -333,6 +338,8 @@ pub fn run() {
             storage::storage_remove_meta,
             storage::shell_export_bytes,
             spotlight::spotlight_hide,
+            spotlight::spotlight_shortcut,
+            spotlight::spotlight_set_shortcut,
             spotlight::spotlight_open_main,
             spotlight::spotlight_open_entry,
             spotlight::spotlight_set_height,

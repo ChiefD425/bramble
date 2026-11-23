@@ -298,6 +298,15 @@ export interface ShellAdapter {
 		setEnabled(on: boolean): Promise<void>;
 	};
 	/**
+	 * Desktop: the global shortcut that opens Quick Access (#227), as an accelerator such as
+	 * "CmdOrCtrl+Shift+Space", or null when it is off. `set` rejects keys another app holds, and
+	 * the old shortcut keeps working.
+	 */
+	quickAccessShortcut?: {
+		get(): Promise<string | null>;
+		set(shortcut: string | null): Promise<void>;
+	};
+	/**
 	 * True where something else keeps this install current: a Linux package manager, for a .deb or
 	 * .rpm from apt.bramble.sh. `updates` is then absent, because the app genuinely cannot replace
 	 * a dpkg-managed binary, and the Updates section says who does instead of disappearing — an

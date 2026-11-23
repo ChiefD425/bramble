@@ -23,6 +23,18 @@ pub const MAIN: &str = "main";
 /// Sent to the main window as it hides; the desktop shell's `onHide` listens for it.
 pub const HIDDEN_EVENT: &str = "main-hidden";
 
+/// The tray's Quick Access item, kept so its shortcut label follows a change in Settings.
+struct QuickItem(MenuItem<tauri::Wry>);
+
+/// Show `shortcut` beside the tray's Quick Access item, or nothing when it is off.
+pub fn set_quick_accelerator(app: &AppHandle, shortcut: Option<&str>) {
+    if let Some(item) = app.try_state::<QuickItem>() {
+        if let Err(e) = item.0.set_accelerator(shortcut) {
+            log::warn!("tray shortcut label not updated: {e}");
+        }
+    }
+}
+
 /// Show or hide the Dock icon, following the main window.
 ///
 /// macOS hangs this off the app's activation policy rather than off any window: `Regular`
@@ -144,8 +156,9 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
         "quick",
         i18n::t("tray.quick"),
         true,
-        Some(spotlight::HOTKEY),
+        spotlight::configured(app).as_deref(),
     )?;
+    app.manage(QuickItem(quick.clone()));
     let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", i18n::t("tray.quit"), true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &quick, &separator, &quit])?;

@@ -153,6 +153,16 @@ describe("the list of linked browsers", () => {
 		expect(screen.getAllByRole("button", { name: /disconnect this browser/i })).toHaveLength(1);
 	});
 
+	it("shows each browser's ID, so two of the same name tell apart (#227)", async () => {
+		h.listed = [
+			{ publicKey: "AAAAAAAAkeyA", label: "Chrome on Mac", pairedAt: 1 },
+			{ publicKey: "BBBBBBBBkeyB", label: "Chrome on Mac", pairedAt: 2 },
+		];
+		mount();
+		expect(await screen.findByText("AAAAAAAA")).toBeTruthy();
+		expect(screen.getByText("BBBBBBBB")).toBeTruthy();
+	});
+
 	it("moves a browser off this list once it starts syncing", async () => {
 		h.listed = [{ publicKey: "pk", label: "Chrome on Mac", pairedAt: 1 }];
 		mount();

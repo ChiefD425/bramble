@@ -25,6 +25,7 @@ import { Toggle } from "../../../components/ui/toggle";
 import { useDefaultPasswordManager } from "../../../hooks/useDefaultPasswordManager";
 import { useRenameVault } from "../../../hooks/useVaultName";
 import { Row, Section } from "./primitives";
+import { QuickAccessShortcutRow } from "./QuickAccessShortcutRow";
 
 // Auto-lock timeout values: -1 = Immediate, >0 = minutes, 0 = Never. "Immediate" locks the
 // moment the app/UI is no longer in use (mobile: on backgrounding; extension: when the last
@@ -185,6 +186,8 @@ export function GeneralSection() {
 					</div>
 				</Row>
 			)}
+
+			<QuickAccessShortcutRow />
 
 			{/* Suggestions opt-in: only shown where inline suggestions can actually render (iOS; Android
 			    on a keyboard that supports them; macOS, below fields in Safari). Off by default, since

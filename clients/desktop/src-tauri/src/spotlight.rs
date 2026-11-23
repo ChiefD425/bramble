@@ -8,9 +8,13 @@
 //! from launch; this module gives it the parts config cannot express: the native blur behind
 //! the webview, the hotkey that toggles it, and dismissal on focus loss.
 
-use std::sync::Mutex;
+use std::{str::FromStr, sync::Mutex};
 
+use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewWindow};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+
+use crate::{lifetime, storage, storage::ops};
 
 /// Where the panel's top-left was placed when it opened. The panel grows downward as results
 /// appear, so the anchor has to survive a resize: macOS measures a window from its bottom-left
@@ -32,6 +36,65 @@ pub const LABEL: &str = "spotlight";
 /// Toggled with Cmd+Shift+Space on macOS, Ctrl+Shift+Space elsewhere. Deliberately not
 /// Cmd+Space, which is Spotlight's; this is the binding 1Password's quick access uses.
 pub const HOTKEY: &str = "CmdOrCtrl+Shift+Space";
+
+/// The shortcut chosen in Settings (#227), on this device only. A string; empty turns the
+/// shortcut off, and with nothing stored it is `HOTKEY`.
+const SHORTCUT_PREF: &str = "pref.quickAccessShortcut";
+
+/// The shortcut to register: the chosen one, `HOTKEY` if none was chosen, `None` when off.
+pub fn configured(app: &AppHandle) -> Option<String> {
+    let stored = storage::data_dir(app)
+        .ok()
+        .and_then(|root| ops::get_meta(&root, SHORTCUT_PREF).ok().flatten());
+    resolve(stored.as_ref())
+}
+
+fn resolve(stored: Option<&Value>) -> Option<String> {
+    match stored.and_then(Value::as_str) {
+        None => Some(HOTKEY.to_string()),
+        Some("") => None,
+        Some(chosen) => Some(chosen.to_string()),
+    }
+}
+
+/// Make `shortcut` the only global shortcut, and show it on the menu bar's Quick Access item.
+pub fn apply(app: &AppHandle, shortcut: Option<&str>) -> Result<(), String> {
+    let shortcuts = app.global_shortcut();
+    shortcuts.unregister_all().map_err(|e| e.to_string())?;
+    if let Some(shortcut) = shortcut {
+        shortcuts.register(shortcut).map_err(|e| e.to_string())?;
+    }
+    lifetime::set_quick_accelerator(app, shortcut);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn spotlight_shortcut(app: AppHandle) -> Option<String> {
+    configured(&app)
+}
+
+/// Change the shortcut, or turn it off with `None`. Refused, with the old one kept working, when
+/// the hotkey library can't name the keys or another app already holds them.
+#[tauri::command]
+pub fn spotlight_set_shortcut(app: AppHandle, shortcut: Option<String>) -> Result<(), String> {
+    if let Some(chosen) = &shortcut {
+        Shortcut::from_str(chosen).map_err(|e| e.to_string())?;
+    }
+    let previous = configured(&app);
+    if let Err(e) = apply(&app, shortcut.as_deref()) {
+        if let Err(restore) = apply(&app, previous.as_deref()) {
+            log::warn!("quick access shortcut not restored: {restore}");
+        }
+        return Err(e);
+    }
+    let root = storage::data_dir(&app).map_err(|e| e.to_string())?;
+    ops::set_meta(
+        &root,
+        SHORTCUT_PREF.into(),
+        json!(shortcut.unwrap_or_default()),
+    )
+    .map_err(|e| e.to_string())
+}
 
 /// Put the native blur behind the webview. Failure is logged rather than propagated: an
 /// opaque panel is a cosmetic loss, and it is the expected outcome on Linux, which has no
@@ -213,5 +276,22 @@ pub fn spotlight_set_height(app: AppHandle, height: f64) {
     // grows, because the origin macOS keeps fixed is the opposite corner.
     if let Some((x, y)) = *ANCHOR.lock().unwrap() {
         let _ = window.set_position(LogicalPosition::new(x, y));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_shortcut_defaults_turns_off_and_follows_a_choice() {
+        assert_eq!(resolve(None).as_deref(), Some(HOTKEY));
+        assert_eq!(resolve(Some(&json!(""))), None);
+        assert_eq!(
+            resolve(Some(&json!("Alt+Space"))).as_deref(),
+            Some("Alt+Space")
+        );
+        // Not a string: whatever wrote it, the default is the safe reading.
+        assert_eq!(resolve(Some(&json!(5))).as_deref(), Some(HOTKEY));
     }
 }

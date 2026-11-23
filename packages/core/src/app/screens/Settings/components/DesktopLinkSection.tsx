@@ -17,6 +17,7 @@ import { useDesktopLink } from "../../../hooks/useDesktopLink";
 import { usePopOut } from "../../../hooks/usePopOut";
 import { CombineResult } from "./CombineResult";
 import { Row, Section } from "./primitives";
+import { shortKey } from "./sync-log";
 import { OtherDevicesWarning, type TwoVaultsChoice, TwoVaultsPrompt } from "./TwoVaultsPrompt";
 
 /** Codes are 8 characters from an alphabet with no lookalikes; see the desktop app's
@@ -255,6 +256,14 @@ export function DesktopLinkSection() {
 							)}
 						/>
 					</Row>
+					{status.publicKey && (
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								The desktop app lists this browser as{" "}
+								<span className="font-mono">{shortKey(status.publicKey)}</span>.
+							</Trans>
+						</p>
+					)}
 					{confirmUnlink && (
 						<p className="text-xs text-muted-foreground">
 							<Trans>

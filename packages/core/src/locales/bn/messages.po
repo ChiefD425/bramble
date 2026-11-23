@@ -968,6 +968,10 @@ msgstr "পরিবর্তন করুন"
 msgid "Change it on the site to keep your account safe."
 msgstr "আপনার অ্যাকাউন্ট নিরাপদ রাখতে সাইটে গিয়ে এটি বদলে নিন।"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Change the Quick Access shortcut"
+msgstr "কুইক অ্যাক্সেস শর্টকাট পরিবর্তন করা"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change your master password"
 msgstr "আপনার মাস্টার পাসওয়ার্ড পরিবর্তন করুন"
@@ -2930,6 +2934,10 @@ msgstr "ওয়েবসাইট খুলুন"
 msgid "Opening…"
 msgstr "খোলা হচ্ছে…"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Opens Quick Access from any app. Choose the button, then press the keys you want."
+msgstr "যেকোনো অ্যাপ থেকে কুইক অ্যাক্সেস খোলে। বোতামটি বেছে নিন, তারপর আপনার পছন্দের কীগুলো চাপুন।"
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Optic ID"
 msgstr "Optic ID"
@@ -3173,6 +3181,14 @@ msgstr "লগইন তথ্য পূরণ হওয়ার পরপর�
 msgid "Press Enter or comma to add a tag. Press the left arrow to move into the tags you have already added, then Backspace to remove one. Press the down arrow for suggestions."
 msgstr "ট্যাগ যোগ করতে Enter বা কমা চাপুন। আগে যোগ করা ট্যাগে যেতে বাঁ দিকের অ্যারো চাপুন, তারপর কোনো ট্যাগ সরাতে Backspace চাপুন। সাজেশন দেখতে নিচের অ্যারো চাপুন।"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press keys…"
+msgstr "কী চাপুন…"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press the new shortcut"
+msgstr "নতুন শর্টকাটটি চাপুন"
+
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "private key"
 msgstr "প্রাইভেট কি"
@@ -3200,6 +3216,10 @@ msgstr "পাবলিক কি"
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Public key"
 msgstr "পাবলিক কি"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Quick Access shortcut"
+msgstr "কুইক অ্যাক্সেস শর্টকাট"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Rabbit"
@@ -4076,6 +4096,10 @@ msgstr "এই QR কোডটি একাধিক অ্যাকাউন্
 msgid "That QR sets up {0}, so it holds no key to save. On the site, choose to use a different authenticator app, then scan the code it offers."
 msgstr "এই QR কোডটি {0} সেট আপ করে, তাই এতে সেভ করার মতো কোনো কি নেই। সাইটে গিয়ে অন্য একটি অথেনটিকেটর অ্যাপ ব্যবহারের অপশন বেছে নিন, তারপর সেখানে দেওয়া কোডটি স্ক্যান করুন।"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "That shortcut is taken or can't be used. Try another."
+msgstr "এই শর্টকাটটি ইতিমধ্যে ব্যবহৃত হচ্ছে বা ব্যবহার করা যাবে না। অন্য একটি চেষ্টা করুন।"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "That transfer didn't contain anything we could import."
 msgstr "ওই ট্রান্সফারে ইমপোর্ট করার মতো কিছু ছিল না।"
@@ -4124,6 +4148,11 @@ msgstr "ডেস্কটপ অ্যাপ একই চিহ্নগুল
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "The desktop app is still linked, but this browser's permission to talk to it was turned off."
 msgstr "ডেস্কটপ অ্যাপ এখনো লিংক করা আছে, তবে এর সাথে যোগাযোগ করার জন্য এই ব্রাউজারের অনুমতি বন্ধ করা হয়েছে।"
+
+#. placeholder {0}: shortKey(status.publicKey)
+#: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
+msgid "The desktop app lists this browser as <0>{0}</0>."
+msgstr "ডেস্কটপ অ্যাপ এই ব্রাউজারটিকে <0>{0}</0> হিসেবে তালিকাভুক্ত করে।"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #~ msgid "The desktop app offered to share its vault with this browser. Enter the master password you use there, then compare the symbols both screens show."
@@ -4500,6 +4529,10 @@ msgstr "বিকল্প হিসেবে পাসকোড চালু �
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "কম্পিউটার চালু হলে Bramble চালু করার অপশন চালু বা বন্ধ করুন"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Toggle the Quick Access shortcut"
+msgstr "কুইক অ্যাক্সেস শর্টকাট টগল করা"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx

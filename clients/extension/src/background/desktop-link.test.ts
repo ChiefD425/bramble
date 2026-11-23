@@ -2020,7 +2020,12 @@ describe("a paired browser that cannot use native messaging", () => {
 
 		// Still paired: the keys are intact and nothing was forgotten. Only the browser's
 		// permission is missing, which is a different thing to tell the user than "not connected".
-		expect(await mod.desktopLinkStatus()).toEqual({ paired: true, pairedAt: 1, permitted: false });
+		expect(await mod.desktopLinkStatus()).toEqual({
+			paired: true,
+			pairedAt: 1,
+			publicKey: "pub",
+			permitted: false,
+		});
 	});
 
 	it("drops the held pipe when the permission is revoked mid-session", async () => {

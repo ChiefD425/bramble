@@ -139,7 +139,12 @@ const platform = {
 		},
 	},
 	desktopLink: {
-		status: async () => ({ paired: h.paired, pairedAt: 1, permitted: h.permitted }),
+		status: async () => ({
+			paired: h.paired,
+			pairedAt: 1,
+			publicKey: "Zk3/q9xRlinkkey",
+			permitted: h.permitted,
+		}),
 		claimSyncInvite: async () => {
 			h.claims++;
 			return h.invite;
@@ -574,6 +579,11 @@ describe("the browser permission the link needs", () => {
 
 		expect(await screen.findByText(/needs that permission/i)).toBeTruthy();
 		expect(reload).not.toHaveBeenCalled();
+	});
+
+	it("shows the ID the desktop app lists this browser by (#227)", async () => {
+		mount();
+		expect(await screen.findByText("Zk3/q9xR")).toBeTruthy();
 	});
 
 	it("shows the link as still linked when the permission was revoked, not as disconnected", async () => {

@@ -976,6 +976,10 @@ msgstr "Change"
 msgid "Change it on the site to keep your account safe."
 msgstr "Change it on the site to keep your account safe."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Change the Quick Access shortcut"
+msgstr "Change the Quick Access shortcut"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change your master password"
 msgstr "Change your master password"
@@ -2942,6 +2946,10 @@ msgstr "Open website"
 msgid "Opening…"
 msgstr "Opening…"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Opens Quick Access from any app. Choose the button, then press the keys you want."
+msgstr "Opens Quick Access from any app. Choose the button, then press the keys you want."
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Optic ID"
 msgstr "Optic ID"
@@ -3185,6 +3193,14 @@ msgstr "Press Enter / submit the form right after the credentials are filled in.
 msgid "Press Enter or comma to add a tag. Press the left arrow to move into the tags you have already added, then Backspace to remove one. Press the down arrow for suggestions."
 msgstr "Press Enter or comma to add a tag. Press the left arrow to move into the tags you have already added, then Backspace to remove one. Press the down arrow for suggestions."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press keys…"
+msgstr "Press keys…"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press the new shortcut"
+msgstr "Press the new shortcut"
+
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "private key"
 msgstr "private key"
@@ -3212,6 +3228,10 @@ msgstr "public key"
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Public key"
 msgstr "Public key"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Quick Access shortcut"
+msgstr "Quick Access shortcut"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Rabbit"
@@ -4100,6 +4120,10 @@ msgstr "That QR is an authenticator export holding several accounts, not a setup
 msgid "That QR sets up {0}, so it holds no key to save. On the site, choose to use a different authenticator app, then scan the code it offers."
 msgstr "That QR sets up {0}, so it holds no key to save. On the site, choose to use a different authenticator app, then scan the code it offers."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "That shortcut is taken or can't be used. Try another."
+msgstr "That shortcut is taken or can't be used. Try another."
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "That transfer didn't contain anything we could import."
 msgstr "That transfer didn't contain anything we could import."
@@ -4148,6 +4172,11 @@ msgstr "The desktop app is showing the same symbols and waiting for you to appro
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "The desktop app is still linked, but this browser's permission to talk to it was turned off."
 msgstr "The desktop app is still linked, but this browser's permission to talk to it was turned off."
+
+#. placeholder {0}: shortKey(status.publicKey)
+#: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
+msgid "The desktop app lists this browser as <0>{0}</0>."
+msgstr "The desktop app lists this browser as <0>{0}</0>."
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #~ msgid "The desktop app offered to share its vault with this browser. Enter the master password you use there, then compare the symbols both screens show."
@@ -4524,6 +4553,10 @@ msgstr "Toggle passcode fallback"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "Toggle start at login"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Toggle the Quick Access shortcut"
+msgstr "Toggle the Quick Access shortcut"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx

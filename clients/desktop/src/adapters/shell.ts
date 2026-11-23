@@ -133,6 +133,12 @@ export const desktopShell: ShellAdapter = {
 		setEnabled: (on: boolean) => invoke<void>("autostart_set_enabled", { on }),
 	},
 
+	// Registered and stored by src-tauri/src/spotlight.rs, which owns the global shortcut.
+	quickAccessShortcut: {
+		get: () => invoke<string | null>("spotlight_shortcut"),
+		set: (shortcut: string | null) => invoke<void>("spotlight_set_shortcut", { shortcut }),
+	},
+
 	// The panel asking this window to open an entry. One window, so this is a route change
 	// rather than a new context; the router's guards still apply.
 	onNavigateRequest: (callback) => {

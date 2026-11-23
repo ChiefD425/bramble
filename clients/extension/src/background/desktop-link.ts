@@ -1461,6 +1461,7 @@ export async function unlinkDesktop(vaultId: string): Promise<{ remaining: numbe
 export async function desktopLinkStatus(): Promise<{
 	paired: boolean;
 	pairedAt?: number;
+	publicKey?: string;
 	permitted: boolean;
 }> {
 	// The vault's own link: one still in progress is not linked yet.
@@ -1469,7 +1470,7 @@ export async function desktopLinkStatus(): Promise<{
 	// this away", which stays true across a worker that simply started too early.
 	const allowed = await permitted();
 	return state
-		? { paired: true, pairedAt: state.pairedAt, permitted: allowed }
+		? { paired: true, pairedAt: state.pairedAt, publicKey: state.publicKey, permitted: allowed }
 		: { paired: false, permitted: allowed };
 }
 

@@ -15,6 +15,9 @@ export interface DesktopLinkStatus {
 	paired: boolean;
 	/** Epoch ms, when paired. */
 	pairedAt?: number;
+	/** This browser's link key, which the desktop app lists it by. Shown as a short ID on both
+	 * sides, so two browsers with the same name ("Chrome on Mac") can be told apart (#227). */
+	publicKey?: string;
 	/**
 	 * Whether the host still holds the permission the link needs.
 	 *

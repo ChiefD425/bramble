@@ -976,6 +976,10 @@ msgstr "Ändern"
 msgid "Change it on the site to keep your account safe."
 msgstr "Ändern Sie dies auf der Website, um Ihr Konto zu sichern."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Change the Quick Access shortcut"
+msgstr "Tastenkombination für Schnellzugriff ändern"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change your master password"
 msgstr "Master-Passwort ändern"
@@ -2942,6 +2946,10 @@ msgstr "Website öffnen"
 msgid "Opening…"
 msgstr "Öffnen..."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Opens Quick Access from any app. Choose the button, then press the keys you want."
+msgstr "Öffnet den Schnellzugriff aus jeder App. Wählen Sie die Schaltfläche und drücken Sie dann die gewünschten Tasten."
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Optic ID"
 msgstr "Optic ID"
@@ -3185,6 +3193,14 @@ msgstr "Drücken Sie Eingabe / senden Sie das Formular ab, nachdem die Anmeldein
 msgid "Press Enter or comma to add a tag. Press the left arrow to move into the tags you have already added, then Backspace to remove one. Press the down arrow for suggestions."
 msgstr "Drücken Sie die Eingabetaste oder das Komma, um einen Tag hinzuzufügen. Drücken Sie die Pfeiltaste nach links, um zu den bereits hinzugefügten Tags zu wechseln, und dann die Rücktaste, um einen zu entfernen. Drücken Sie die Pfeiltaste nach unten für Vorschläge."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press keys…"
+msgstr "Tasten drücken…"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press the new shortcut"
+msgstr "Drücken Sie die neue Tastenkombination"
+
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "private key"
 msgstr "Privater Schlüssel"
@@ -3212,6 +3228,10 @@ msgstr "Öffentlicher Schlüssel"
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Public key"
 msgstr "Öffentlicher Schlüssel"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Quick Access shortcut"
+msgstr "Tastenkombination für Schnellzugriff"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Rabbit"
@@ -4100,6 +4120,10 @@ msgstr "Dieser QR-Code ist ein Authenticator-Export mit mehreren Konten und kein
 msgid "That QR sets up {0}, so it holds no key to save. On the site, choose to use a different authenticator app, then scan the code it offers."
 msgstr "Dieser QR-Code richtet {0} ein und enthält daher keinen Schlüssel zum Speichern. Wählen Sie auf der Website eine andere Authenticator-App und scannen Sie den dann angebotenen Code."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "That shortcut is taken or can't be used. Try another."
+msgstr "Diese Tastenkombination ist bereits vergeben oder kann nicht verwendet werden. Versuchen Sie eine andere."
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "That transfer didn't contain anything we could import."
 msgstr "Diese Übertragung enthielt keine importierbaren Daten."
@@ -4148,6 +4172,11 @@ msgstr "Die Desktop-App zeigt die gleichen Symbole an und wartet auf Ihre Bestä
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "The desktop app is still linked, but this browser's permission to talk to it was turned off."
 msgstr "Die Desktop-App ist weiterhin verknüpft, aber die Berechtigung dieses Browsers, mit ihr zu kommunizieren, wurde deaktiviert."
+
+#. placeholder {0}: shortKey(status.publicKey)
+#: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
+msgid "The desktop app lists this browser as <0>{0}</0>."
+msgstr "Die Desktop-App führt diesen Browser als <0>{0}</0> auf."
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #~ msgid "The desktop app offered to share its vault with this browser. Enter the master password you use there, then compare the symbols both screens show."
@@ -4524,6 +4553,10 @@ msgstr "Passcode-Fallback umschalten"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "Start bei der Anmeldung umschalten"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Toggle the Quick Access shortcut"
+msgstr "Tastenkombination für Schnellzugriff umschalten"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx

@@ -20,6 +20,7 @@ import { InlineConfirm } from "../../../components/ui/inline-confirm";
 import { Modal } from "../../../components/ui/modal";
 import { PasswordField } from "../../../components/ui/password-field";
 import { Row, Section } from "./primitives";
+import { shortKey } from "./sync-log";
 
 /** Matches the link window's lifetime in the app (pairing.rs `LINK_WINDOW`), after which a
  * browser pressing Link is refused, so the screen closes with it. */
@@ -313,7 +314,11 @@ export function BrowserPairingSection() {
 										{/* Self-declared at pairing time, so it is shown as information and
 										    never used to decide anything. */}
 										<p className="text-sm truncate">{browser.label}</p>
+										{/* The browser's link key, which the browser shows too, beside Desktop app:
+										    how two "Chrome on Mac" rows tell apart (#227). */}
 										<p className="text-xs text-muted-foreground mt-0.5">
+											<span className="font-mono">{shortKey(browser.publicKey)}</span>
+											{" · "}
 											<Trans>Connected {formatDate(browser.pairedAt)}</Trans>
 										</p>
 									</div>

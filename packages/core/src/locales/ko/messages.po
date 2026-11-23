@@ -868,6 +868,10 @@ msgstr "변경"
 msgid "Change it on the site to keep your account safe."
 msgstr "계정을 안전하게 유지하려면 해당 사이트에서 변경하십시오."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Change the Quick Access shortcut"
+msgstr "빠른 접근 단축키 변경"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change your master password"
 msgstr "마스터 비밀번호 변경"
@@ -2661,6 +2665,10 @@ msgstr "웹사이트 열기"
 msgid "Opening…"
 msgstr "여는 중…"
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Opens Quick Access from any app. Choose the button, then press the keys you want."
+msgstr "어떤 앱에서든 빠른 접근을 엽니다. 버튼을 선택한 다음 원하는 키를 누르십시오."
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Optic ID"
 msgstr "Optic ID"
@@ -2888,6 +2896,14 @@ msgstr "자격 증명이 채워지면 바로 Enter 키를 누르거나 양식을
 msgid "Press Enter or comma to add a tag. Press the left arrow to move into the tags you have already added, then Backspace to remove one. Press the down arrow for suggestions."
 msgstr "태그를 추가하려면 Enter 키 또는 쉼표를 누르세요. 이미 추가한 태그로 이동하려면 왼쪽 화살표 키를 누른 다음 백스페이스 키를 눌러 제거하세요. 제안을 보려면 아래쪽 화살표 키를 누르세요."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press keys…"
+msgstr "키 입력…"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Press the new shortcut"
+msgstr "새 단축키 입력"
+
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "private key"
 msgstr "개인 키"
@@ -2915,6 +2931,10 @@ msgstr "공개 키"
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Public key"
 msgstr "공개 키"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Quick Access shortcut"
+msgstr "빠른 접근 단축키"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Rabbit"
@@ -3755,6 +3775,10 @@ msgstr "이 QR 코드는 설정 코드가 아니라 여러 계정이 담긴 인�
 msgid "That QR sets up {0}, so it holds no key to save. On the site, choose to use a different authenticator app, then scan the code it offers."
 msgstr "이 QR 코드는 {0} 설정용이므로 저장할 키가 없습니다. 해당 사이트에서 다른 인증자 앱을 사용하도록 선택한 다음 제공되는 코드를 스캔하십시오."
 
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "That shortcut is taken or can't be used. Try another."
+msgstr "해당 단축키는 이미 사용 중이거나 사용할 수 없습니다. 다른 단축키를 사용해 보십시오."
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "That transfer didn't contain anything we could import."
 msgstr "해당 전송에는 가져올 수 있는 항목이 없었습니다."
@@ -3791,6 +3815,11 @@ msgstr "데스크톱 앱에 동일한 기호가 표시되며 승인을 기다리
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "The desktop app is still linked, but this browser's permission to talk to it was turned off."
 msgstr "데스크톱 앱은 계속 연결되어 있지만, 이 브라우저가 통신할 권한은 꺼져 있습니다."
+
+#. placeholder {0}: shortKey(status.publicKey)
+#: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
+msgid "The desktop app lists this browser as <0>{0}</0>."
+msgstr "데스크톱 앱에는 이 브라우저가 <0>{0}</0> 이름으로 표시됩니다."
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "The desktop app offered to share its vault with this browser. Enter the master password you use there."
@@ -4102,6 +4131,10 @@ msgstr "기기 암호로 대체 켜기/끄기"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "로그인 시 시작 켜기/끄기"
+
+#: packages/core/src/app/screens/Settings/components/QuickAccessShortcutRow.tsx
+msgid "Toggle the Quick Access shortcut"
+msgstr "빠른 접근 단축키 토글"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
