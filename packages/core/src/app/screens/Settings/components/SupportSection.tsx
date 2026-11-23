@@ -1,11 +1,14 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Bitcoin, Check, Coins, Copy, Heart, type LucideIcon } from "lucide-react";
+import { BellRing, Bitcoin, Check, Coins, Copy, Heart, type LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { usePlatform } from "../../../../context/PlatformContext";
-import { Button } from "../../../components/ui/button";
+import { usePrefs } from "../../../../hooks/usePrefs";
+import { Button, buttonClasses } from "../../../components/ui/button";
+import { Toggle } from "../../../components/ui/toggle";
 import { cn } from "../../../components/ui/utils";
-import { Section } from "./primitives";
+import { SUPPORT_URL } from "../../../support-ask";
+import { Row, Section } from "./primitives";
 
 interface Method {
 	label: string; // e.g. "Lightning" / "On-chain"; technical, not localized (like the coin names)
@@ -146,9 +149,16 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
 	);
 }
 
-/** About tab: optional donations panel. Hidden entirely until a wallet address is configured. */
+/**
+ * About tab: optional donations panel. Hidden entirely until a wallet address is configured. Ko-fi
+ * and the every-two-weeks ask's switch appear only where the ask does: not on iOS
+ * (docs/support-ask.md).
+ */
 export function SupportSection() {
 	const { t } = useLingui();
+	const { target } = usePlatform();
+	const { prefs, update } = usePrefs();
+	const kofi = SUPPORT_URL[target];
 	const wallets = WALLETS.map((w) => ({
 		...w,
 		methods: w.methods.filter((m) => isConfigured(m.address)),
@@ -163,11 +173,35 @@ export function SupportSection() {
 					code with your wallet, or copy the address. Thank you.
 				</Trans>
 			</p>
+			{kofi && (
+				<a
+					href={kofi}
+					target="_blank"
+					rel="noreferrer noopener"
+					className={buttonClasses({ variant: "primary", size: "sm", fullWidth: true })}
+				>
+					<Heart className="w-3.5 h-3.5" />
+					<Trans>Donate on Ko-fi</Trans>
+				</a>
+			)}
 			<div className={cn("grid gap-3", wallets.length > 1 ? "grid-cols-2" : "mx-auto max-w-xs")}>
 				{wallets.map((w) => (
 					<WalletCard key={w.name} wallet={w} />
 				))}
 			</div>
+			{kofi && (
+				<Row
+					icon={<BellRing className="w-4 h-4 text-primary" />}
+					title={t`Remind me every two weeks`}
+					subtitle={t`Asks once on the vault list.`}
+				>
+					<Toggle
+						checked={prefs.supportAskEnabled}
+						label={t`Remind me every two weeks`}
+						onChange={(on) => void update("supportAskEnabled", on)}
+					/>
+				</Row>
+			)}
 		</Section>
 	);
 }

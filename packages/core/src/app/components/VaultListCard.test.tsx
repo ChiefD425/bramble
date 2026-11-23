@@ -33,6 +33,14 @@ function Cards({ only }: { only?: (keyof VaultListCards)[] }) {
 							onClose: end("whatsNew"),
 						}
 					: null,
+				supportAsk: offer("supportAsk")
+					? {
+							url: "https://ko-fi.com/bramble_sh",
+							onShown: () => {},
+							onDonate: end("supportAsk"),
+							onDismiss: end("supportAsk"),
+						}
+					: null,
 				reviewNudge: offer("reviewNudge")
 					? {
 							reviewUrl: "https://example.com/r",
@@ -61,6 +69,7 @@ function mount(only?: (keyof VaultListCards)[]) {
 const showing = () => ({
 	update: !!screen.queryByText(/is available/),
 	whatsNew: !!screen.queryByText(/What's new in/),
+	support: !!screen.queryByRole("dialog", { name: "Support Bramble" }),
 	review: !!screen.queryByText(/Say something nice/),
 	defaultManager: !!screen.queryByText(/default password manager/),
 });
@@ -71,6 +80,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: true,
 			whatsNew: false,
+			support: false,
 			review: false,
 			defaultManager: false,
 		});
@@ -79,6 +89,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: true,
+			support: false,
 			review: false,
 			defaultManager: false,
 		});
@@ -87,6 +98,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: false,
+			support: false,
 			review: true,
 			defaultManager: false,
 		});
@@ -101,6 +113,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: false,
+			support: false,
 			review: false,
 			defaultManager: false,
 		});
@@ -135,6 +148,7 @@ describe("VaultListCard", () => {
 								url: "https://bramble.sh/whats-new/chromium/1.42.0",
 								onClose,
 							},
+							supportAsk: null,
 							reviewNudge: null,
 							defaultManager: null,
 						}}
@@ -152,5 +166,30 @@ describe("VaultListCard", () => {
 		cleanup();
 		mount(["whatsNew"]);
 		expect(showing().whatsNew).toBe(true);
+	});
+
+	it("puts the donation sheet after what's new and ahead of the review ask", () => {
+		mount(["supportAsk", "reviewNudge", "defaultManager"]);
+		expect(showing()).toEqual({
+			update: false,
+			whatsNew: false,
+			support: true,
+			review: false,
+			defaultManager: false,
+		});
+		cleanup();
+		mount(["whatsNew", "supportAsk"]);
+		expect(showing().support).toBe(false);
+	});
+
+	it("leaves the spot empty once the sheet is answered, either way", () => {
+		mount(["supportAsk", "reviewNudge"]);
+		fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+		expect(showing().review).toBe(false);
+		cleanup();
+		mount(["supportAsk", "reviewNudge"]);
+		fireEvent.click(screen.getByRole("link", { name: /Donate/ }));
+		expect(showing().review).toBe(false);
+		expect(showing().support).toBe(false);
 	});
 });

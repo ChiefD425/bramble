@@ -15,6 +15,7 @@ import {
 	type ReviewNudgeState,
 } from "../app/review-nudge";
 import { DEFAULT_SEARCH, isSortKey, type SortKey } from "../app/screens/VaultHome/vault-search";
+import { normalizeSupportAskState, type SupportAskState } from "../app/support-ask";
 import { normalizeWhatsNewState, PREF_WHATS_NEW, type WhatsNewState } from "../app/whats-new";
 import { usePlatform } from "../context/PlatformContext";
 import { syncKeyFor } from "../sync/sync-keys";
@@ -87,6 +88,10 @@ export const PREF_REVIEW_NUDGE = "pref.reviewNudge";
 // app/app-update.ts. The desktop keeps its own switch in its updater (shell.updates).
 const PREF_UPDATE_CHECK = "pref.updateCheck";
 const PREF_APP_UPDATE = "pref.appUpdate";
+// The every-two-weeks donation sheet: its clock, and the Settings switch that stops it. See
+// app/support-ask.ts.
+const PREF_SUPPORT_ASK = "pref.supportAsk";
+const PREF_SUPPORT_ASK_ENABLED = "pref.supportAskEnabled";
 
 export const DEFAULT_AUTOLOCK_MINUTES = 15;
 // Off by default: the breach check is the app's only network egress (k-anonymous
@@ -158,6 +163,9 @@ export interface Prefs {
 	appUpdate: AppUpdateState;
 	// The version the "What's new" card was last closed for.
 	whatsNew: WhatsNewState;
+	// When the donation sheet was last shown, and whether it may be.
+	supportAsk: SupportAskState;
+	supportAskEnabled: boolean;
 }
 
 /** Each pref's storage key. A map rather than a ternary chain: the type makes it exhaustive, so
@@ -186,6 +194,8 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	updateCheck: PREF_UPDATE_CHECK,
 	appUpdate: PREF_APP_UPDATE,
 	whatsNew: PREF_WHATS_NEW,
+	supportAsk: PREF_SUPPORT_ASK,
+	supportAskEnabled: PREF_SUPPORT_ASK_ENABLED,
 };
 
 /**
@@ -240,6 +250,10 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	updateCheck: "device",
 	appUpdate: "device",
 	whatsNew: "device",
+	// Device: like the review ask, it is about this install, and a phone's answer should not quiet
+	// a browser.
+	supportAsk: "device",
+	supportAskEnabled: "device",
 };
 
 const VAULT_SCOPED = (Object.keys(PREF_SCOPE) as (keyof Prefs)[]).filter(
@@ -306,6 +320,8 @@ const DEFAULT_PREFS: Prefs = {
 	updateCheck: DEFAULT_UPDATE_CHECK,
 	appUpdate: {},
 	whatsNew: {},
+	supportAsk: {},
+	supportAskEnabled: true,
 };
 
 export interface UsePrefs {
@@ -404,40 +420,43 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w] = await Promise.all([
-				storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
-				storage.getMeta<boolean>(PREF_BREACH_CHECK),
-				storage.getMeta<number>(PREF_CLIPBOARD_SECONDS),
-				storage.getMeta<boolean>(PREF_OFFER_TO_SAVE),
-				storage.getMeta<boolean>(PREF_AUTOFILL_ENABLED),
-				storage.getMeta<string[]>(PREF_NEVER_SAVE_SITES),
-				readVaultPref<boolean>(
-					storage,
-					PREF_BIOMETRIC_AUTO_PROMPT,
-					keyFor("biometricAutoPrompt"),
-					adoptLegacy,
-				),
-				storage.getMeta<boolean>(PREF_AUTOFILL_QUICKTYPE),
-				storage.getMeta<boolean>(PREF_PASSKEY_PROVIDER),
-				storage.getMeta<boolean>(PREF_LOCK_ON_SCREEN_LOCK),
-				storage.getMeta<boolean>(PREF_STATS_COLLAPSED),
-				storage.getMeta<boolean>(PREF_AUTOSTART_PROMPT_DISMISSED),
-				readVaultPref<boolean>(
-					storage,
-					PREF_BIOMETRIC_PASSCODE_FALLBACK,
-					keyFor("biometricPasscodeFallback"),
-					adoptLegacy,
-				),
-				storage.getMeta<unknown>(PREF_GENERATOR),
-				storage.getMeta<unknown>(PREF_REVIEW_NUDGE),
-				storage.getMeta<boolean>(PREF_DEFAULT_MANAGER_PROMPT_DISMISSED),
-				storage.getMeta<boolean>(PREF_PASSKEY_CONFIRM_ONCE),
-				storage.getMeta<boolean>(PREF_UPDATE_CHECK),
-				storage.getMeta<unknown>(PREF_APP_UPDATE),
-				storage.getMeta<unknown>(PREF_VAULT_SORT),
-				storage.getMeta<boolean>(PREF_COPY_TOTP_ON_FILL),
-				storage.getMeta<unknown>(PREF_WHATS_NEW),
-			]);
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w, x, y] =
+				await Promise.all([
+					storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
+					storage.getMeta<boolean>(PREF_BREACH_CHECK),
+					storage.getMeta<number>(PREF_CLIPBOARD_SECONDS),
+					storage.getMeta<boolean>(PREF_OFFER_TO_SAVE),
+					storage.getMeta<boolean>(PREF_AUTOFILL_ENABLED),
+					storage.getMeta<string[]>(PREF_NEVER_SAVE_SITES),
+					readVaultPref<boolean>(
+						storage,
+						PREF_BIOMETRIC_AUTO_PROMPT,
+						keyFor("biometricAutoPrompt"),
+						adoptLegacy,
+					),
+					storage.getMeta<boolean>(PREF_AUTOFILL_QUICKTYPE),
+					storage.getMeta<boolean>(PREF_PASSKEY_PROVIDER),
+					storage.getMeta<boolean>(PREF_LOCK_ON_SCREEN_LOCK),
+					storage.getMeta<boolean>(PREF_STATS_COLLAPSED),
+					storage.getMeta<boolean>(PREF_AUTOSTART_PROMPT_DISMISSED),
+					readVaultPref<boolean>(
+						storage,
+						PREF_BIOMETRIC_PASSCODE_FALLBACK,
+						keyFor("biometricPasscodeFallback"),
+						adoptLegacy,
+					),
+					storage.getMeta<unknown>(PREF_GENERATOR),
+					storage.getMeta<unknown>(PREF_REVIEW_NUDGE),
+					storage.getMeta<boolean>(PREF_DEFAULT_MANAGER_PROMPT_DISMISSED),
+					storage.getMeta<boolean>(PREF_PASSKEY_CONFIRM_ONCE),
+					storage.getMeta<boolean>(PREF_UPDATE_CHECK),
+					storage.getMeta<unknown>(PREF_APP_UPDATE),
+					storage.getMeta<unknown>(PREF_VAULT_SORT),
+					storage.getMeta<boolean>(PREF_COPY_TOTP_ON_FILL),
+					storage.getMeta<unknown>(PREF_WHATS_NEW),
+					storage.getMeta<unknown>(PREF_SUPPORT_ASK),
+					storage.getMeta<boolean>(PREF_SUPPORT_ASK_ENABLED),
+				]);
 			if (cancelled) return;
 			// One `now` for the read: a fresh install's clock starts here rather than at whichever
 			// millisecond each consumer happens to ask.
@@ -476,6 +495,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				// Re-read when the first vault arrives, which is when a fresh install records its version
 				// (markFreshInstall): `vaults.length` is in this effect's dependencies.
 				whatsNew: normalizeWhatsNewState(w),
+				supportAsk: normalizeSupportAskState(x, now),
+				supportAskEnabled: typeof y === "boolean" ? y : true,
 			}));
 			setLoaded(true);
 		})();

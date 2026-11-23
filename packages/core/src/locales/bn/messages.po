@@ -666,6 +666,10 @@ msgstr "আনলক স্ক্রিন আসামাত্রই ট্য
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Bramble-এ এখনও নেই এমন সাইন-ইন সংরক্ষণের জন্য জিজ্ঞাসা করুন।"
 
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Asks once on the vault list."
+msgstr "ভল্ট তালিকায় একবার জিজ্ঞাসা করে।"
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "ঝুঁকিতে"
@@ -841,6 +845,10 @@ msgstr "Bramble-এ একটি অপ্রত্যাশিত সমস্�
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble বিনামূল্যের ও ওপেন সোর্স। এটি আপনার কাজে লাগলে, সামান্য অনুদান এর কাজ চালিয়ে যেতে সাহায্য করবে। আপনার ওয়ালেট দিয়ে একটি কোড স্ক্যান করুন, অথবা ঠিকানা কপি করুন। ধন্যবাদ।"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
+msgstr "Bramble বিনামূল্যে, কোনো বিজ্ঞাপন বা বিনিয়োগকারী নেই। অনুদানই এর উন্নয়ন ও নিরাপত্তা নিরীক্ষার খরচ বহন করে।"
 
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Bramble is installed directly, so updates are checked here."
@@ -1106,6 +1114,7 @@ msgstr "ক্লিপবোর্ড অটো-ক্লিয়ার"
 msgid "Clock"
 msgstr "ঘড়ি"
 
+#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1669,6 +1678,14 @@ msgstr "সরিয়ে দিন"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Dog"
 msgstr "কুকুর"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Donate"
+msgstr "অনুদান দিন"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Donate on Ko-fi"
+msgstr "Ko-fi-তে অনুদান দিন"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -2805,6 +2822,7 @@ msgstr "এখনও ব্রিচ পরীক্ষা করা হয়�
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 #~ msgstr "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 
+#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "এখন নয়"
@@ -3340,6 +3358,10 @@ msgstr "প্রত্যাখ্যান করুন"
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Reload"
 msgstr "রিলোড করুন"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Remind me every two weeks"
+msgstr "প্রতি দুই সপ্তাহে আমাকে মনে করিয়ে দিন"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
@@ -4006,6 +4028,10 @@ msgstr "প্রস্তাবিত"
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Support"
 msgstr "সাপোর্ট"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Support Bramble"
+msgstr "Bramble-কে সমর্থন করুন"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Symbols to use"

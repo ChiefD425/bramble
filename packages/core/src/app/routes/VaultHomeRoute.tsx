@@ -21,6 +21,7 @@ import { useDefaultPasswordManager } from "../hooks/useDefaultPasswordManager";
 import { useDuplicateEntry } from "../hooks/useDuplicateEntry";
 import { useListAttach } from "../hooks/useListAttach";
 import { useReviewNudge } from "../hooks/useReviewNudge";
+import { useSupportAsk } from "../hooks/useSupportAsk";
 import { useWhatsNew } from "../hooks/useWhatsNew";
 import { toListItem } from "../screens/VaultHome/list-item";
 import {
@@ -99,12 +100,15 @@ export function VaultHomeRoute() {
 	const appUpdate = useAppUpdate();
 	const whatsNew = useWhatsNew();
 	const slot = useCardSlot();
+	// After the update and What's new, which may still be loading (undefined), on an open no card
+	// has been closed in.
+	const supportAsk = useSupportAsk(slot.closed || !!appUpdate || whatsNew !== null);
 	// The store-review ask. Called unconditionally (it counts sessions whether or not it ever
 	// asks) and usually null. Entries are the whole vault, archived included: an archived entry
 	// is still one this person put there, which is all the signal is measuring. iOS's own prompt
 	// waits while the list has a card, may get one (the notes still loading), or closed one.
 	const reviewNudge = useReviewNudge(entries.length, {
-		hold: slot.closed || !!appUpdate || whatsNew !== null,
+		hold: slot.closed || !!appUpdate || whatsNew !== null || !!supportAsk,
 	});
 	const defaultManager = useDefaultPasswordManager();
 	const offerDefaultManager =
@@ -212,6 +216,7 @@ export function VaultHomeRoute() {
 					cards={{
 						appUpdate,
 						whatsNew,
+						supportAsk,
 						reviewNudge,
 						defaultManager: offerDefaultManager
 							? {

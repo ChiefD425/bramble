@@ -666,6 +666,10 @@ msgstr "Demander votre code d’accès dès l’affichage de l’écran de déve
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Demander l'enregistrement d'un identifiant que Bramble n'a pas encore."
 
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Asks once on the vault list."
+msgstr "Demande une fois sur la liste du coffre-fort."
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "Risqué"
@@ -849,6 +853,10 @@ msgstr "Bramble a rencontré une erreur inattendue. Votre coffre-fort est en sé
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble est gratuit et open source. S'il vous est utile, un pourboire permet de le maintenir. Scannez un code avec votre portefeuille, ou copiez l'adresse. Merci."
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
+msgstr "Bramble est gratuit, sans publicité ni investisseurs. Les dons financent son développement et ses audits de sécurité."
 
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Bramble is installed directly, so updates are checked here."
@@ -1114,6 +1122,7 @@ msgstr "Auto-effacement du presse-papiers"
 msgid "Clock"
 msgstr "Horloge"
 
+#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1677,6 +1686,14 @@ msgstr "Ignorer"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Dog"
 msgstr "Chien"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Donate"
+msgstr "Faire un don"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Donate on Ko-fi"
+msgstr "Faire un don sur Ko-fi"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -2817,6 +2834,7 @@ msgstr "Pas encore de vérification des fuites de données"
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 #~ msgstr "Sauvegarde inachevée : Bramble a été fermé avant la fin de cette sauvegarde. Elle sera relancée à la prochaine ouverture de Bramble."
 
+#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "Pas maintenant"
@@ -3352,6 +3370,10 @@ msgstr "Rejeter"
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Reload"
 msgstr "Recharger"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Remind me every two weeks"
+msgstr "Me le rappeler toutes les deux semaines"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
@@ -4026,6 +4048,10 @@ msgstr "Suggéré"
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Support"
 msgstr "Soutien"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Support Bramble"
+msgstr "Soutenir Bramble"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Symbols to use"

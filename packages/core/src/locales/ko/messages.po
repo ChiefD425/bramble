@@ -578,6 +578,10 @@ msgstr "잠금 해제 화면이 나타나면 탭 없이 암호 입력을 요청�
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Bramble에 아직 없는 로그인 정보 저장 여부 묻기"
 
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Asks once on the vault list."
+msgstr "보관함 목록에서 한 번만 묻습니다."
+
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "At Risk"
 msgstr "위험"
@@ -749,6 +753,10 @@ msgstr "Bramble에 예기치 않은 오류가 발생했습니다. 보관함은 �
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble은 무료 오픈소스입니다. 유용하게 사용하셨다면 팁으로 운영에 도움을 주세요. 지갑으로 코드를 스캔하거나 주소를 복사하세요. 감사합니다."
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
+msgstr "Bramble은 무료이며 광고도 투자자도 없습니다. 후원금은 개발과 보안 감사에 사용됩니다."
 
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Bramble is installed directly, so updates are checked here."
@@ -1002,6 +1010,7 @@ msgstr "클립보드 자동 지우기"
 msgid "Clock"
 msgstr "시계"
 
+#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1533,6 +1542,14 @@ msgstr "닫기"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Dog"
 msgstr "개"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Donate"
+msgstr "후원하기"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Donate on Ko-fi"
+msgstr "Ko-fi에서 후원하기"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -2556,6 +2573,7 @@ msgstr "백업되지 않음: 이 볼트가 잠겨 있는 동안에는 첨부 파
 msgid "Not checked for breaches yet"
 msgstr "아직 유출 검사하지 않음"
 
+#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "나중에"
@@ -3047,6 +3065,10 @@ msgstr "거부"
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Reload"
 msgstr "다시 불러오기"
+
+#: packages/core/src/app/screens/Settings/components/SupportSection.tsx
+msgid "Remind me every two weeks"
+msgstr "2주마다 다시 알림"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
@@ -3689,6 +3711,10 @@ msgstr "추천"
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Support"
 msgstr "지원"
+
+#: packages/core/src/app/components/SupportSheet.tsx
+msgid "Support Bramble"
+msgstr "Bramble 후원하기"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Symbols to use"
