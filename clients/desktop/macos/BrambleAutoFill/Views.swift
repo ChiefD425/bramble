@@ -319,6 +319,8 @@ struct LoginListView: View {
 	let requestedHost: String?
 	let onSelect: (Cred) -> Void
 	let onCancel: () -> Void
+	let others: [(id: String, name: String)]
+	let onSwitch: (String) -> Void
 	@State private var showAll = false
 	@State private var query = ""
 	// Search text per login, lowercased once rather than on every keystroke.
@@ -328,9 +330,12 @@ struct LoginListView: View {
 
 	init(
 		vault: String?, matches: [Cred], all: [Cred], requestedHost: String?,
-		onSelect: @escaping (Cred) -> Void, onCancel: @escaping () -> Void
+		onSelect: @escaping (Cred) -> Void, onCancel: @escaping () -> Void,
+		others: [(id: String, name: String)] = [], onSwitch: @escaping (String) -> Void = { _ in }
 	) {
 		self.vault = vault
+		self.others = others
+		self.onSwitch = onSwitch
 		self.matches = matches
 		self.all = all
 		self.requestedHost = requestedHost
@@ -385,7 +390,7 @@ struct LoginListView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			Header(title: "Bramble", vault: vault, onCancel: onCancel)
+			Header(title: "Bramble", vault: vault, others: others, onSwitch: onSwitch, onCancel: onCancel)
 			if all.isEmpty {
 				Text("No logins saved yet. Add one in Bramble.")
 					.font(.system(size: 12)).foregroundColor(Theme.muted).multilineTextAlignment(.center)

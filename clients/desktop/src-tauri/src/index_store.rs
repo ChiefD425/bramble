@@ -44,6 +44,9 @@ pub struct IndexEntry {
     pub password: String,
     #[serde(default)]
     pub totp: Option<String>,
+    /// "exact" or "subdomain"; the macOS AutoFill sheet matches with it.
+    #[serde(default)]
+    pub subdomain_match: Option<String>,
 }
 
 /// Matches the extension's clipboard behaviour.
@@ -71,6 +74,11 @@ pub fn set(entries: Vec<IndexEntry>) {
 
 pub fn clear() {
     INDEX.lock().unwrap().clear();
+}
+
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn snapshot() -> Vec<IndexEntry> {
+    INDEX.lock().unwrap().clone()
 }
 
 #[allow(dead_code)] // Read by tests and useful in a log line; no caller in the app yet.
@@ -213,6 +221,7 @@ mod tests {
             username: user.into(),
             password: "hunter2".into(),
             totp: None,
+            subdomain_match: None,
         }
     }
     #[test]

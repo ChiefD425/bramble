@@ -1965,6 +1965,7 @@ mod tests {
             username: "octocat".into(),
             password: "hunter2".into(),
             totp: None,
+            subdomain_match: None,
         }]);
 
         let answer = ask(
@@ -1995,6 +1996,7 @@ mod tests {
             username: "octocat".into(),
             password: "hunter2".into(),
             totp: None,
+            subdomain_match: None,
         }]);
 
         std::thread::sleep(std::time::Duration::from_millis(2));
@@ -2027,6 +2029,7 @@ mod tests {
             username: "octocat".into(),
             password: "hunter2".into(),
             totp: None,
+            subdomain_match: None,
         }]);
 
         let answer = ask(
@@ -2215,6 +2218,7 @@ mod tests {
             username: "octocat".into(),
             password: "hunter2".into(),
             totp: None,
+            subdomain_match: None,
         }]);
     }
 

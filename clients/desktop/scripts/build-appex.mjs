@@ -70,6 +70,7 @@ function compile(arch) {
 			join(src, "CredentialProviderViewController.swift"),
 			join(src, "Views.swift"),
 			join(src, "VaultCopies.swift"),
+			join(src, "AppSession.swift"),
 			join(shared, "AutofillCore.swift"),
 			join(shared, "AutofillStyle.swift"),
 			join(shared, "Totp.swift"),

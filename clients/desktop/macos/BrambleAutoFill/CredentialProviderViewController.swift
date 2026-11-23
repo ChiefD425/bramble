@@ -1,8 +1,9 @@
-// macOS AutoFill credential provider. Authenticate first, then decrypt: the desktop app mirrors
-// the vault into the App Group, VEK-encrypted (autofill.json, src-tauri/src/autofill_provider.rs),
-// and nothing in it is readable until the user unlocks here, with the desktop app's own Touch ID
-// item or the master password. Shapes, PRF and matching are shared with iOS (AutofillCore.swift).
-// See docs/macos-credential-provider.md.
+// macOS AutoFill credential provider. While the desktop app is unlocked, logins and codes come
+// from it one at a time (AppSession.swift) and nothing is asked. Otherwise authenticate first,
+// then decrypt: the app mirrors the vault into the App Group, VEK-encrypted
+// (src-tauri/src/autofill_provider.rs), and nothing in it is readable until the user unlocks here,
+// with the desktop app's own Touch ID item or the master password. Shapes, PRF and matching are
+// shared with iOS (AutofillCore.swift). See docs/macos-credential-provider.md.
 
 import AppKit
 import AuthenticationServices
@@ -25,8 +26,15 @@ private func groupURL(_ name: String) -> URL? {
 		.appendingPathComponent(name)
 }
 
+private func groupContainer() -> URL? {
+	FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+}
+
+// Before the first request, which may come with no view loaded.
+private let sessionLogged: Void = { AppSession.log = { log.notice("\($0, privacy: .public)") } }()
+
 private func readGroupCopies() -> [VaultCopy] {
-	FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup).map(readCopies) ?? []
+	groupContainer().map(readCopies) ?? []
 }
 
 // MARK: - Controller
@@ -64,14 +72,40 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		start(.passwords(hosts: [], recordId: credentialIdentity.recordIdentifier))
 	}
 
-	// No keep-unlocked session yet: every fill is a fresh unlock, so the silent path asks for UI.
+	// Silent while the app is unlocked; otherwise macOS opens the sheet to unlock.
 	override func provideCredentialWithoutUserInteraction(for credentialIdentity: ASPasswordCredentialIdentity) {
-		cancel(.userInteractionRequired)
+		fillFromApp(credentialIdentity.recordIdentifier, code: false)
 	}
 
+	// Passkeys always unlock here: signing needs the key in this process.
 	@available(macOS 14.0, *)
 	override func provideCredentialWithoutUserInteraction(for credentialRequest: ASCredentialRequest) {
-		cancel(.userInteractionRequired)
+		if #available(macOS 15.0, *), credentialRequest is ASOneTimeCodeCredentialRequest {
+			fillFromApp(credentialRequest.credentialIdentity.recordIdentifier, code: true)
+		} else if credentialRequest.credentialIdentity is ASPasswordCredentialIdentity {
+			fillFromApp(credentialRequest.credentialIdentity.recordIdentifier, code: false)
+		} else {
+			cancel(.userInteractionRequired)
+		}
+	}
+
+	private func fillFromApp(_ recordIdentifier: String?, code: Bool) {
+		_ = sessionLogged
+		let (vaultId, id) = untag(recordIdentifier ?? "")
+		guard let vaultId, let container = groupContainer() else {
+			cancel(.userInteractionRequired)
+			return
+		}
+		DispatchQueue.global(qos: .userInitiated).async {
+			let secret = AppSession.fetch(vaultId: vaultId, id: id, in: container)
+			DispatchQueue.main.async {
+				guard let secret else { return self.cancel(.userInteractionRequired) }
+				let cred = Cred(
+					recordId: id, name: "", username: secret.username, password: secret.password, services: [],
+					totp: secret.totp, subdomainMatch: nil)
+				if code { self.fillCode(cred) } else { self.fill(cred) }
+			}
+		}
 	}
 
 	@available(macOS 15.0, *)
@@ -153,10 +187,66 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	// MARK: Unlock
 
-	/// Open the vault the request needs: the one its identity names, else the one holding a passkey it
-	/// names, else the copy written last, with the others a menu away.
+	/// Logins and codes come from the app while it is unlocked; everything else unlocks here first.
 	private func start(_ next: Pending, vault named: String? = nil) {
 		pending = next
+		_ = sessionLogged
+		let request: (hosts: [String], recordId: String?, codes: Bool)? = {
+			switch next {
+			case .passwords(let hosts, let recordId): return (hosts, recordId, false)
+			case .codes(let hosts, let recordId): return (hosts, recordId, true)
+			default: return nil
+			}
+		}()
+		guard let request, let container = groupContainer() else { return unlockFirst(next, vault: named) }
+		let pinned = request.recordId.flatMap { untag($0).vaultId }
+		DispatchQueue.global(qos: .userInitiated).async {
+			let list = AppSession.list(vaultId: pinned, in: container)
+			DispatchQueue.main.async {
+				guard let list else { return self.unlockFirst(next, vault: named) }
+				self.offerFromApp(list, request.hosts, request.recordId, codes: request.codes, container)
+			}
+		}
+	}
+
+	private func offerFromApp(
+		_ list: SessionList, _ hosts: [String], _ recordId: String?, codes: Bool, _ container: URL
+	) {
+		let copies = readGroupCopies()
+		vault = copies.first { $0.vaultId == list.vaultId }?.vaultName
+		// Another vault isn't open in the app, so choosing one unlocks it here.
+		let others = recordId == nil ? copies.filter { $0.vaultId != nil && $0.vaultId != list.vaultId } : []
+		let creds = list.logins.filter { codes ? $0.hasTotp : $0.hasPassword }.map {
+			Cred(
+				recordId: $0.id, name: $0.name, username: $0.username, password: "", services: $0.hostnames,
+				totp: nil, subdomainMatch: $0.subdomainMatch)
+		}
+		offer(
+			creds, hosts: hosts, recordId: recordId, others: others.map { (id: $0.vaultId ?? "", name: menuLabel($0)) },
+			onSwitch: { [weak self] id in
+				guard let next = others.first(where: { $0.vaultId == id }) else { return }
+				self?.open(next, among: copies.filter { $0.vaultId != nil })
+			}
+		) { [weak self] chosen in
+			DispatchQueue.global(qos: .userInitiated).async {
+				let secret = AppSession.fetch(vaultId: list.vaultId, id: chosen.recordId, in: container)
+				DispatchQueue.main.async {
+					guard let self else { return }
+					// Locked since the list came: unlock here instead.
+					guard let secret else { return self.unlockFirst(self.pending) }
+					let cred = Cred(
+						recordId: chosen.recordId, name: chosen.name, username: secret.username,
+						password: secret.password, services: chosen.services, totp: secret.totp,
+						subdomainMatch: chosen.subdomainMatch)
+					if codes { self.fillCode(cred) } else { self.fill(cred) }
+				}
+			}
+		}
+	}
+
+	/// Open the vault the request needs: the one its identity names, else the one holding a passkey it
+	/// names, else the copy written last, with the others a menu away.
+	private func unlockFirst(_ next: Pending, vault named: String? = nil) {
 		let (vaultId, credentialIds): (String?, [String]) = {
 			switch next {
 			case .passwords(_, let recordId), .codes(_, let recordId):
@@ -339,7 +429,11 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 		}
 	}
 
-	private func offer(_ creds: [Cred], hosts: [String], recordId: String?, choose: @escaping (Cred) -> Void) {
+	private func offer(
+		_ creds: [Cred], hosts: [String], recordId: String?,
+		others: [(id: String, name: String)] = [], onSwitch: @escaping (String) -> Void = { _ in },
+		choose: @escaping (Cred) -> Void
+	) {
 		if let recordId, let cred = creds.first(where: { $0.recordId == untag(recordId).id }) {
 			choose(cred)
 			return
@@ -356,7 +450,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 				matches: matching.sorted { rank($0) < rank($1) },
 				all: creds.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending },
 				requestedHost: hosts.first, onSelect: choose,
-				onCancel: { [weak self] in self?.cancel(.userCanceled) }))
+				onCancel: { [weak self] in self?.cancel(.userCanceled) }, others: others, onSwitch: onSwitch))
 	}
 
 	private func fill(_ cred: Cred) {

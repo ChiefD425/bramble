@@ -6,6 +6,7 @@
 
 mod autolock;
 mod autofill_provider;
+mod autofill_session;
 mod autostart;
 mod backup;
 mod biometric;
@@ -223,6 +224,8 @@ pub fn run() {
             autolock::start(app.handle().clone());
             #[cfg(target_os = "macos")]
             autofill_provider::watch_enabled(app.handle().clone());
+            #[cfg(target_os = "macos")]
+            autofill_session::start(app.handle().clone());
 
             // The browser proxy's end of the pipe. Bound at startup rather than on first
             // pairing: an extension that is already paired reconnects whenever its browser

@@ -1,0 +1,470 @@
+//! Lets the macOS AutoFill extension fill from the unlocked app, so a fill while Bramble is
+//! unlocked asks for nothing, and one after it locks (by hand, auto-lock or quitting) asks again.
+//!
+//! The app listens on a socket in the App Group container. Every process the user runs can reach
+//! that file, so the caller's code signature is checked from the socket's audit token before
+//! anything is read, and only Bramble's own extension gets an answer. Answers come from the
+//! index the browser link serves (`index_store`), set on unlock and cleared on lock: one login's
+//! secret per fetch, and a list with no secrets for the sheet. The VEK never leaves the app.
+//! See docs/macos-credential-provider.md.
+
+use serde::{Deserialize, Serialize};
+
+use crate::index_store::IndexEntry;
+
+/// The extension, and only the extension, signed by us.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+const EXTENSION_REQUIREMENT: &str = r#"anchor apple generic and identifier "app.bramble.desktop.autofill" and certificate leaf[subject.OU] = "BHGR3PP64J""#;
+
+/// Short: a socket path is capped at 104 bytes, and the group container's path is long.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+const SOCKET: &str = "fill";
+
+/// A request is a few ids; anything bigger is not one.
+const MAX_REQUEST: u32 = 4096;
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "op", rename_all = "camelCase", rename_all_fields = "camelCase")]
+enum Request {
+    /// One login's secrets, for the login macOS or the sheet picked.
+    Fetch { vault_id: String, id: String },
+    /// The open vault's logins with no secrets, for the sheet. `vault_id` pins the vault.
+    List { vault_id: Option<String> },
+}
+
+#[derive(Serialize, Default, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct Reply {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    totp: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vault_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    logins: Option<Vec<Login>>,
+}
+
+/// A login as the sheet lists it: what it shows and matches on, never a secret.
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct Login {
+    id: String,
+    name: String,
+    username: String,
+    hostnames: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subdomain_match: Option<String>,
+    has_password: bool,
+    has_totp: bool,
+}
+
+/// Listen for the extension. Without a group container or a socket, AutoFill asks to unlock as
+/// before, so a failure here is logged and nothing more.
+#[cfg(target_os = "macos")]
+pub fn start(app: tauri::AppHandle) {
+    use std::{os::unix::net::UnixListener, time::Duration};
+
+    let Ok(root) = crate::storage::data_dir(&app) else {
+        return;
+    };
+    let Some(dir) = crate::autofill_provider::group_dir() else {
+        return;
+    };
+    let path = dir.join(SOCKET);
+    let bound = std::fs::create_dir_all(&dir).and_then(|()| match std::fs::remove_file(&path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        _ => UnixListener::bind(&path),
+    });
+    let listener = match bound {
+        Ok(l) => l,
+        Err(e) => {
+            log::warn!("[autofill] no fill socket at {}: {e}", path.display());
+            return;
+        }
+    };
+    std::thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            let root = root.clone();
+            std::thread::spawn(move || {
+                let mut stream = stream;
+                let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+                let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+                let state = || {
+                    let open = if vault_crypto::is_locked() {
+                        None
+                    } else {
+                        crate::pairing::open_vault_id(&root).ok().flatten()
+                    };
+                    (open, crate::index_store::snapshot())
+                };
+                let trusted = |s: &std::os::unix::net::UnixStream| {
+                    let ok = peer_satisfies(s, EXTENSION_REQUIREMENT);
+                    if !ok {
+                        log::warn!("[autofill] fill socket: caller is not Bramble's extension");
+                    }
+                    ok
+                };
+                match serve(&mut stream, trusted, state) {
+                    Ok(true) => crate::autolock::touch(),
+                    Ok(false) => {}
+                    Err(e) => log::warn!("[autofill] fill socket: {e}"),
+                }
+            });
+        }
+    });
+}
+
+/// What to send back, and whether a secret went out (which counts as using the app). `open` is
+/// the vault the app has unlocked, None while locked.
+fn answer(request: Request, open: Option<&str>, index: &[IndexEntry]) -> (Reply, bool) {
+    let Some(open) = open else {
+        return (Reply::default(), false);
+    };
+    let logins = || index.iter().filter(|e| e.kind == "login");
+    match request {
+        Request::Fetch { vault_id, id } if vault_id == open => {
+            match logins().find(|e| e.id == id) {
+                Some(e) => (
+                    Reply {
+                        ok: true,
+                        username: Some(e.username.clone()),
+                        password: Some(e.password.clone()),
+                        totp: e.totp.clone(),
+                        ..Default::default()
+                    },
+                    true,
+                ),
+                None => (Reply::default(), false),
+            }
+        }
+        Request::List { vault_id } if vault_id.as_deref().map_or(true, |v| v == open) => (
+            Reply {
+                ok: true,
+                vault_id: Some(open.to_string()),
+                logins: Some(
+                    logins()
+                        .map(|e| Login {
+                            id: e.id.clone(),
+                            name: e.name.clone(),
+                            username: e.username.clone(),
+                            hostnames: e.hostnames.clone(),
+                            subdomain_match: e.subdomain_match.clone(),
+                            has_password: !e.password.is_empty(),
+                            has_totp: e.totp.as_deref().is_some_and(|t| !t.is_empty()),
+                        })
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+            false,
+        ),
+        _ => (Reply::default(), false),
+    }
+}
+
+/// Answer one request on `stream`: nothing at all unless `trusted` accepts the caller. `state` is
+/// read only after the request arrives, so an answer is never older than its question. Returns
+/// whether a secret went out.
+#[cfg(unix)]
+fn serve(
+    stream: &mut std::os::unix::net::UnixStream,
+    trusted: impl Fn(&std::os::unix::net::UnixStream) -> bool,
+    state: impl Fn() -> (Option<String>, Vec<IndexEntry>),
+) -> std::io::Result<bool> {
+    use std::io::{Error, ErrorKind, Read, Write};
+
+    if !trusted(stream) {
+        return Ok(false);
+    }
+    let mut len = [0u8; 4];
+    stream.read_exact(&mut len)?;
+    let len = u32::from_le_bytes(len);
+    if len > MAX_REQUEST {
+        return Err(Error::new(ErrorKind::InvalidData, "request too large"));
+    }
+    let mut body = vec![0u8; len as usize];
+    stream.read_exact(&mut body)?;
+    let request: Request =
+        serde_json::from_slice(&body).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
+    let (open, index) = state();
+    let (reply, used) = answer(request, open.as_deref(), &index);
+    let body = serde_json::to_vec(&reply).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
+    stream.write_all(&(body.len() as u32).to_le_bytes())?;
+    stream.write_all(&body)?;
+    Ok(used)
+}
+
+/// Whether the process at the other end of `stream` satisfies `requirement`, from the audit token
+/// the kernel recorded when it connected (a pid could be reused by then).
+#[cfg(target_os = "macos")]
+fn peer_satisfies(stream: &std::os::unix::net::UnixStream, requirement: &str) -> bool {
+    use core_foundation::{base::TCFType, data::CFData};
+    use security_framework::os::macos::code_signing::{
+        Flags, GuestAttributes, SecCode, SecRequirement,
+    };
+    use std::{ffi::c_int, os::fd::AsRawFd, str::FromStr};
+
+    // <sys/un.h>: SOL_LOCAL, LOCAL_PEERTOKEN; an audit_token_t is eight u32s.
+    const SOL_LOCAL: c_int = 0;
+    const LOCAL_PEERTOKEN: c_int = 6;
+    extern "C" {
+        fn getsockopt(
+            socket: c_int,
+            level: c_int,
+            name: c_int,
+            value: *mut std::ffi::c_void,
+            len: *mut u32,
+        ) -> c_int;
+    }
+    let mut token = [0u8; 32];
+    let mut len = token.len() as u32;
+    let got = unsafe {
+        getsockopt(
+            stream.as_raw_fd(),
+            SOL_LOCAL,
+            LOCAL_PEERTOKEN,
+            token.as_mut_ptr().cast(),
+            &mut len,
+        )
+    };
+    if got != 0 || len as usize != token.len() {
+        return false;
+    }
+    let Ok(requirement) = SecRequirement::from_str(requirement) else {
+        return false;
+    };
+    let token = CFData::from_buffer(&token);
+    let mut attrs = GuestAttributes::new();
+    attrs.set_audit_token(token.as_concrete_TypeRef());
+    SecCode::copy_guest_with_attribues(None, &attrs, Flags::NONE)
+        .and_then(|code| code.check_validity(Flags::NONE, &requirement))
+        .is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn login(id: &str, password: &str, totp: Option<&str>) -> IndexEntry {
+        IndexEntry {
+            id: id.into(),
+            kind: "login".into(),
+            name: format!("{id} name"),
+            hostnames: vec!["github.com".into()],
+            username: format!("{id}@example.com"),
+            password: password.into(),
+            totp: totp.map(str::to_string),
+            subdomain_match: Some("exact".into()),
+        }
+    }
+
+    fn index() -> Vec<IndexEntry> {
+        vec![
+            login("a", "pw-a", None),
+            login("b", "pw-b", Some("JBSWY3DPEHPK3PXP")),
+            IndexEntry {
+                id: "card".into(),
+                kind: "card".into(),
+                password: "4111".into(),
+                ..Default::default()
+            },
+        ]
+    }
+
+    fn fetch(vault: &str, id: &str) -> Request {
+        Request::Fetch {
+            vault_id: vault.into(),
+            id: id.into(),
+        }
+    }
+
+    #[test]
+    fn a_fetch_from_the_open_vault_hands_over_that_login_and_counts_as_use() {
+        let (reply, used) = answer(fetch("v1", "b"), Some("v1"), &index());
+        assert_eq!(
+            reply,
+            Reply {
+                ok: true,
+                username: Some("b@example.com".into()),
+                password: Some("pw-b".into()),
+                totp: Some("JBSWY3DPEHPK3PXP".into()),
+                ..Default::default()
+            }
+        );
+        assert!(used);
+    }
+
+    #[test]
+    fn a_locked_app_answers_nothing() {
+        assert_eq!(
+            answer(fetch("v1", "a"), None, &index()),
+            (Reply::default(), false)
+        );
+        let list = Request::List { vault_id: None };
+        assert_eq!(answer(list, None, &index()), (Reply::default(), false));
+    }
+
+    #[test]
+    fn another_vault_answers_nothing() {
+        assert_eq!(
+            answer(fetch("v2", "a"), Some("v1"), &index()),
+            (Reply::default(), false)
+        );
+        let list = Request::List {
+            vault_id: Some("v2".into()),
+        };
+        assert_eq!(
+            answer(list, Some("v1"), &index()),
+            (Reply::default(), false)
+        );
+    }
+
+    #[test]
+    fn an_unknown_id_or_a_card_answers_nothing() {
+        assert_eq!(
+            answer(fetch("v1", "zz"), Some("v1"), &index()),
+            (Reply::default(), false)
+        );
+        assert_eq!(
+            answer(fetch("v1", "card"), Some("v1"), &index()),
+            (Reply::default(), false)
+        );
+    }
+
+    #[test]
+    fn the_list_is_the_open_vaults_logins_without_a_secret() {
+        let (reply, used) = answer(Request::List { vault_id: None }, Some("v1"), &index());
+        assert!(!used);
+        assert!(reply.ok);
+        assert_eq!(reply.vault_id.as_deref(), Some("v1"));
+        let logins = reply.logins.as_ref().unwrap();
+        assert_eq!(
+            logins.iter().map(|l| l.id.as_str()).collect::<Vec<_>>(),
+            ["a", "b"]
+        );
+        assert_eq!(
+            logins[1],
+            Login {
+                id: "b".into(),
+                name: "b name".into(),
+                username: "b@example.com".into(),
+                hostnames: vec!["github.com".into()],
+                subdomain_match: Some("exact".into()),
+                has_password: true,
+                has_totp: true,
+            }
+        );
+        let wire = serde_json::to_string(&reply).unwrap();
+        assert!(!wire.contains("pw-") && !wire.contains("JBSWY"), "{wire}");
+    }
+
+    #[test]
+    fn the_list_answers_for_the_vault_it_names_when_that_one_is_open() {
+        let list = Request::List {
+            vault_id: Some("v1".into()),
+        };
+        assert!(answer(list, Some("v1"), &index()).0.ok);
+    }
+
+    #[cfg(unix)]
+    mod wire {
+        use super::*;
+        use std::{
+            io::{Read, Write},
+            os::unix::net::UnixStream,
+        };
+
+        fn send(stream: &mut UnixStream, body: &[u8]) {
+            stream
+                .write_all(&(body.len() as u32).to_le_bytes())
+                .unwrap();
+            stream.write_all(body).unwrap();
+        }
+
+        fn received(stream: &mut UnixStream) -> Option<serde_json::Value> {
+            let mut len = [0u8; 4];
+            stream.read_exact(&mut len).ok()?;
+            let mut body = vec![0u8; u32::from_le_bytes(len) as usize];
+            stream.read_exact(&mut body).ok()?;
+            serde_json::from_slice(&body).ok()
+        }
+
+        fn unlocked() -> (Option<String>, Vec<IndexEntry>) {
+            (Some("v1".into()), index())
+        }
+
+        #[test]
+        fn a_trusted_caller_gets_its_answer() {
+            let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+            send(&mut theirs, br#"{"op":"fetch","vaultId":"v1","id":"a"}"#);
+            assert!(serve(&mut ours, |_| true, unlocked).unwrap());
+            drop(ours);
+            let reply = received(&mut theirs).unwrap();
+            assert_eq!(reply["ok"], true);
+            assert_eq!(reply["password"], "pw-a");
+        }
+
+        #[test]
+        fn an_untrusted_caller_gets_nothing_and_its_request_is_never_read() {
+            let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+            send(&mut theirs, br#"{"op":"fetch","vaultId":"v1","id":"a"}"#);
+            let asked = std::cell::Cell::new(false);
+            let state = || {
+                asked.set(true);
+                unlocked()
+            };
+            assert!(!serve(&mut ours, |_| false, state).unwrap());
+            assert!(!asked.get());
+            drop(ours);
+            assert!(received(&mut theirs).is_none());
+        }
+
+        #[test]
+        fn an_oversized_or_garbled_request_gets_nothing() {
+            let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+            theirs.write_all(&(MAX_REQUEST + 1).to_le_bytes()).unwrap();
+            assert!(serve(&mut ours, |_| true, unlocked).is_err());
+            drop(ours);
+            assert!(received(&mut theirs).is_none());
+
+            let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+            send(&mut theirs, b"{not json");
+            assert!(serve(&mut ours, |_| true, unlocked).is_err());
+            drop(ours);
+            assert!(received(&mut theirs).is_none());
+        }
+
+        #[cfg(target_os = "macos")]
+        #[test]
+        fn the_peer_check_reads_the_callers_signature() {
+            let (ours, _theirs) = UnixStream::pair().unwrap();
+            // Any signed code satisfies "always", so this proves the audit token resolved to code.
+            assert!(peer_satisfies(&ours, "always"));
+            // This test binary is not our extension.
+            assert!(!peer_satisfies(&ours, EXTENSION_REQUIREMENT));
+            assert!(!peer_satisfies(&ours, "not a requirement"));
+        }
+
+        #[cfg(target_os = "macos")]
+        #[test]
+        fn the_requirements_parse() {
+            use std::str::FromStr;
+            security_framework::os::macos::code_signing::SecRequirement::from_str(
+                EXTENSION_REQUIREMENT,
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn requests_parse_as_the_extension_sends_them() {
+        let r: Request = serde_json::from_str(r#"{"op":"fetch","vaultId":"v1","id":"a"}"#).unwrap();
+        assert!(matches!(r, Request::Fetch { vault_id, id } if vault_id == "v1" && id == "a"));
+        let r: Request = serde_json::from_str(r#"{"op":"list"}"#).unwrap();
+        assert!(matches!(r, Request::List { vault_id: None }));
+    }
+}

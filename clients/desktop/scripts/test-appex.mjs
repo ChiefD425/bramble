@@ -17,13 +17,17 @@ if (process.platform !== "darwin") {
 const src = join(dirname(fileURLToPath(import.meta.url)), "..", "macos", "BrambleAutoFill");
 const out = mkdtempSync(join(tmpdir(), "bramble-appex-test-"));
 try {
-	const bin = join(out, "vault-copies-tests");
-	execFileSync(
-		"swiftc",
-		["-parse-as-library", "-o", bin, join(src, "VaultCopies.swift"), join(src, "Tests", "VaultCopiesTests.swift")],
-		{ stdio: "inherit" },
-	);
-	execFileSync(bin, { stdio: "inherit" });
+	const suites = [
+		["VaultCopies.swift", "VaultCopiesTests.swift"],
+		["AppSession.swift", "AppSessionTests.swift"],
+	];
+	for (const [file, tests] of suites) {
+		const bin = join(out, tests.replace(".swift", ""));
+		execFileSync("swiftc", ["-parse-as-library", "-o", bin, join(src, file), join(src, "Tests", tests)], {
+			stdio: "inherit",
+		});
+		execFileSync(bin, { stdio: "inherit" });
+	}
 } finally {
 	rmSync(out, { recursive: true, force: true });
 }

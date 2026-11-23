@@ -373,6 +373,35 @@ shared `BHGR3PP64J.app.bramble.desktop.shared` group with a one-time re-arm. Pre
 touches nothing that already works. The Secure Enclave upgrade (an enclave P-256 key and ECDH,
 rather than a keychain blob) stays a separate decision for both.
 
+### Following the app's unlock
+
+Unlocking in the extension on every fill was the first cut, and #172 showed it was wrong: with
+the app unlocked, a Mac without Touch ID typed the master password for every login, and the
+inline suggestions (one click in Firefox) took three clicks and a prompt in Safari. The app's
+auto-lock is the user's answer to "how long may Bramble fill without asking", and AutoFill now
+follows it.
+
+The extension asks the running app rather than holding a session of its own
+(`src-tauri/src/autofill_session.rs`, `BrambleAutoFill/AppSession.swift`):
+
+- The app listens on a Unix socket in the App Group container (`fill`, short because a socket
+  path is capped at 104 bytes). One request per connection, framed like the browser link.
+- Each end checks the other's code signature from the socket's audit token
+  (`LOCAL_PEERTOKEN`, `SecCodeCopyGuestWithAttributes`, `SecCodeCheckValidity`): the app answers
+  only `app.bramble.desktop.autofill`, the extension trusts only `app.bramble.desktop`, both
+  Developer ID with team `BHGR3PP64J`. Every process the user runs can reach the file; only our
+  two binaries get past the check. An unsigned or ad hoc build never answers, so AutoFill unlocks
+  as before.
+- Answers come from `index_store`, the index the browser link serves, set on unlock and cleared
+  on lock and auto-lock. `fetch` hands over one login's username, password and TOTP key, and
+  counts as use of the app, as the link's fetch does. `list` gives the sheet the open vault's
+  logins with no secrets. A locked app, another vault or an unknown id gets `ok: false`.
+- The VEK never leaves the app. A keychain session like iOS's would have kept a copy on disk,
+  against the desktop's promise that the key lives only in memory, and would keep filling after
+  the app locked.
+- Passkeys still unlock in the extension: signing needs the private key in that process. They
+  keep claiming user verification for that reason.
+
 ## What iteration 0 proved
 
 A stub extension was built, signed, notarized, bundled by Tauri, installed from a real `.dmg`,
@@ -796,8 +825,8 @@ keeps it pointed at other sites only.
   (`desktop-port.md:935`), which is another reason not to.
 - Whether the extension should reuse the desktop app's existing OS-credential-store usage (backup
   credentials, the browser-link pairing key) or stay strictly App Group plus its own keychain group.
-- Whether a "keep unlocked" session shared between app and extension is wanted, as on Android, or
-  whether each unlock stands alone.
+- ~~Whether a "keep unlocked" session shared between app and extension is wanted.~~ Yes, and it
+  is the app's own unlock: see "Following the app's unlock".
 - Whether the biometric-gated key should be a Keychain blob (iOS parity, less code) or a Secure
   Enclave key (better on a shared-disk platform).
 - From the blocker: whether existing Apple Passwords passkeys still answer with Passwords switched

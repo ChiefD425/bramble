@@ -103,7 +103,7 @@ pub struct PasskeyIdentity {
 /// The group container, asked of macOS as the extension does. Built from a path instead, it reads
 /// to macOS 15+ as another app's data and asks the user every launch.
 #[cfg(target_os = "macos")]
-fn group_dir() -> Option<PathBuf> {
+pub(crate) fn group_dir() -> Option<PathBuf> {
     use objc2::{
         msg_send,
         rc::{autoreleasepool, Retained},
