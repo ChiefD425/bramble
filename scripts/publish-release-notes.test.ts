@@ -244,14 +244,11 @@ describe("render", () => {
 
 describe("blogPost", () => {
 	it("dates the post and keeps the email's title and text", () => {
-		const releases = ["Desktop 0.18.0", "Chromium Extension 1.39.0", "Android 0.30.0"].map(
-			(name) => ({
-				tag: "x",
-				name,
-				body: "",
-				url: "",
-			}),
-		);
+		const releases = [
+			["0.18.0-desktop", "Desktop 0.18.0"],
+			["1.39.0-chromium", "Chromium Extension 1.39.0"],
+			["0.30.0-android", "Android 0.30.0"],
+		].map(([tag, name]) => ({ tag, name, body: "", url: "" }));
 		const post = blogPost(
 			{ subject: "What's new in Bramble, November 11", body: "## General updates\n\n- G.\n" },
 			releases,
@@ -262,7 +259,9 @@ describe("blogPost", () => {
 			post.content,
 			'---\ntitle: "What\'s new in Bramble, November 11"\n' +
 				'description: "What changed in Desktop 0.18.0, Chromium Extension 1.39.0 and Android 0.30.0."\n' +
-				"pubDate: 2026-11-11\n---\n\n## General updates\n\n- G.\n",
+				"pubDate: 2026-11-11\n" +
+				'releases: ["0.18.0-desktop","1.39.0-chromium","0.30.0-android"]\n' +
+				"---\n\n## General updates\n\n- G.\n",
 		);
 	});
 });

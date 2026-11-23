@@ -14,6 +14,8 @@ const blog = defineCollection({
 		updatedDate: z.coerce.date().optional(),
 		/** Hidden from the index and from the build. */
 		draft: z.boolean().default(false),
+		/** The release tags a "What's new" post covers, for /whats-new/<target>/<version>. */
+		releases: z.array(z.string()).default([]),
 	}),
 });
 

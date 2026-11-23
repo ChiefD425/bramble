@@ -294,7 +294,10 @@ export interface Post {
 	content: string;
 }
 
-/** The email as a blog post: same title and text, dated the day it was drafted. */
+/**
+ * The email as a blog post: same title and text, dated the day it was drafted. `releases` lists the
+ * tags it covers, which is how the apps' "Read more" (/whats-new/<target>/<version>) finds it.
+ */
 export function blogPost(
 	email: { subject: string; body: string },
 	releases: Release[],
@@ -310,7 +313,8 @@ export function blogPost(
 		content:
 			`---\ntitle: ${JSON.stringify(email.subject)}\n` +
 			`description: ${JSON.stringify(`What changed in ${list}.`)}\n` +
-			`pubDate: ${day}\n---\n\n${email.body}`,
+			`pubDate: ${day}\n` +
+			`releases: ${JSON.stringify(releases.map((r) => r.tag))}\n---\n\n${email.body}`,
 	};
 }
 
