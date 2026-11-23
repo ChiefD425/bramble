@@ -46,6 +46,7 @@ export function GeneralSection() {
 	const hasLockOnScreenLock = useCan("lockOnScreenLock");
 	const hasImmediateAutoLock = useCan("immediateAutoLock");
 	const canSaveCapture = useCan("saveCapture");
+	const canCopyTotpOnFill = useCan("copyTotpOnFill");
 	const defaultManager = useDefaultPasswordManager();
 	const { refreshAutofillIndex } = useVaultActions();
 	const { t } = useLingui();
@@ -345,6 +346,20 @@ export function GeneralSection() {
 						disabled={defaultManager.state === "locked"}
 						onChange={defaultManager.set}
 						label={t`Toggle default password manager`}
+					/>
+				</Row>
+			)}
+
+			{canCopyTotpOnFill && (
+				<Row
+					icon={<KeyRound className="w-4 h-4 text-primary" />}
+					title={t`Copy 2FA codes when filling`}
+					subtitle={t`Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time.`}
+				>
+					<Toggle
+						checked={prefs.copyTotpOnFill}
+						onChange={(on) => void update("copyTotpOnFill", on)}
+						label={t`Toggle copy 2FA codes when filling`}
 					/>
 				</Row>
 			)}

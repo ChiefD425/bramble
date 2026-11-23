@@ -1329,6 +1329,10 @@ msgstr "কপি"
 msgid "Copy {0}"
 msgstr "{0} কপি করুন"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Copy 2FA codes when filling"
+msgstr ""
+
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Copy address"
 msgstr "ঠিকানা কপি করুন"
@@ -1966,6 +1970,10 @@ msgstr "পূরণ করুন"
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 #~ msgid "Fill logins from the Bramble extension without unlocking twice."
 #~ msgstr "Fill logins from the Bramble extension without unlocking twice."
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time."
+msgstr ""
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Filter by type"
@@ -4534,6 +4542,10 @@ msgstr "পাসওয়ার্ড ফাঁসের পরীক্ষা 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle confirm passkeys once per unlock"
 msgstr "প্রতিবার আনলকে একবার পাসকি নিশ্চিত করা চালু বা বন্ধ করুন"
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Toggle copy 2FA codes when filling"
+msgstr ""
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle default password manager"

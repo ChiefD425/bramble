@@ -1337,6 +1337,10 @@ msgstr "Copier"
 msgid "Copy {0}"
 msgstr "Copier {0}"
 
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Copy 2FA codes when filling"
+msgstr "Copier les codes 2FA lors du remplissage"
+
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Copy address"
 msgstr "Copier l'adresse"
@@ -1974,6 +1978,10 @@ msgstr "Remplir"
 #: packages/core/src/app/screens/Settings/components/BrowserPairingSection.tsx
 #~ msgid "Fill logins from the Bramble extension without unlocking twice."
 #~ msgstr "Remplir les identifiants depuis l’extension Bramble sans déverrouiller deux fois."
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Filling a login that has an authenticator key copies its code too, ready to paste on the next page. Cleared after your clipboard auto-clear time."
+msgstr "Lors du remplissage d’un identifiant associé à une clé d’authentification, son code est également copié, prêt à être collé sur la page suivante. Il est effacé après le délai d’effacement automatique de votre presse-papiers."
 
 #: packages/core/src/app/screens/VaultHome/VaultSearchBar.tsx
 msgid "Filter by type"
@@ -4558,6 +4566,10 @@ msgstr "Activer la vérification des fuites"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle confirm passkeys once per unlock"
 msgstr "Activer/désactiver la confirmation des passkeys une fois par déverrouillage"
+
+#: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
+msgid "Toggle copy 2FA codes when filling"
+msgstr "Activer/désactiver la copie des codes 2FA lors du remplissage"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle default password manager"

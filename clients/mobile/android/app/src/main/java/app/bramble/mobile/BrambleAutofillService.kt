@@ -146,11 +146,15 @@ class BrambleAutofillService : AutofillService() {
                 VaultReader.matches(it, hosts, matchPackage, callerCerts) &&
                     Datasets.canFill(it, parsed.usernameIds.isNotEmpty(), parsed.passwordIds.isNotEmpty(), parsed.otpIds.isNotEmpty(), now)
             }.sortedBy { VaultReader.rank(it, hosts, matchPackage, callerCerts) }
+            val copyTotp = TotpCopy.enabled(this)
             for (login in matches) {
-                Datasets.fillDataset(
-                    this, login, parsed.usernameIds, parsed.passwordIds, parsed.otpIds, now,
-                    inline?.next(login.displayTitle(this), login.username),
-                )?.let { builder.addDataset(it) }
+                val inlinePres = inline?.next(login.displayTitle(this), login.username)
+                if (copyTotp && Totp.generate(login.totp, now) != null) {
+                    builder.addDataset(totpCopyDataset(parsed, login, inlinePres))
+                } else {
+                    Datasets.fillDataset(this, login, parsed.usernameIds, parsed.passwordIds, parsed.otpIds, now, inlinePres)
+                        ?.let { builder.addDataset(it) }
+                }
             }
             builder.addDataset(showAllDataset(parsed, hosts, matchPackage, callerCerts, association, inline))
             true
@@ -177,6 +181,25 @@ class BrambleAutofillService : AutofillService() {
         for (id in parsed.allIds) setAuthValue(dataset, id, pres, inlinePres)
         dataset.setAuthentication(authSender(parsed, hosts, matchPackage, callerCerts, association, showAll = false))
         builder.addDataset(dataset.build())
+    }
+
+    // A login with an authenticator key while "Copy 2FA codes when filling" is on (#99): filled
+    // through TotpCopyActivity, the one step that learns which login was chosen, to copy its code.
+    @Suppress("DEPRECATION")
+    private fun totpCopyDataset(parsed: ParsedStructure, login: AutofillLogin, inlinePres: InlinePresentation?): Dataset {
+        val pres = Datasets.presentation(this, login.displayTitle(this), login.username)
+        val builder = Dataset.Builder(pres)
+        for (id in parsed.allIds) setAuthValue(builder, id, pres, inlinePres)
+        val intent = Intent(this, TotpCopyActivity::class.java).apply {
+            putExtra(TotpCopyActivity.EXTRA_LOGIN_ID, login.id)
+            putParcelableArrayListExtra(AutofillUnlockActivity.EXTRA_USERNAME_IDS, ArrayList(parsed.usernameIds))
+            putParcelableArrayListExtra(AutofillUnlockActivity.EXTRA_PASSWORD_IDS, ArrayList(parsed.passwordIds))
+            putParcelableArrayListExtra(AutofillUnlockActivity.EXTRA_OTP_IDS, ArrayList(parsed.otpIds))
+        }
+        builder.setAuthentication(
+            PendingIntent.getActivity(this, requestCode.getAndIncrement(), intent, pendingIntentFlags()).intentSender,
+        )
+        return builder.build()
     }
 
     // A "Show all logins" entry: authenticates (or reuses the live session) into the full

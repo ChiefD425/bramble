@@ -427,8 +427,11 @@ class AutofillUnlockActivity : BrambleUnlockActivity() {
 
     private fun finishWithDataset(login: AutofillLogin) {
         // Nothing to put in this form (a code-only page and a login without a TOTP key): fill nothing.
-        val dataset = Datasets.fillDataset(this, login, usernameIds, passwordIds, otpIds, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val dataset = Datasets.fillDataset(this, login, usernameIds, passwordIds, otpIds, now)
             ?: return cancelUnlock()
+        // "Copy 2FA codes when filling" (#99), on the path that unlocked first.
+        if (TotpCopy.enabled(this)) Totp.generate(login.totp, now)?.let { TotpCopy.copy(this, it) }
         val result = android.content.Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
         setResult(RESULT_OK, result)
         finishCore()

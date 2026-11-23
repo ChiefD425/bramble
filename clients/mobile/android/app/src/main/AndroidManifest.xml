@@ -78,6 +78,17 @@
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
+        <!-- "Copy 2FA codes when filling" (#99): no UI, it copies the chosen login's code and
+             returns its fill. Same :autofill process as the session it reads. -->
+        <activity
+            android:name=".TotpCopyActivity"
+            android:exported="false"
+            android:process=":autofill"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="" />
+
         <!-- System autofill provider. Runs in a dedicated :autofill process so its decrypted
              VEK never touches the app's webview session. -->
         <service

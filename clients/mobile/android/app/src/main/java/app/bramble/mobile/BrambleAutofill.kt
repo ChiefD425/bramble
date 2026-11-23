@@ -44,6 +44,8 @@ object BrambleAutofill {
     const val PREF_AUTOFILL_QUICKTYPE = "meta:pref.autofillQuickType"
     const val PREF_OFFER_TO_SAVE = "meta:pref.offerToSave"
     const val PREF_NEVER_SAVE_SITES = "meta:pref.neverSaveSites"
+    const val PREF_COPY_TOTP_ON_FILL = "meta:pref.copyTotpOnFill"
+    const val PREF_CLIPBOARD_SECONDS = "meta:pref.clipboardClearSeconds"
 
     const val DEFAULT_AUTOLOCK_MINUTES = 15
     const val DEFAULT_OFFER_TO_SAVE = true

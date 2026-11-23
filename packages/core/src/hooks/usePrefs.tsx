@@ -45,6 +45,9 @@ export const PREF_BIOMETRIC_PASSCODE_FALLBACK = "pref.biometricPasscodeFallback"
 // Mobile (iOS) only: populate the OS QuickType bar with usernames+domains so logins
 // surface inline in the keyboard. Off by default since it exposes usernames before auth.
 export const PREF_AUTOFILL_QUICKTYPE = "pref.autofillQuickType";
+// Android: filling a login that has an authenticator key copies its code too (#99). Off by
+// default, since it puts a secret on the clipboard. Read natively by TotpCopy.kt.
+export const PREF_COPY_TOTP_ON_FILL = "pref.copyTotpOnFill";
 // Extension only: act as a WebAuthn passkey provider for other sites. Off by default
 // (attaching the proxy intercepts all browser WebAuthn). See docs/passkey-provider.md.
 export const PREF_PASSKEY_PROVIDER = "pref.passkeyProviderEnabled";
@@ -89,18 +92,19 @@ export const DEFAULT_AUTOLOCK_MINUTES = 15;
 // SHA-1 prefix to HIBP), so we don't opt users in silently.
 const DEFAULT_BREACH_CHECK = false;
 export const DEFAULT_CLIPBOARD_SECONDS = 30;
-export const DEFAULT_OFFER_TO_SAVE = true;
-export const DEFAULT_AUTOFILL_ENABLED = true;
-const DEFAULT_NEVER_SAVE_SITES: string[] = [];
 
 /** How long a copied secret stays, from the stored "Clipboard auto-clear" seconds. For the
  * mobile and desktop clipboards, which read it at each copy. */
 export function clipboardClearMs(stored: unknown): number {
 	return (typeof stored === "number" && stored > 0 ? stored : DEFAULT_CLIPBOARD_SECONDS) * 1000;
 }
+export const DEFAULT_OFFER_TO_SAVE = true;
+export const DEFAULT_AUTOFILL_ENABLED = true;
+const DEFAULT_NEVER_SAVE_SITES: string[] = [];
 const DEFAULT_BIOMETRIC_AUTO_PROMPT = false;
 const DEFAULT_BIOMETRIC_PASSCODE_FALLBACK = false;
 const DEFAULT_AUTOFILL_QUICKTYPE = false;
+const DEFAULT_COPY_TOTP_ON_FILL = false;
 export const DEFAULT_PASSKEY_PROVIDER = false;
 export const DEFAULT_PASSKEY_CONFIRM_ONCE = false;
 export const DEFAULT_LOCK_ON_SCREEN_LOCK = true;
@@ -125,6 +129,8 @@ export interface Prefs {
 	biometricPasscodeFallback: boolean;
 	// iOS QuickType: surface usernames inline in the keyboard (exposes them before auth).
 	autofillQuickType: boolean;
+	// Android: copy a login's 2FA code to the clipboard when filling it.
+	copyTotpOnFill: boolean;
 	// Extension: act as a WebAuthn passkey provider for other sites.
 	passkeyProviderEnabled: boolean;
 	// Extension: an unlock counts as confirming it's you for passkeys until the vault locks.
@@ -163,6 +169,7 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	biometricAutoPrompt: PREF_BIOMETRIC_AUTO_PROMPT,
 	biometricPasscodeFallback: PREF_BIOMETRIC_PASSCODE_FALLBACK,
 	autofillQuickType: PREF_AUTOFILL_QUICKTYPE,
+	copyTotpOnFill: PREF_COPY_TOTP_ON_FILL,
 	passkeyProviderEnabled: PREF_PASSKEY_PROVIDER,
 	passkeyConfirmOncePerUnlock: PREF_PASSKEY_CONFIRM_ONCE,
 	lockOnScreenLock: PREF_LOCK_ON_SCREEN_LOCK,
@@ -209,6 +216,7 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	neverSaveSites: "device",
 	biometricAutoPrompt: "vault",
 	autofillQuickType: "device",
+	copyTotpOnFill: "device",
 	passkeyProviderEnabled: "device",
 	passkeyConfirmOncePerUnlock: "device",
 	lockOnScreenLock: "device",
@@ -276,6 +284,7 @@ const DEFAULT_PREFS: Prefs = {
 	biometricAutoPrompt: DEFAULT_BIOMETRIC_AUTO_PROMPT,
 	biometricPasscodeFallback: DEFAULT_BIOMETRIC_PASSCODE_FALLBACK,
 	autofillQuickType: DEFAULT_AUTOFILL_QUICKTYPE,
+	copyTotpOnFill: DEFAULT_COPY_TOTP_ON_FILL,
 	passkeyProviderEnabled: DEFAULT_PASSKEY_PROVIDER,
 	passkeyConfirmOncePerUnlock: DEFAULT_PASSKEY_CONFIRM_ONCE,
 	lockOnScreenLock: DEFAULT_LOCK_ON_SCREEN_LOCK,
@@ -389,7 +398,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u] = await Promise.all([
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v] = await Promise.all([
 				storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
 				storage.getMeta<boolean>(PREF_BREACH_CHECK),
 				storage.getMeta<number>(PREF_CLIPBOARD_SECONDS),
@@ -420,6 +429,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				storage.getMeta<boolean>(PREF_UPDATE_CHECK),
 				storage.getMeta<unknown>(PREF_APP_UPDATE),
 				storage.getMeta<unknown>(PREF_VAULT_SORT),
+				storage.getMeta<boolean>(PREF_COPY_TOTP_ON_FILL),
 			]);
 			if (cancelled) return;
 			// One `now` for the read: a fresh install's clock starts here rather than at whichever
@@ -438,6 +448,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				neverSaveSites: Array.isArray(f) ? f : DEFAULT_NEVER_SAVE_SITES,
 				biometricAutoPrompt: typeof g === "boolean" ? g : DEFAULT_BIOMETRIC_AUTO_PROMPT,
 				autofillQuickType: typeof h === "boolean" ? h : DEFAULT_AUTOFILL_QUICKTYPE,
+				copyTotpOnFill: typeof v === "boolean" ? v : DEFAULT_COPY_TOTP_ON_FILL,
 				passkeyProviderEnabled: typeof i === "boolean" ? i : DEFAULT_PASSKEY_PROVIDER,
 				passkeyConfirmOncePerUnlock: typeof q === "boolean" ? q : DEFAULT_PASSKEY_CONFIRM_ONCE,
 				lockOnScreenLock: typeof j === "boolean" ? j : DEFAULT_LOCK_ON_SCREEN_LOCK,
