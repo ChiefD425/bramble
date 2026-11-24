@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 import { backgroundWorker, createVault, openPopup } from "./helpers";
 
 // The every-two-weeks donation card in the real build (docs/support-ask.md): nothing on a fresh
-// install, the card once due, dismissing it, Donate to Ko-fi, and the Settings switch.
+// install, the card once due, dismissing it, Donate to bramble.sh/donate, and the Settings switch.
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -52,15 +52,15 @@ test("asks once every two weeks, from the vault list", async ({ context, extensi
 	await expect(card(next)).toHaveCount(0);
 	await next.close();
 
-	// Donate opens Ko-fi and records it.
+	// Donate opens the website's donate page and records it.
 	await makeDue(sw);
-	await context.route("https://ko-fi.com/**", (route) => route.fulfill({ status: 200, body: "" }));
+	await context.route("https://bramble.sh/**", (route) => route.fulfill({ status: 200, body: "" }));
 	const donating = await open(context, extensionId);
 	const [tab] = await Promise.all([
 		context.waitForEvent("page"),
 		donating.getByRole("link", { name: /Donate/ }).click(),
 	]);
-	expect(tab.url()).toBe("https://ko-fi.com/bramble_sh");
+	expect(tab.url()).toBe("https://bramble.sh/donate");
 	await expect(card(donating)).toHaveCount(0);
 	await expect.poll(async () => (await stored()).donatedAt).toBeDefined();
 	await donating.close();

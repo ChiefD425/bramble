@@ -47,9 +47,9 @@ describe("normalizeSupportAskState", () => {
 });
 
 describe("SUPPORT_URL", () => {
-	it("is Ko-fi everywhere but iOS, where App Review refuses an external tip link", () => {
+	it("is bramble.sh/donate everywhere but iOS, where App Review refuses an external tip link", () => {
 		expect(SUPPORT_URL.ios).toBeUndefined();
 		for (const target of ["chromium", "firefox", "desktop", "android"] as const)
-			expect(SUPPORT_URL[target]).toBe("https://ko-fi.com/bramble_sh");
+			expect(SUPPORT_URL[target]).toBe("https://bramble.sh/donate");
 	});
 });

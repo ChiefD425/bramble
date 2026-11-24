@@ -7,7 +7,7 @@ import { usePrefs } from "../../../../hooks/usePrefs";
 import { Button, buttonClasses } from "../../../components/ui/button";
 import { Toggle } from "../../../components/ui/toggle";
 import { cn } from "../../../components/ui/utils";
-import { SUPPORT_URL } from "../../../support-ask";
+import { KOFI_URL, SUPPORT_URL } from "../../../support-ask";
 import { Row, Section } from "./primitives";
 
 interface Method {
@@ -32,7 +32,8 @@ interface Wallet {
 // Donation wallets. Addresses are the app owner's. A method with an unconfigured address is
 // dropped, a wallet with no configured method is hidden, and the whole Support section
 // disappears if none remain, so a placeholder is never shown or donated to. The Lightning QR
-// encodes the LNURL for flythenimbus@cake.cash (verified live); regenerate it if it changes.
+// encodes the LNURL for flythenimbus@cake.cash (verified live); regenerate it if it changes. The
+// same wallets are on bramble.sh/donate (WALLETS in website/src/consts.ts): change both together.
 const WALLETS: Wallet[] = [
 	{
 		name: "Monero",
@@ -158,7 +159,7 @@ export function SupportSection() {
 	const { t } = useLingui();
 	const { target } = usePlatform();
 	const { prefs, update } = usePrefs();
-	const kofi = SUPPORT_URL[target];
+	const asks = SUPPORT_URL[target] !== undefined;
 	const wallets = WALLETS.map((w) => ({
 		...w,
 		methods: w.methods.filter((m) => isConfigured(m.address)),
@@ -173,9 +174,9 @@ export function SupportSection() {
 					code with your wallet, or copy the address. Thank you.
 				</Trans>
 			</p>
-			{kofi && (
+			{asks && (
 				<a
-					href={kofi}
+					href={KOFI_URL}
 					target="_blank"
 					rel="noreferrer noopener"
 					className={buttonClasses({ variant: "primary", size: "sm", fullWidth: true })}
@@ -189,7 +190,7 @@ export function SupportSection() {
 					<WalletCard key={w.name} wallet={w} />
 				))}
 			</div>
-			{kofi && (
+			{asks && (
 				<Row
 					icon={<BellRing className="w-4 h-4 text-primary" />}
 					title={t`Remind me every two weeks`}

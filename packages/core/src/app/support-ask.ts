@@ -7,14 +7,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Days between asks, and after someone chose Donate. */
 export const SUPPORT_ASK = { everyDays: 14, afterDonateDays: 90 };
 
-const KOFI = "https://ko-fi.com/bramble_sh";
+export const KOFI_URL = "https://ko-fi.com/bramble_sh";
+const DONATE = "https://bramble.sh/donate";
 
-/** Where Donate goes, per target. Presence here IS the capability: iOS has none (App Review 3.1.1). */
+/**
+ * Where Donate goes, per target: the website's list of every way to give. Presence here IS the
+ * capability: iOS has none (App Review 3.1.1).
+ */
 export const SUPPORT_URL: Partial<Record<Target, string>> = {
-	chromium: KOFI,
-	firefox: KOFI,
-	desktop: KOFI,
-	android: KOFI,
+	chromium: DONATE,
+	firefox: DONATE,
+	desktop: DONATE,
+	android: DONATE,
 };
 
 export interface SupportAskState {

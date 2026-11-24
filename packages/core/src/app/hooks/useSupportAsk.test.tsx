@@ -81,11 +81,11 @@ describe("useSupportAsk", () => {
 		expect(card()).toBeNull();
 	});
 
-	it("opens Ko-fi from Donate, and records it so the next ask waits 90 days", async () => {
+	it("opens bramble.sh/donate from Donate, and records it so the next ask waits 90 days", async () => {
 		const store = due();
 		await mount(store);
 		const donate = screen.getByRole("link", { name: /Donate/ });
-		expect(donate.getAttribute("href")).toBe("https://ko-fi.com/bramble_sh");
+		expect(donate.getAttribute("href")).toBe("https://bramble.sh/donate");
 		expect(donate.getAttribute("target")).toBe("_blank");
 		fireEvent.click(donate);
 		await act(async () => {});

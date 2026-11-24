@@ -1,8 +1,8 @@
 # Asking for support
 
 Every two weeks, the vault list asks once for a donation: a card like What's new, with a short
-reason, a **Donate** button that opens Ko-fi, and the corner X to dismiss it. Modelled on Signal's
-donation prompts; the schedule and the copy are Bramble's own.
+reason, a **Donate** button that opens bramble.sh/donate, and the corner X to dismiss it. Modelled
+on Signal's donation prompts; the schedule and the copy are Bramble's own.
 
 Code: `packages/core/src/app/support-ask.ts` (the schedule), `app/hooks/useSupportAsk.ts`,
 `app/components/SupportCard.tsx`, the switch in `Settings/components/SupportSection.tsx`.
@@ -36,4 +36,7 @@ the same review risk.
 
 The schedule is a few timestamps in `pref.supportAsk`, device-scoped and never synced: it
 describes this install, and a phone's answer should not quiet a browser. iOS stores none. Nothing
-is fetched to show the card. Ko-fi loads only when someone taps **Donate**, in the browser.
+is fetched to show the card. **Donate** opens bramble.sh/donate in the browser: Bramble's own page,
+which lists Ko-fi, Monero, Bitcoin and bank transfer and loads nothing from a third party, so Ko-fi
+sees a visit only from someone who chose it there. Its wallets repeat the app's Settings → About →
+Support (`WALLETS` in `website/src/consts.ts`).
