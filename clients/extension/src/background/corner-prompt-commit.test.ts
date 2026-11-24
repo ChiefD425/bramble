@@ -595,3 +595,83 @@ describe("commit: background writes record history", () => {
 		expect(effectivePartStamps(plaintext, env).parts.credential).toEqual(env.hlc);
 	});
 });
+
+// Karen's report: two Proton logins, the family one changed on Proton's password page (no
+// username field). The family login kept its old, breached password and the other one changed.
+describe("commit: two logins on one site, no username in the capture", () => {
+	const ORG = {
+		type: "login",
+		id: "org",
+		hostnames: ["account.proton.me"],
+		name: "Proton",
+		username: "org@proton.me",
+		password: "org-pw",
+	};
+	const FAMILY = { ...ORG, id: "family", username: "family@proton.me", password: "old-family-pw" };
+
+	async function twoLogins(seed: Record<string, unknown> = {}): Promise<BackgroundHarness> {
+		const bg = await loadBackground({
+			sessionSeed: { [TEST_VEK_KEY]: "SEED", ...seed },
+			offscreen: commitOffscreen,
+		});
+		await setAutofillIndex(bg, [ORG, FAMILY]);
+		return bg;
+	}
+
+	async function password(bg: BackgroundHarness, entryId: string): Promise<string> {
+		const fetched = await bg.send(
+			{ type: "AUTOFILL_FETCH", payload: { entryId } },
+			extensionSender,
+		);
+		return fetched.resp.data.password;
+	}
+
+	it("offers both logins and prefers neither", async () => {
+		const bg = await twoLogins();
+		const cap = await bg.send(
+			{ type: "CORNER_PROMPT_CAPTURE", payload: { username: "", password: "new-family-pw" } },
+			pageSender("account.proton.me", 5),
+		);
+		expect(cap.resp.data.kind).toBe("update-login");
+		expect(cap.resp.data.candidates.map((c: { id: string }) => c.id).sort()).toEqual([
+			"family",
+			"org",
+		]);
+	});
+
+	it("updates only the login that was picked", async () => {
+		const bg = await twoLogins();
+		const cap = await bg.send(
+			{ type: "CORNER_PROMPT_CAPTURE", payload: { username: "", password: "new-family-pw" } },
+			pageSender("account.proton.me", 5),
+		);
+		await bg.send(
+			{
+				type: "CORNER_PROMPT_RESPONSE",
+				payload: { promptId: cap.resp.data.promptId, action: "update", chosenEntryId: "family" },
+			},
+			pageSender("account.proton.me", 5),
+		);
+		expect(await password(bg, "family")).toBe("new-family-pw");
+		expect(await password(bg, "org")).toBe("org-pw");
+	});
+
+	it("after an unlock, does not guess which login an unpicked update was for", async () => {
+		const bg = await twoLogins({
+			"cornerPrompt.handoff": {
+				intent: "save",
+				capture: {
+					promptId: "p1",
+					etld1: "proton.me",
+					hostname: "account.proton.me",
+					username: "",
+					password: "new-family-pw",
+					capturedAt: 0,
+				},
+			},
+		});
+		await bg.send({ type: "CORNER_FLUSH_HANDOFF" });
+		expect(await password(bg, "org")).toBe("org-pw");
+		expect(await password(bg, "family")).toBe("old-family-pw");
+	});
+});

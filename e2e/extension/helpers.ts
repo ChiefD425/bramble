@@ -226,6 +226,20 @@ export async function clickCornerElement(page: Page, selector: string) {
 	});
 }
 
+/** The text of the corner prompt's `selector`. */
+export async function cornerText(page: Page, selector: string): Promise<string> {
+	return withCornerNode(page, selector, async (cdp, nodeId) => {
+		if (!nodeId) throw new Error(`corner prompt has no ${selector}`);
+		const { object } = await cdp.send("DOM.resolveNode", { nodeId });
+		const { result } = await cdp.send("Runtime.callFunctionOn", {
+			objectId: object.objectId,
+			functionDeclaration: "function () { return this.textContent; }",
+			returnByValue: true,
+		});
+		return String(result.value).trim();
+	});
+}
+
 /** Click a corner-prompt button by its `data-tp-action`. */
 export async function clickCornerAction(page: Page, action: string) {
 	await clickCornerElement(page, `[data-tp-action="${action}"]`);

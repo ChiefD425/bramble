@@ -292,6 +292,11 @@ export const cornerStyles = html`
 				background: #e4e4e7;
 				border-color: rgba(255, 255, 255, 0.3);
 			}
+			button.tp-btn-primary:disabled {
+				opacity: 0.4;
+				cursor: default;
+				background: #fafafa;
+			}
 			.tp-overflow {
 				margin-left: auto;
 				background: transparent;

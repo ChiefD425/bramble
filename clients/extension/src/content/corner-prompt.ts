@@ -218,6 +218,21 @@ async function saveWithUsername(
 	removeCornerPrompt();
 }
 
+/** The update card's login: the one picked, or the only one offered. */
+function chosenUpdateTarget(shadow: ShadowRoot): string | undefined {
+	return (
+		shadow.querySelector<HTMLInputElement>('input[name="tp-update-target"]:checked') ??
+		shadow.querySelector<HTMLInputElement>('input[type="hidden"][name="tp-update-target"]')
+	)?.value;
+}
+
+/** Enables the update card's button once a login is picked. */
+function handleUpdateTargetPicked(): void {
+	if (!cornerShadow || !chosenUpdateTarget(cornerShadow)) return;
+	const primary = cornerShadow.querySelector<HTMLButtonElement>(".tp-btn-primary");
+	if (primary) primary.disabled = false;
+}
+
 /** Delegated click handler for all action buttons inside the corner-prompt card. */
 function handleCornerCardClick(e: Event): void {
 	if (saving) return;
@@ -265,10 +280,7 @@ function handleCornerCardClick(e: Event): void {
 		return;
 	}
 	if (action === "update") {
-		const radio =
-			cornerShadow.querySelector<HTMLInputElement>('input[name="tp-update-target"]:checked') ??
-			cornerShadow.querySelector<HTMLInputElement>('input[name="tp-update-target"]');
-		const chosenEntryId = radio?.value;
+		const chosenEntryId = chosenUpdateTarget(cornerShadow);
 		if (!chosenEntryId) return;
 		sendCornerResponse("update", { chosenEntryId });
 		removeCornerPrompt();
@@ -281,6 +293,8 @@ function handleCornerCardClick(e: Event): void {
 		const radio = cornerShadow.querySelector<HTMLInputElement>(
 			'input[name="tp-update-target"]:checked',
 		);
+		if (!radio && cornerShadow.querySelector('input[type="radio"][name="tp-update-target"]'))
+			return;
 		void saveWithUsername("save-unlock-first", radio ? { chosenEntryId: radio.value } : {});
 		return;
 	}
@@ -357,6 +371,7 @@ export function handleCornerPromptShow(payload: CornerPromptPayload): void {
 	// page's CSS reset can't reach it; the shadow boundary keeps it encapsulated.
 	shadow.innerHTML = `${cornerStyles}<div class="tp-card">${body}</div>`;
 	shadow.addEventListener("click", handleCornerCardClick, true);
+	if (payload.kind === "update-login") shadow.addEventListener("change", handleUpdateTargetPicked);
 	if (payload.kind === "save-login") mountUsernameField(shadow);
 
 	cornerPromptEl = root;

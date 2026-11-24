@@ -249,3 +249,67 @@ describe("save card username", () => {
 		expect(mount().querySelector("iframe")).toBeNull();
 	});
 });
+
+// Two logins on one site, changed on a page with no username field (Proton's password change):
+// nothing says which login changed, so the card must not pick one for the user. Picking the
+// first wrote one account's new password into the other account's login.
+describe("update card with two logins for the site", () => {
+	const update = {
+		kind: "update-login" as const,
+		promptId: "p3",
+		hostname: "account.proton.me",
+		locked: false,
+		candidates: [
+			{ id: "org", name: "Proton", username: "org@proton.me" },
+			{ id: "family", name: "Proton", username: "family@proton.me" },
+		],
+		newPassword: "new-pw",
+	};
+
+	function card(payload: CornerPromptPayload = update) {
+		const root = mount(payload);
+		vi.advanceTimersByTime(1000);
+		const click = (action: string) =>
+			root.querySelector<HTMLElement>(`[data-tp-action="${action}"]`)?.click();
+		const pick = (id: string) =>
+			root
+				.querySelector<HTMLInputElement>(`input[name="tp-update-target"][value="${id}"]`)
+				?.click();
+		return { root, click, pick };
+	}
+
+	it("has no login chosen when it appears, and Update waits for one", () => {
+		const { root, pick } = card();
+		const button = root.querySelector<HTMLButtonElement>('[data-tp-action="update"]');
+		expect(root.querySelector('input[name="tp-update-target"]:checked')).toBeNull();
+		expect(button?.disabled).toBe(true);
+		pick("org");
+		expect(button?.disabled).toBe(false);
+	});
+
+	it("updates nothing until a login is picked", () => {
+		const { click } = card();
+		click("update");
+		expect(h.sent).toEqual([]);
+		expect(document.getElementById("bramble-corner-prompt")).not.toBeNull();
+	});
+
+	it("updates the login that was picked", () => {
+		const { click, pick } = card();
+		pick("family");
+		click("update");
+		expect(h.sent).toEqual([
+			{
+				type: "CORNER_PROMPT_RESPONSE",
+				payload: { promptId: "p3", action: "update", chosenEntryId: "family" },
+			},
+		]);
+	});
+
+	it("does not choose a login for an unlock-first update either", async () => {
+		const { click } = card({ ...update, locked: true });
+		click("save-unlock-first");
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.sent).toEqual([]);
+	});
+});

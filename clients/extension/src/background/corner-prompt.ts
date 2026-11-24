@@ -511,9 +511,12 @@ async function cornerFlushHandoff(): Promise<MessageEnvelope> {
 		try {
 			if (outcome.kind === "exact") {
 				// no-op
-			} else if (outcome.kind === "update") {
-				const targetId = handoff.chosenEntryId ?? outcome.candidates[0]?.id;
-				if (!targetId) throw new Error("no update target");
+			} else if (
+				outcome.kind === "update" &&
+				(handoff.chosenEntryId || outcome.candidates.length === 1)
+			) {
+				// Several logins and none picked: guessing one overwrites another account's password.
+				const targetId = handoff.chosenEntryId ?? outcome.candidates[0]!.id;
 				await commitCornerUpdate(handoff.capture, targetId);
 				saved = "update";
 			} else {

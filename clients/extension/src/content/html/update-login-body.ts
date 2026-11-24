@@ -24,13 +24,15 @@ export function updateLoginBody({
 		</div>
 	`;
 
+	// Several logins: none is chosen for the user. A password-change page has no username to
+	// tell them apart, and the wrong pick overwrites another account's password.
 	if (candidates.length > 1) {
 		candidatesBody = html`
 			<div class="tp-candidates">
 				${candidates.map(
-					(c, i) => html`
+					(c) => html`
 						<label class="tp-candidate">
-							<input type="radio" name="tp-update-target" value="${c.id}" ${i === 0 ? "checked" : ""} />
+							<input type="radio" name="tp-update-target" value="${c.id}" />
 							<div>
 								<div class="tp-cand-name">${c.name}</div>
 								<div class="tp-cand-user">${c.username}</div>
@@ -55,7 +57,7 @@ export function updateLoginBody({
 		</div>
 		${[candidatesBody]}
 		<div class="tp-actions">
-			<button class="tp-btn tp-btn-primary" data-tp-action="${primaryAction}">${primaryLabel}</button>
+			<button class="tp-btn tp-btn-primary" data-tp-action="${primaryAction}" ${candidates.length > 1 ? "disabled" : ""}>${primaryLabel}</button>
 			<button class="tp-btn" data-tp-action="save-new" title="${t("saveAsNewHint")}">${t("saveAsNew")}</button>
 			<button class="tp-overflow" data-tp-action="toggle-menu" aria-label="More">⋯</button>
 		</div>
