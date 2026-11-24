@@ -71,15 +71,17 @@ test("a paired browser that lost the grant fails in words, not a TypeError", asy
 	extensionId,
 }) => {
 	const [sw] = context.serviceWorkers();
-	await sw.evaluate(() => {
-		// Real 32-byte base64 keys, not placeholders. Junk here dies in the offscreen crypto on
-		// its way to the handshake, which would make this pass for a reason that has nothing to do
-		// with the permission.
-		const key = btoa(String.fromCharCode(...new Uint8Array(32)));
-		return chrome.storage.local.set({
-			desktopLink: { privateKey: key, publicKey: key, appPublicKey: key, pairedAt: 1 },
-		});
-	});
+	// Real 32-byte base64 keys, not placeholders. Junk here dies in the offscreen crypto on its way
+	// to the handshake, which would make this pass for a reason that has nothing to do with the
+	// permission.
+	const key = btoa(String.fromCharCode(...new Uint8Array(32)));
+	await sw.evaluate(
+		(key) =>
+			chrome.storage.local.set({
+				desktopLink: { privateKey: key, publicKey: key, appPublicKey: key, pairedAt: 1 },
+			}),
+		key,
+	);
 
 	const errors: string[] = [];
 	sw.on("console", (m) => {
@@ -98,7 +100,7 @@ test("a paired browser that lost the grant fails in words, not a TypeError", asy
 	// unhappy states this is.
 	expect(await ask("DESKTOP_LINK_STATUS")).toEqual({
 		ok: true,
-		data: { paired: true, pairedAt: 1, permitted: false },
+		data: { paired: true, pairedAt: 1, publicKey: key, permitted: false },
 	});
 	// A refusal, not a rejection and not a crash.
 	expect(await ask("DESKTOP_LINK_CONNECT")).toEqual({ ok: true, data: false });
