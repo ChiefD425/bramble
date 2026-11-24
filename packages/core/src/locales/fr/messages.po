@@ -1755,7 +1755,7 @@ msgstr "DuckDuckGo ne dispose pas de page de clé API. Ouvrez l’onglet Remplis
 #: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Duplicate"
-msgstr "Doublon"
+msgstr "Dupliquer"
 
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Duplicate entry"
