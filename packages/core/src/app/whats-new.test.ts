@@ -27,6 +27,14 @@ describe("parseReleaseNotes", () => {
 		});
 	});
 
+	it("reads items that follow the headline with no blank line between", () => {
+		expect(parseReleaseNotes(notes("1.0.0", "A headline.\n- One.\n- Two."))).toEqual({
+			version: "1.0.0",
+			headline: "A headline.",
+			items: ["One.", "Two."],
+		});
+	});
+
 	it("takes items with no headline, and ignores paragraphs after the items", () => {
 		expect(parseReleaseNotes(notes("1.0.0", "- Only item.\n\nNo account, no cloud."))).toEqual({
 			version: "1.0.0",

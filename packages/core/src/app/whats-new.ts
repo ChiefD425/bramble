@@ -68,11 +68,12 @@ export function parseReleaseNotes(md: string): ReleaseNotes | null {
 			.map((l) => l.trim())
 			.filter(Boolean);
 		if (lines.length === 0) continue;
-		if (!lines[0]?.startsWith("- ")) {
-			if (headline === undefined && items.length === 0) headline = lines.join(" ");
-			continue;
-		}
-		for (const line of lines) {
+		// A translation can drop the blank line between the headline and the first item.
+		const first = lines.findIndex((l) => l.startsWith("- "));
+		const lead = first === -1 ? lines : lines.slice(0, first);
+		if (lead.length && headline === undefined && items.length === 0) headline = lead.join(" ");
+		if (first === -1 || (lead.length && items.length)) continue;
+		for (const line of lines.slice(first)) {
 			if (line.startsWith("- ")) items.push(line.slice(2).trim());
 			else if (items.length) items[items.length - 1] += ` ${line}`;
 		}
