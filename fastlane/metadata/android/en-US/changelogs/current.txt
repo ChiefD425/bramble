@@ -1,8 +1,10 @@
 What's new in this release:
 
-- When two of your devices change different parts of one item, like its password on one and its notes on the other, both changes are kept.
-- Import your passwords from Firefox, and from 1Password 7.
-- Add a Bramble backup to the vault you have open from Settings → Backups → Import a backup. Entries you already have aren't added twice.
-- The KeePass export now includes your passkeys, so KeePassXC can sign in with them.
+- Turn on Copy 2FA codes when filling in Settings → General to copy a login's 2FA code as autofill fills it, ready to paste on the next page.
+- The app's auto-lock no longer locks autofill, which keeps its own timer and restarts it with every fill.
+- With Check passwords for breaches on, Bramble now checks every login in the background, not just the ones you open, and each login shows when it was last checked.
+- Duplicate an item or attach a file to it from its ⋮ menu in the list.
+- Copies are now cleared after the time set in Settings → General → Clipboard auto-clear, instead of always after 30 seconds.
+- Every two weeks, a card on the vault list asks once for a donation. Turn it off with Remind me every two weeks in Settings → About → Support.
 
 No account, no cloud. Everything stays on your devices.
