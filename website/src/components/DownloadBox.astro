@@ -512,34 +512,5 @@ const tab =
 			tabs[to]?.focus();
 			tabs[to]?.click();
 		});
-
-		for (const button of root.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
-			const idle = button.querySelector<HTMLElement>("[data-copy-idle]");
-			const done = button.querySelector<HTMLElement>("[data-copy-done]");
-			const status = button.parentElement?.querySelector<HTMLElement>("[data-copy-status]");
-			let revert: ReturnType<typeof setTimeout>;
-
-			button.addEventListener("click", async () => {
-				const text = button.parentElement?.querySelector("pre")?.textContent;
-				// Absent outside a secure context, and a silent no-op beats a thrown error over
-				// something the visitor can select and copy by hand.
-				if (!text || !navigator.clipboard) return;
-				try {
-					await navigator.clipboard.writeText(text);
-				} catch {
-					return;
-				}
-
-				if (idle) idle.hidden = true;
-				if (done) done.hidden = false;
-				if (status) status.textContent = "Copied";
-				clearTimeout(revert);
-				revert = setTimeout(() => {
-					if (idle) idle.hidden = false;
-					if (done) done.hidden = true;
-					if (status) status.textContent = "";
-				}, 1600);
-			});
-		}
 	}
 </script>

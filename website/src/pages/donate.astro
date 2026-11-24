@@ -1,0 +1,68 @@
+---
+import ShellCommand from "@/components/ShellCommand.astro";
+import Footer from "@/components/Footer.astro";
+import Header from "@/components/Header.astro";
+import { Button } from "@/components/starwind/button";
+import { LINKS, SITE, WALLETS } from "@/consts";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout
+	title="Donate"
+	description="Ways to donate to Bramble, a free password manager with no ads and no investors: Ko-fi, Monero, Bitcoin or a bank transfer."
+	path="/donate"
+>
+	<Header />
+	<main id="main" tabindex="-1" class="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
+		<header class="mb-12">
+			<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Donate</h1>
+			<p class="mt-4 text-lg text-muted-foreground">
+				Bramble is free, with no ads and no investors. Donations pay for its development and
+				security audits. Thank you.
+			</p>
+		</header>
+
+		<section aria-labelledby="donate-card">
+			<h2 id="donate-card" class="text-xl font-semibold tracking-tight">Card</h2>
+			<p class="mt-2 text-muted-foreground">Give once or monthly through Ko-fi.</p>
+			<Button href={LINKS.kofi} target="_blank" rel="noopener" class="mt-4">Donate on Ko-fi</Button>
+		</section>
+
+		<section aria-labelledby="donate-crypto" class="mt-12">
+			<h2 id="donate-crypto" class="text-xl font-semibold tracking-tight">Crypto</h2>
+			<p class="mt-2 text-muted-foreground">Scan a code with your wallet, or copy the address.</p>
+			<div class="mt-4 grid gap-4 sm:grid-cols-3">
+				{
+					WALLETS.map((wallet) => (
+						<div class="flex min-w-0 flex-col items-center gap-3 rounded-lg border border-border/60 p-4">
+							<h3 class="self-start text-sm font-medium">{wallet.name}</h3>
+							<img
+								src={wallet.qr}
+								alt={`QR code for the ${wallet.name} address`}
+								width="160"
+								height="160"
+								class="w-full max-w-40 rounded-lg bg-white p-2"
+							/>
+							<ShellCommand command={wallet.address} class="w-full min-w-0" />
+						</div>
+					))
+				}
+			</div>
+		</section>
+
+		<section aria-labelledby="donate-bank" class="mt-12">
+			<h2 id="donate-bank" class="text-xl font-semibold tracking-tight">Bank transfer</h2>
+			<p class="mt-2 text-muted-foreground">
+				Email <a href={`mailto:${SITE.contactEmail}`} class="text-foreground underline underline-offset-2"
+					>{SITE.contactEmail}</a
+				> for the details.
+			</p>
+		</section>
+
+		<p class="mt-12 text-sm text-muted-foreground">
+			Bramble has no accounts, so a donation is never linked to your vault. Bramble isn't a
+			registered charity, so donations aren't tax-deductible.
+		</p>
+	</main>
+	<Footer />
+</Layout>

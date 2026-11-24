@@ -18,6 +18,29 @@ export const LINKS = {
 	kofi: "https://ko-fi.com/bramble_sh",
 } as const;
 
+// The /donate page's wallets: the same addresses as the app's Settings → About → Support
+// (packages/core/src/app/screens/Settings/components/SupportSection.tsx), so change both together.
+// Each `qr` image in public/qr encodes the payment URI the app's QR does; redraw it if an address
+// changes.
+export const WALLETS = [
+	{
+		name: "Monero",
+		address:
+			"4AC3txuTwFm4fkamoYeK47c9EpnPwbreHNxJeKDYHiDNN6weD5vVA4BCH1azQhSxa6JjereuVpt21Pu2MyRDFDNNH6KGnWq",
+		qr: "/qr/monero.svg",
+	},
+	{
+		name: "Bitcoin Lightning",
+		address: "flythenimbus@cake.cash",
+		qr: "/qr/bitcoin-lightning.svg",
+	},
+	{
+		name: "Bitcoin on-chain",
+		address: "bc1q78sd5rnuufqdtv9plp0p56hrq72c9unj8tec8t",
+		qr: "/qr/bitcoin.svg",
+	},
+] as const;
+
 export const BUTTONDOWN = {
 	// Buttondown username (Settings -> Embedding). The newsletter form POSTs to
 	// buttondown.com/api/emails/embed-subscribe/<username>.
