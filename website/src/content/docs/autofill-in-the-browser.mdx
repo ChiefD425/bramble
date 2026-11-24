@@ -25,6 +25,8 @@ keywords:
   - update password
   - Save New Login
   - Update saved login?
+  - Update an existing login?
+  - wrong login updated
   - Never for this site
   - Sites you've muted
   - Offer to save logins
@@ -112,7 +114,7 @@ After you sign in with a username and password Bramble doesn't have, a **Save Ne
 - **Not now** closes the card.
 - To stop asking on this site, choose **⋯** and then **Never for this site**. To undo it, remove the site under **Settings → General → Sites you've muted**.<Since commit="f5e9c4f6" on="chromium firefox"> Only that address stops asking. Other sites on the same domain still ask.</Since>
 
-If you sign in with a new password for a saved login, the card asks **Update saved login?**. Choose **Update**, or **Save as new** to keep both.
+If you sign in with a new password for a saved login, the card asks **Update saved login?**. Choose **Update**, or **Save as new** to keep both.<Since commit="9b793066" on="chromium firefox"> If more than one saved login could be the one you changed, the card asks **Update an existing login?**. Pick the login, then choose **Update**.</Since>
 
 If your vault is locked, the buttons read **Unlock & Save** and **Unlock & Update**.
 
