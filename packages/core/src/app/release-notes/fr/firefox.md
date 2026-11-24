@@ -7,5 +7,6 @@ La vérification des fuites couvre désormais tous les identifiants, et le menu 
 - Avec « Vérifier les mots de passe pour des violations » activé, Bramble vérifie désormais tous les identifiants en arrière-plan, pas seulement ceux que vous ouvrez, et chaque identifiant indique quand il a été vérifié pour la dernière fois.
 - Dupliquez un élément ou joignez-y un fichier depuis son menu ⋮ dans la liste.
 - Un coffre que vous ne pouvez pas ouvrir peut désormais être supprimé de la liste des coffres, sans son mot de passe : choisissez « Supprimer un coffre ».
+- Si plusieurs identifiants enregistrés peuvent correspondre à celui que vous avez modifié, la carte de mise à jour vous demande désormais lequel mettre à jour au lieu d’en choisir un à votre place.
 - L’option « Jamais pour ce site » ne met désormais en sourdine que ce site, comme wiki.example.com, au lieu de tous les sites de son domaine.
 - Toutes les deux semaines, une carte sur la liste des coffres demande une fois un don. Désactivez-la avec « Me le rappeler toutes les deux semaines » dans Paramètres → À propos → Soutien.
