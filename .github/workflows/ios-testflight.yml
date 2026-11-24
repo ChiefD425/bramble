@@ -77,8 +77,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A release (a build number, from `pnpm release ios`) waits for CI to pass on its commit first.
+  # A one-off build, a credentials check and a listing upload do not.
+  tested:
+    name: Tested
+    if: ${{ inputs.build != '' && !inputs.check_only && !inputs.metadata_only }}
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/release-tested.yml
+
   testflight:
     name: Build and upload
+    needs: tested
+    if: ${{ !cancelled() && (needs.tested.result == 'success' || needs.tested.result == 'skipped') }}
     # macos-26, not macos-15, whose newest Xcode is 26.3 and whose default is 16.4. The app calls
     # AuthenticationServices APIs that only exist in the 26.4 SDK, so an older image cannot compile
     # it at all.

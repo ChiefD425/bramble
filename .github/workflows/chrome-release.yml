@@ -63,8 +63,17 @@ jobs:
     steps:
       - run: echo "publish-release-notes.yml drafts once the last release that asked for it is out"
 
+  # CI has to have passed on this commit before anything builds or asks for an approval.
+  tested:
+    name: Tested
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/release-tested.yml
+
   build:
     name: Build
+    needs: tested
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -116,7 +125,7 @@ jobs:
 
   publish:
     name: Pack, submit and publish
-    needs: build
+    needs: [tested, build]
     runs-on: ubuntu-24.04
     # The approval gate. Its secrets reach this job only after a required reviewer approves it.
     environment: chrome-release
@@ -166,6 +175,7 @@ jobs:
       - name: Preflight, pack, commit, submit and publish
         env:
           BRAMBLE_RELEASE_NOTES: ${{ inputs.notes }}
+          BRAMBLE_TESTED: ${{ needs.tested.outputs.evidence }}
           VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry_run }}
           GH_TOKEN: ${{ github.token }}

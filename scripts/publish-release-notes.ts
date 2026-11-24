@@ -169,9 +169,9 @@ export function blockingEmail(emails: Email[], now: number): Email | undefined {
 	});
 }
 
-/** A release's points: the lead paragraph and each bullet above "All changes". */
+/** A release's points: the lead paragraph and each bullet above its first heading ("All changes"). */
 export function points(body: string): string[] {
-	const summary = body.split(/^## All changes/m)[0] ?? "";
+	const summary = body.split(/^## /m)[0] ?? "";
 	return summary
 		.split(/\n\s*\n|\n(?=- )/)
 		.map((p) => p.replace(/^- /, "").replace(/\s+/g, " ").trim())

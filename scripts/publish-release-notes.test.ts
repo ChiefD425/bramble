@@ -174,6 +174,10 @@ describe("points", () => {
 			"Two.",
 		]);
 	});
+
+	it("stops at the security and checks sections when there is no commit list", () => {
+		assert.deepEqual(points("Lead.\n\n## Security-relevant changes\n\nNone.\n"), ["Lead."]);
+	});
 });
 
 describe("fallbackMerge", () => {

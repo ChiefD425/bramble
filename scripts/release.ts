@@ -78,7 +78,9 @@ import { CWS_ITEM_ID } from "./cws-ids.ts";
 import { signingKey } from "./desktop-signing-key.ts";
 import { commitOverReleases, createTag } from "./github-commit.ts";
 import { macosHandoff } from "./macos-handoff.ts";
+import { evidenceSections, gitSecurityCommits, type Tested } from "./release-evidence.ts";
 import { composeNotes, whatsNewPath, whatsNewSummary } from "./release-notes.mjs";
+import { PLATFORM_PATHS, SHARED_PATHS } from "./release-paths.ts";
 import { watchDesktopRelease } from "./release-watch.ts";
 import { isUpdaterArtifact, logToSigsum } from "./sigsum-log.ts";
 import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
@@ -86,6 +88,8 @@ import { notifyYubiKeyTouch } from "./yubikey-notify.ts";
 const HOME = process.env.HOME ?? "";
 // On a runner GitHub says which repository this is; here it is the one this script ships.
 const REPO = process.env.GITHUB_REPOSITORY ?? "bramble-sh/bramble";
+/** A runner's release page sections, worked out before anything irreversible (releaseEvidence). */
+let pageEvidence: string | null = null;
 
 // Up here rather than in the android section below, which is where they belong but not where they
 // can live: the dispatch near the top of this file calls releaseAndroid while the module is still
@@ -136,26 +140,6 @@ const RELEASE_FILES = new Set([
 const isReleaseFile = (path: string): boolean =>
 	RELEASE_FILES.has(path) ||
 	/^fastlane\/metadata\/android\/[^/]+\/changelogs\/\d+\.txt$/.test(path);
-
-// What each target actually ships, as git pathspecs. A commit belongs to a release only if it
-// touched one of these, so the notes describe THAT target rather than everything that happened in
-// the range. Shared paths are deliberately in every list: a core fix ships in all five, and it
-// should be listed in all five rather than attributed to whichever one released first.
-//
-// Paths decide what a release INCLUDES, and never the commit scope: a `feat(desktop):` that only
-// touches scripts/ or website/ is real work but not shipped code, and guessing from a scope that
-// nothing enforces would put commits in the wrong release. Silently dropping a few is the cheaper
-// mistake. Scope only ever subtracts, in PLATFORM_SCOPES below.
-const SHARED_PATHS = ["packages/core", "packages/core-rust", "packages/theme"];
-const PLATFORM_PATHS: Record<string, string[]> = {
-	chromium: ["clients/extension", "packages/manifests/chromium"],
-	firefox: ["clients/extension", "packages/manifests/firefox"],
-	desktop: ["clients/desktop"],
-	// One mobile package builds both, so each excludes the other's native half and keeps the
-	// shared src/. Order matters to git: the exclude has to follow what it subtracts from.
-	ios: ["clients/mobile", ":(exclude)clients/mobile/android"],
-	android: ["clients/mobile", ":(exclude)clients/mobile/ios"],
-};
 
 // A commit whose scope names a DIFFERENT platform is not this release's news, even when its paths
 // say otherwise. `feat(desktop): pick the credential store, never ask` touches packages/core, so
@@ -1030,6 +1014,7 @@ function runnerBuildAndroid(version: string, tag: string): void {
  */
 async function runnerPublishAndroid(version: string, tag: string): Promise<void> {
 	if (!process.env.GITHUB_ACTIONS) fail("--runner-publish runs in android-release.yml");
+	pageEvidence = releaseEvidence(tag);
 	const meta = JSON.parse(readFileSync(join(HANDOFF, "meta.json"), "utf8"));
 	if (meta.version !== version) fail(`the handoff is for ${meta.version}, not ${version}`);
 	const head = capture("git rev-parse HEAD");
@@ -1281,6 +1266,7 @@ function runnerBuildFirefox(version: string, tag: string): void {
  * does the signing, so what is guarded here is the version, which an upload consumes for good.
  */
 async function runnerPublishFirefox(version: string, tag: string): Promise<void> {
+	pageEvidence = releaseEvidence(tag);
 	const meta = receiveHandoff("firefox-release.yml", version, {
 		"dist-firefox": FIREFOX_DIST,
 		"bramble-firefox.zip": FIREFOX_ZIP,
@@ -1383,6 +1369,7 @@ function runnerBuildChrome(version: string, tag: string): void {
  * primeCwsSecrets, and the one place a runner here holds a credential on disk rather than in memory.
  */
 async function runnerPublishChrome(version: string, tag: string): Promise<void> {
+	pageEvidence = releaseEvidence(tag);
 	const meta = receiveHandoff("chrome-release.yml", version, {
 		"dist-chromium": CHROME_DIST,
 		"bramble.zip": CHROME_ZIP,
@@ -1711,6 +1698,7 @@ function receiveMacosBuild(): void {
  */
 async function runnerPublishDesktop(version: string, tag: string): Promise<void> {
 	if (!process.env.GITHUB_ACTIONS) fail("--runner-publish runs in desktop-release.yml");
+	pageEvidence = releaseEvidence(tag);
 	const dryRun = flags.has("--dry-run");
 	const bundle = "clients/desktop/src-tauri/target/universal-apple-darwin/release/bundle";
 	// Before the hour of bundling and notarizing, not after it.
@@ -2708,6 +2696,45 @@ function whatsNew(target: string, version: string, md: string | undefined): stri
 	return summary;
 }
 
+/**
+ * The page's security-relevant commits and how it was checked, added below whatever notes were
+ * handed over (docs/ci-releases.md). HEAD is what was built. A runner works it out first thing, so
+ * a missing CI run stops the release before any commit or store upload, and a dry run shows it.
+ */
+function releaseEvidence(tag: string): string {
+	const env = process.env;
+	let tested: Tested | null = null;
+	if (env.GITHUB_ACTIONS) {
+		const raw =
+			env.BRAMBLE_TESTED || fail("no CI run from the Tested job; it must pass before a release");
+		const passed = JSON.parse(raw) as Tested;
+		if (passed.sha !== env.GITHUB_SHA)
+			fail(`CI passed on ${passed.sha.slice(0, 8)}, but this run is for ${env.GITHUB_SHA}`);
+		tested = passed;
+	}
+	const head = capture("git rev-parse HEAD");
+	const prev = capture(
+		`git describe --tags --abbrev=0 --match '*-${platform}' --exclude '${tag}' HEAD 2>/dev/null || true`,
+	);
+	const md = evidenceSections({
+		repo: REPO,
+		target: platform,
+		tag,
+		prev,
+		head,
+		commits: prev ? gitSecurityCommits(prev, head, platform) : [],
+		tested,
+		runUrl: env.GITHUB_RUN_ID
+			? `${env.GITHUB_SERVER_URL}/${REPO}/actions/runs/${env.GITHUB_RUN_ID}`
+			: null,
+	});
+	if (flags.has("--dry-run")) {
+		console.log(`\nthe release page would end with:\n\n${md}\n`);
+		if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `${md}\n`);
+	}
+	return md;
+}
+
 // Draft -> upload -> publish, so the `release: published` event fires only once the
 // signed artifacts are attached (CI verifies them on that event).
 async function publish(
@@ -2717,9 +2744,10 @@ async function publish(
 	// Runs against the draft, after upload and before it goes public. Failing it leaves a draft.
 	beforePublish?: () => void,
 ) {
+	const body = `${await releaseNotes(tag, platform)}\n\n${pageEvidence ?? releaseEvidence(tag)}`;
 	const notesDir = mkdtempSync(join(tmpdir(), "bramble-notes-"));
 	const notesFile = join(notesDir, "NOTES.md");
-	writeFileSync(notesFile, await releaseNotes(tag, platform));
+	writeFileSync(notesFile, body);
 	try {
 		run(
 			`gh release create ${tag} --draft --notes-file ${notesFile} --title ${JSON.stringify(title)}`,

@@ -42,6 +42,7 @@ things that keep it defensible:
 | No cache of any kind in release jobs | A cache entry is mutable state any run on this repository can write, so a restored `target/` or pnpm store puts bytes in a signed artifact that did not come from that checkout. Both defaults are on: `setup-rust-toolchain` needs `cache: false` and `setup-node` needs `package-manager-cache: false`, since it caches off `packageManager` in package.json whether or not `cache:` is set |
 | Offline passphrase backups stay exactly as they are | They stop being the day-to-day path and become the recovery path |
 | Post-publish verification stays | `release.yml` re-verifies every updater artifact against the public key compiled into the app |
+| CI must pass on the commit first | A Tested job waits for `ci.yml` on the commit being released and fails unless it passed, before anything builds or asks for approval (see [What a release page shows](#what-a-release-page-shows)) |
 
 ## The credentials
 
@@ -106,6 +107,43 @@ gates the publish job, so what gets approved is a finished build. Android is the
 **A release made with the workflow's own token fires no other workflow**, so `release.yml`'s
 post-publish checks never run for it. Each publish job verifies its own draft before undrafting it
 instead, which is the better place for the check anyway: a bad artifact never goes public at all.
+
+## What a release page shows
+
+Releasing often is only reassuring if each release says what it changed and what it passed, in a
+form nobody has to take on trust. So every release workflow starts with a **Tested** job
+(`release-tested.yml`, called by all five): it waits for CI (`ci.yml`) to finish on the commit being
+released and fails unless it passed. Nothing builds, and no approval is requested, before that. The
+release script's own gate (lint, type checks, unit tests) still runs in the build job, but CI is
+the full suite: the browser end-to-end tests, two-device sync, the transport security contract on
+Chromium and Firefox, and the Linux desktop build. It is the commit itself that has to pass, so a
+release dispatched right after a push waits for that push's CI, and a release commit that landed
+since (another target's version bump) is waited for too. A failed or flaky run stops the release
+until it is fixed or re-run; the page then says which attempt passed.
+
+The job holds no secret and installs nothing: it runs `scripts/release-evidence.ts` on Node alone,
+with a token that can read this repository's runs. iOS runs it for a release build only, not for a
+one-off build, a credentials check or a listing upload.
+
+Every GitHub release page then ends with two generated sections, added on the runner below the
+handed-over notes, so they cannot be edited out before it publishes:
+
+- **Security-relevant changes**: each commit since the previous release of that target that
+  changed a file the target ships and that is on the security-sensitive list,
+  `SECURITY_PATHS` in `scripts/release-paths.ts` (cryptography, the vault format, sync, unlock,
+  autofill, passkeys, each app's native code, permissions, the updater). Tests, docs and version
+  bumps never count. "None" is said in so many words. Anyone can recompute it from a clone:
+  `node scripts/release-evidence.ts security <previous tag> <tag> <target>`.
+- **How this release was checked**: the CI run that passed (and on which attempt), every job in it,
+  the release run that built and signed it, how to rebuild it reproducibly and what the daily
+  check covers, and for desktop the Sigsum log.
+
+The email and blog summary stop at a page's first heading, so neither section reaches them. iOS
+has no release page, so it gets the gate and nothing else.
+
+The list is a judgement written down: a path on it that stops existing fails
+`release-evidence.test.ts`, but a new sensitive directory has to be added by hand. Too broad costs
+little (a harmless commit listed); too narrow is the failure that matters, so when in doubt, add it.
 
 ## Keeping OIDC cheap
 

@@ -18,6 +18,23 @@ The current version is shown on the
 [releases page](https://github.com/bramble-sh/bramble/releases) and in the
 Chrome Web Store listing.
 
+## How Releases Are Checked
+
+Bramble ships often, so each release says what it changed and what it passed:
+
+- Nothing is built or signed until CI has passed on the exact commit being released: lint, type
+  checks, unit tests, the browser end-to-end tests, two-device sync and the transport security
+  tests.
+- Each GitHub release page ends with two generated sections. **Security-relevant changes** lists
+  every commit since the previous release that changed code on the security-sensitive list in
+  [`scripts/release-paths.ts`](scripts/release-paths.ts) (cryptography, the vault format, sync,
+  unlock, autofill, passkeys, permissions, the updater), or says "None". **How this release was
+  checked** links the CI run, the run that built and signed it, and how to rebuild it
+  reproducibly.
+
+Anyone can recompute the list from a clone:
+`node scripts/release-evidence.ts security <previous tag> <tag> <target>`.
+
 ## Reporting a Vulnerability
 
 **Please do not open a public issue, pull request, or discussion for a security

@@ -85,8 +85,17 @@ jobs:
     steps:
       - run: echo "publish-release-notes.yml drafts once the last release that asked for it is out"
 
+  # CI has to have passed on this commit before anything builds or asks for an approval.
+  tested:
+    name: Tested
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/release-tested.yml
+
   bump:
     name: ${{ (inputs.dry_run || contains(inputs.skip, 'windows')) && 'Gate and bump' || 'Gate, bump, start Windows' }}
+    needs: tested
     runs-on: ubuntu-24.04
     permissions:
       contents: write # the bump commit
@@ -351,7 +360,7 @@ jobs:
     # Static, unlike the bump job's: a skipped job never evaluates its name, so an expression here
     # shows up in the UI as its own source whenever this job does not run.
     name: Sign and publish
-    needs: [bump, linux, rpm, macos]
+    needs: [tested, bump, linux, rpm, macos]
     # Runs when a platform was skipped on purpose, not only when every build succeeded: a needs-job
     # that is skipped otherwise skips everything after it too.
     if: ${{ !cancelled() && needs.bump.result == 'success' && (needs.linux.result == 'success' || needs.linux.result == 'skipped') && (needs.rpm.result == 'success' || needs.rpm.result == 'skipped') && (needs.macos.result == 'success' || needs.macos.result == 'skipped') }}
@@ -456,6 +465,7 @@ jobs:
       - name: Bundle macOS, sign everything, publish
         env:
           BRAMBLE_RELEASE_NOTES: ${{ inputs.notes }}
+          BRAMBLE_TESTED: ${{ needs.tested.outputs.evidence }}
           VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry_run }}
           GH_TOKEN: ${{ github.token }}
