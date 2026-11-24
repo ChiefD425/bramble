@@ -61,7 +61,7 @@ The vault list has one spot for a card (`VaultHomeRoute`). In order:
 1. The mobile update notice: a newer version matters more than notes on this one, which arrive
    with that version anyway.
 2. What's new.
-3. The donation sheet, every two weeks (docs/support-ask.md). It asks for a moment rather than
+3. The donation card, every two weeks (docs/support-ask.md). It asks for a moment rather than
    waiting to be acted on, so it goes ahead of the two below, which could otherwise hold it back.
 4. The store review ask.
 5. The default password manager offer (extension).

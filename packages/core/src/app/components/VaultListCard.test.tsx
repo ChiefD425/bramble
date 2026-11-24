@@ -69,7 +69,7 @@ function mount(only?: (keyof VaultListCards)[]) {
 const showing = () => ({
 	update: !!screen.queryByText(/is available/),
 	whatsNew: !!screen.queryByText(/What's new in/),
-	support: !!screen.queryByRole("dialog", { name: "Support Bramble" }),
+	support: !!screen.queryByText("Support Bramble"),
 	review: !!screen.queryByText(/Say something nice/),
 	defaultManager: !!screen.queryByText(/default password manager/),
 });
@@ -168,7 +168,7 @@ describe("VaultListCard", () => {
 		expect(showing().whatsNew).toBe(true);
 	});
 
-	it("puts the donation sheet after what's new and ahead of the review ask", () => {
+	it("puts the donation card after what's new and ahead of the review ask", () => {
 		mount(["supportAsk", "reviewNudge", "defaultManager"]);
 		expect(showing()).toEqual({
 			update: false,
@@ -182,9 +182,9 @@ describe("VaultListCard", () => {
 		expect(showing().support).toBe(false);
 	});
 
-	it("leaves the spot empty once the sheet is answered, either way", () => {
+	it("leaves the spot empty once the donation card is dismissed or followed", () => {
 		mount(["supportAsk", "reviewNudge"]);
-		fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 		expect(showing().review).toBe(false);
 		cleanup();
 		mount(["supportAsk", "reviewNudge"]);

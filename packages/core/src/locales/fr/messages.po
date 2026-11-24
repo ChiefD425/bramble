@@ -854,7 +854,7 @@ msgstr "Bramble a rencontré une erreur inattendue. Votre coffre-fort est en sé
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble est gratuit et open source. S'il vous est utile, un pourboire permet de le maintenir. Scannez un code avec votre portefeuille, ou copiez l'adresse. Merci."
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
 msgstr "Bramble est gratuit, sans publicité ni investisseurs. Les dons financent son développement et ses audits de sécurité."
 
@@ -1122,7 +1122,6 @@ msgstr "Auto-effacement du presse-papiers"
 msgid "Clock"
 msgstr "Horloge"
 
-#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1678,6 +1677,7 @@ msgstr "Déconnectez cet appareil de la synchronisation avant de désactiver le 
 
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
@@ -1687,7 +1687,7 @@ msgstr "Ignorer"
 msgid "Dog"
 msgstr "Chien"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Donate"
 msgstr "Faire un don"
 
@@ -2834,7 +2834,6 @@ msgstr "Pas encore de vérification des fuites de données"
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 #~ msgstr "Sauvegarde inachevée : Bramble a été fermé avant la fin de cette sauvegarde. Elle sera relancée à la prochaine ouverture de Bramble."
 
-#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "Pas maintenant"
@@ -4049,7 +4048,7 @@ msgstr "Suggéré"
 msgid "Support"
 msgstr "Soutien"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Support Bramble"
 msgstr "Soutenir Bramble"
 

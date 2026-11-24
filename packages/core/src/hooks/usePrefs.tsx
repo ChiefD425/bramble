@@ -88,7 +88,7 @@ export const PREF_REVIEW_NUDGE = "pref.reviewNudge";
 // app/app-update.ts. The desktop keeps its own switch in its updater (shell.updates).
 const PREF_UPDATE_CHECK = "pref.updateCheck";
 const PREF_APP_UPDATE = "pref.appUpdate";
-// The every-two-weeks donation sheet: its clock, and the Settings switch that stops it. See
+// The every-two-weeks donation card: its clock, and the Settings switch that stops it. See
 // app/support-ask.ts.
 const PREF_SUPPORT_ASK = "pref.supportAsk";
 const PREF_SUPPORT_ASK_ENABLED = "pref.supportAskEnabled";
@@ -163,7 +163,7 @@ export interface Prefs {
 	appUpdate: AppUpdateState;
 	// The version the "What's new" card was last closed for.
 	whatsNew: WhatsNewState;
-	// When the donation sheet was last shown, and whether it may be.
+	// When the donation card was last shown, and whether it may be.
 	supportAsk: SupportAskState;
 	supportAskEnabled: boolean;
 }

@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type Platform, PlatformProvider } from "../../context/PlatformContext";
 import type { Target } from "../../flags";
 import { PrefsProvider } from "../../hooks/usePrefs";
-import { SupportSheet } from "../components/SupportSheet";
+import { SupportCard } from "../components/SupportCard";
 import { useSupportAsk } from "./useSupportAsk";
 
 vi.mock("../../hooks/useVaultRegistry", () => ({
@@ -24,7 +24,7 @@ afterEach(cleanup);
 
 function Ask({ hold = false }: { hold?: boolean }) {
 	const ask = useSupportAsk(hold);
-	return ask ? <SupportSheet ask={ask} /> : null;
+	return ask ? <SupportCard ask={ask} /> : null;
 }
 
 async function mount(
@@ -52,13 +52,13 @@ async function mount(
 
 const due = () =>
 	new Map<string, unknown>([["pref.supportAsk", { startedAt: Date.now() - 15 * DAY }]]);
-const sheet = () => screen.queryByRole("dialog", { name: "Support Bramble" });
+const card = () => screen.queryByText("Support Bramble");
 
 describe("useSupportAsk", () => {
 	it("starts the clock on the first run and asks nothing yet", async () => {
 		const store = new Map<string, unknown>();
 		await mount(store);
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 		const { startedAt } = store.get("pref.supportAsk") as { startedAt: number };
 		expect(Date.now() - startedAt).toBeLessThan(5_000);
 	});
@@ -66,19 +66,19 @@ describe("useSupportAsk", () => {
 	it("asks two weeks in, and counts it as asked the moment it shows", async () => {
 		const store = due();
 		await mount(store);
-		expect(sheet()).toBeTruthy();
+		expect(card()).toBeTruthy();
 		const { askedAt } = store.get("pref.supportAsk") as { askedAt: number };
 		expect(Date.now() - askedAt).toBeLessThan(5_000);
 	});
 
-	it("goes with Not now, and is not back on the next open", async () => {
+	it("goes when dismissed, and is not back on the next open", async () => {
 		const store = due();
 		await mount(store);
-		fireEvent.click(screen.getByRole("button", { name: "Not now" }));
-		expect(sheet()).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(card()).toBeNull();
 		cleanup();
 		await mount(store);
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 	});
 
 	it("opens Ko-fi from Donate, and records it so the next ask waits 90 days", async () => {
@@ -89,32 +89,26 @@ describe("useSupportAsk", () => {
 		expect(donate.getAttribute("target")).toBe("_blank");
 		fireEvent.click(donate);
 		await act(async () => {});
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 		expect((store.get("pref.supportAsk") as { donatedAt?: number }).donatedAt).toBeTypeOf("number");
 	});
 
 	it("never asks on iOS, where App Review refuses an external tip link", async () => {
 		await mount(due(), { target: "ios" });
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 	});
 
 	it("never asks with the Settings switch off", async () => {
 		const store = due();
 		store.set("pref.supportAskEnabled", false);
 		await mount(store);
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 	});
 
 	it("waits while another card holds the spot, without spending the ask", async () => {
 		const store = due();
 		await mount(store, { hold: true });
-		expect(sheet()).toBeNull();
+		expect(card()).toBeNull();
 		expect((store.get("pref.supportAsk") as { askedAt?: number }).askedAt).toBeUndefined();
-	});
-
-	it("closes on Escape like any dialog", async () => {
-		await mount(due());
-		fireEvent.keyDown(window, { key: "Escape" });
-		expect(sheet()).toBeNull();
 	});
 });

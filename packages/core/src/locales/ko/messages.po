@@ -754,7 +754,7 @@ msgstr "Bramble에 예기치 않은 오류가 발생했습니다. 보관함은 �
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble은 무료 오픈소스입니다. 유용하게 사용하셨다면 팁으로 운영에 도움을 주세요. 지갑으로 코드를 스캔하거나 주소를 복사하세요. 감사합니다."
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
 msgstr "Bramble은 무료이며 광고도 투자자도 없습니다. 후원금은 개발과 보안 감사에 사용됩니다."
 
@@ -1010,7 +1010,6 @@ msgstr "클립보드 자동 지우기"
 msgid "Clock"
 msgstr "시계"
 
-#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1534,6 +1533,7 @@ msgstr "마스터 비밀번호를 끄기 전에 이 기기를 동기화에서 �
 
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
@@ -1543,7 +1543,7 @@ msgstr "닫기"
 msgid "Dog"
 msgstr "개"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Donate"
 msgstr "후원하기"
 
@@ -2573,7 +2573,6 @@ msgstr "백업되지 않음: 이 볼트가 잠겨 있는 동안에는 첨부 파
 msgid "Not checked for breaches yet"
 msgstr "아직 유출 검사하지 않음"
 
-#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "나중에"
@@ -3712,7 +3711,7 @@ msgstr "추천"
 msgid "Support"
 msgstr "지원"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Support Bramble"
 msgstr "Bramble 후원하기"
 

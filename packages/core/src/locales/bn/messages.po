@@ -846,7 +846,7 @@ msgstr "Bramble-এ একটি অপ্রত্যাশিত সমস্�
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble বিনামূল্যের ও ওপেন সোর্স। এটি আপনার কাজে লাগলে, সামান্য অনুদান এর কাজ চালিয়ে যেতে সাহায্য করবে। আপনার ওয়ালেট দিয়ে একটি কোড স্ক্যান করুন, অথবা ঠিকানা কপি করুন। ধন্যবাদ।"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Bramble is free, with no ads and no investors. Donations pay for its development and security audits."
 msgstr "Bramble বিনামূল্যে, কোনো বিজ্ঞাপন বা বিনিয়োগকারী নেই। অনুদানই এর উন্নয়ন ও নিরাপত্তা নিরীক্ষার খরচ বহন করে।"
 
@@ -1114,7 +1114,6 @@ msgstr "ক্লিপবোর্ড অটো-ক্লিয়ার"
 msgid "Clock"
 msgstr "ঘড়ি"
 
-#: packages/core/src/app/components/ui/bottom-sheet.tsx
 #: packages/core/src/app/components/ui/modal.tsx
 #: packages/core/src/app/routes/PasskeyVerifyRoute.tsx
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -1670,6 +1669,7 @@ msgstr "মাস্টার পাসওয়ার্ড বন্ধ কর
 
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Dismiss"
@@ -1679,7 +1679,7 @@ msgstr "সরিয়ে দিন"
 msgid "Dog"
 msgstr "কুকুর"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Donate"
 msgstr "অনুদান দিন"
 
@@ -2822,7 +2822,6 @@ msgstr "এখনও ব্রিচ পরীক্ষা করা হয়�
 #~ msgid "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 #~ msgstr "Not finished: Bramble was closed before this backup completed. It will run again next time you open Bramble."
 
-#: packages/core/src/app/components/SupportSheet.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Not now"
 msgstr "এখন নয়"
@@ -4029,7 +4028,7 @@ msgstr "প্রস্তাবিত"
 msgid "Support"
 msgstr "সাপোর্ট"
 
-#: packages/core/src/app/components/SupportSheet.tsx
+#: packages/core/src/app/components/SupportCard.tsx
 msgid "Support Bramble"
 msgstr "Bramble-কে সমর্থন করুন"
 

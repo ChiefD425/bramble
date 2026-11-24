@@ -1,4 +1,4 @@
-// The every-two-weeks donation sheet. See docs/support-ask.md.
+// The every-two-weeks donation card. See docs/support-ask.md.
 
 import type { Target } from "../flags";
 
@@ -20,7 +20,7 @@ export const SUPPORT_URL: Partial<Record<Target, string>> = {
 export interface SupportAskState {
 	/** When this device started the clock: its first vault list on a build that asks. */
 	startedAt?: number;
-	/** When the sheet was last shown. */
+	/** When the card was last shown. */
 	askedAt?: number;
 	/** When someone last chose Donate. */
 	donatedAt?: number;

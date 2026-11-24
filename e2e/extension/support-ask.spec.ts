@@ -2,8 +2,8 @@ import type { BrowserContext, Page, Worker } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { backgroundWorker, createVault, openPopup } from "./helpers";
 
-// The every-two-weeks donation sheet in the real build (docs/support-ask.md): nothing on a fresh
-// install, the sheet once due, Not now, Donate to Ko-fi, and the Settings switch.
+// The every-two-weeks donation card in the real build (docs/support-ask.md): nothing on a fresh
+// install, the card once due, dismissing it, Donate to Ko-fi, and the Settings switch.
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -21,7 +21,7 @@ async function open(context: BrowserContext, extensionId: string): Promise<Page>
 	return popup;
 }
 
-const sheet = (page: Page) => page.getByRole("dialog", { name: "Support Bramble" });
+const card = (page: Page) => page.getByText("Support Bramble", { exact: true });
 
 test("asks once every two weeks, from the vault list", async ({ context, extensionId }) => {
 	await createVault(await context.newPage(), extensionId);
@@ -35,21 +35,21 @@ test("asks once every two weeks, from the vault list", async ({ context, extensi
 
 	// A fresh install starts the clock and asks nothing.
 	const first = await open(context, extensionId);
-	await expect(sheet(first)).toHaveCount(0);
+	await expect(card(first)).toHaveCount(0);
 	expect(Date.now() - (await stored()).startedAt).toBeLessThan(60_000);
 	await first.close();
 
-	// Two weeks on: the sheet, counted as asked as soon as it shows.
+	// Two weeks on: the card, counted as asked as soon as it shows.
 	await makeDue(sw);
 	const due = await open(context, extensionId);
-	await expect(sheet(due)).toBeVisible();
+	await expect(card(due)).toBeVisible();
 	await expect.poll(async () => (await stored()).askedAt).toBeDefined();
-	await due.getByRole("button", { name: "Not now" }).click();
-	await expect(sheet(due)).toHaveCount(0);
+	await due.getByRole("button", { name: "Dismiss" }).click();
+	await expect(card(due)).toHaveCount(0);
 	await due.close();
 
 	const next = await open(context, extensionId);
-	await expect(sheet(next)).toHaveCount(0);
+	await expect(card(next)).toHaveCount(0);
 	await next.close();
 
 	// Donate opens Ko-fi and records it.
@@ -61,14 +61,14 @@ test("asks once every two weeks, from the vault list", async ({ context, extensi
 		donating.getByRole("link", { name: /Donate/ }).click(),
 	]);
 	expect(tab.url()).toBe("https://ko-fi.com/bramble_sh");
-	await expect(sheet(donating)).toHaveCount(0);
+	await expect(card(donating)).toHaveCount(0);
 	await expect.poll(async () => (await stored()).donatedAt).toBeDefined();
 	await donating.close();
 
 	// Switched off in Settings, a due ask never shows.
 	await makeDue(sw);
 	const settings = await open(context, extensionId);
-	await settings.getByRole("button", { name: "Not now" }).click();
+	await settings.getByRole("button", { name: "Dismiss" }).click();
 	await settings.getByRole("button", { name: "Settings" }).click();
 	await settings.getByRole("button", { name: "About", exact: true }).click();
 	await settings.getByRole("button", { name: "Remind me every two weeks" }).click();
@@ -82,5 +82,5 @@ test("asks once every two weeks, from the vault list", async ({ context, extensi
 	// The popup reopens where it was left, Settings here.
 	await off.getByRole("button", { name: "Go to vault" }).click();
 	await expect(off.getByText(/Items \(/)).toBeVisible();
-	await expect(sheet(off)).toHaveCount(0);
+	await expect(card(off)).toHaveCount(0);
 });
