@@ -1,0 +1,41 @@
+name: Label issues
+
+# Labels each issue from the answers on its form: the apps and areas picked, and `needs info` while
+# a bug report lacks a version number or a sync problem lacks its device list. The mapping and the
+# reasons are in scripts/label-issues.ts.
+#
+# The issue body is untrusted. It is never interpolated into this file or a shell; the script reads
+# it from the event file and only compares it with fixed strings. Nothing from the issue is checked
+# out or run: issues events run this workflow, and the script, from the default branch.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions: {}
+
+# An edit can land while the opening run is still labelling.
+concurrency:
+  group: label-issues-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  label:
+    name: Label
+    # Title-only edits change no answers.
+    if: github.event.action == 'opened' || github.event.changes.body
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # check out the script
+      issues: write # create, add and remove labels, and ask for missing details
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Label
+        run: node scripts/label-issues.ts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

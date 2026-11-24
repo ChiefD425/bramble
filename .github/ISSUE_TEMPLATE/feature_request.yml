@@ -1,0 +1,66 @@
+# The dropdown options are matched word for word by scripts/label-issues.ts, which labels the issue
+# from them; change an option there too. Keep the dropdowns first: see that file for why.
+name: Feature request
+description: An idea for something Bramble could do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please search [open issues](https://github.com/bramble-sh/bramble/issues) first: if someone has asked already, a 👍 on theirs counts and keeps the discussion in one place.
+  - type: dropdown
+    id: apps
+    attributes:
+      label: Which apps is it for?
+      multiple: true
+      options:
+        - Every app
+        - Browser extension in Chrome or another Chromium browser (Edge / Brave / Vivaldi / Opera / Arc)
+        - Browser extension in Firefox or a Firefox-based browser (Zen / LibreWolf / Floorp)
+        - Desktop app on macOS
+        - Desktop app on Windows
+        - Desktop app on Linux
+        - iOS app (iPhone or iPad)
+        - Android app
+        - Website or help center (bramble.sh)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: What part of Bramble?
+      multiple: true
+      options:
+        - Autofill
+        - Passkeys
+        - Sync between devices
+        - Link between the browser extension and the desktop app
+        - Unlocking and auto-lock (password / biometrics / security keys)
+        - Import or export
+        - Backups
+        - Two-factor codes (TOTP)
+        - Email aliases
+        - Vault items (logins / cards / notes / fields / tags / attachments)
+        - Password generator
+        - Look and layout / accessibility
+        - Translations
+        - Install and updates
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would it help you do?
+      description: The problem or the moment it's for matters more than the exact solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work?
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do today instead?
+      description: A workaround, another app that does it, or nothing.

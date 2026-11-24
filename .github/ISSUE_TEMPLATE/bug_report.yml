@@ -1,0 +1,107 @@
+# The dropdown options are matched word for word by scripts/label-issues.ts, which labels the issue
+# from them; change an option there too. Keep the dropdowns first: see that file for why.
+name: Bug report
+description: Something in Bramble doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Found a security problem?** Please [report it privately](https://github.com/bramble-sh/bramble/security/advisories/new) instead of here.
+
+        Never paste passwords, recovery codes, pairing codes or anything else from your vault.
+  - type: dropdown
+    id: apps
+    attributes:
+      label: Which apps does it happen in?
+      description: Pick every app involved. For a sync problem, pick the app on each device.
+      multiple: true
+      options:
+        - Browser extension in Chrome or another Chromium browser (Edge / Brave / Vivaldi / Opera / Arc)
+        - Browser extension in Firefox or a Firefox-based browser (Zen / LibreWolf / Floorp)
+        - Desktop app on macOS
+        - Desktop app on Windows
+        - Desktop app on Linux
+        - iOS app (iPhone or iPad)
+        - Android app
+        - Website or help center (bramble.sh)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: What part of Bramble?
+      multiple: true
+      options:
+        - Autofill
+        - Passkeys
+        - Sync between devices
+        - Link between the browser extension and the desktop app
+        - Unlocking and auto-lock (password / biometrics / security keys)
+        - Import or export
+        - Backups
+        - Two-factor codes (TOTP)
+        - Email aliases
+        - Vault items (logins / cards / notes / fields / tags / attachments)
+        - Password generator
+        - Look and layout / accessibility
+        - Translations
+        - Install and updates
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Bramble version
+      description: In the app, under Settings → About. If you picked more than one app, give each one's.
+      placeholder: "Desktop 0.22.0, Chrome extension 1.43.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Which browser or system?
+      description: Just the name, no version needed. On Linux, how you installed Bramble helps too.
+      placeholder: "Brave on Windows / Fedora with the AppImage"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include any error message word for word.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Choose …
+        3. See …
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+  - type: textarea
+    id: devices
+    attributes:
+      label: Every device in the sync or link
+      description: Only for a problem with sync, or with the link between the browser extension and the desktop app. One line per device, with its app and its Bramble version.
+      placeholder: |
+        Desktop app 0.22.0 on macOS
+        Firefox extension 1.43.0 on Windows
+        Android app 0.34.0
+  - type: textarea
+    id: sync-log
+    attributes:
+      label: Sync log
+      description: For a sync problem, open Settings → Sync on each device, try again with it open (the browser extension only logs while it's open), and copy the log with the button at its top right. The copy leaves out your device names and holds nothing from your vault.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Drag images in here. Check that they show nothing from your vault.

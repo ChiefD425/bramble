@@ -1,0 +1,12 @@
+# Every issue starts from a form, so scripts/label-issues.ts can label it. Questions go to Q&A.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/bramble-sh/bramble/security/advisories/new
+    about: Privately, so it can be fixed before anyone else hears of it.
+  - name: Ask a question
+    url: https://github.com/bramble-sh/bramble/discussions/categories/q-a
+    about: How to do something, or whether Bramble can.
+  - name: Help center
+    url: https://bramble.sh/docs
+    about: Guides and fixes for common problems.
