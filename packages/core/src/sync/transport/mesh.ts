@@ -54,7 +54,7 @@ export interface MeshOptions {
 	getIceServers?: (ticket: string | null) => Promise<RTCIceServer[]>;
 	onStatus: (status: string) => void;
 	onPeer: (session: PeerSession) => void;
-	/** Rotate the room id per epoch (subscribe current+previous) so no single permanent room id
+	/** Rotate the room id per epoch (neighbours subscribed too) so no single permanent room id
 	 *  identifies the group forever. This is hygiene, NOT relay-unlinkability: a live relay still
 	 *  links epochs via the persistent socket + source IP, the reused subscription id, and the
 	 *  stable per-session author pubkey on every event (see A2 in docs/sec-audit-7726.md). Off
@@ -116,8 +116,9 @@ const CONNECT_TIMEOUT_MS = 10_000;
 
 // Rotate the sync room id hourly so no single permanent room id identifies the group. Hygiene, not
 // relay-unlinkability: a live relay still links epochs (persistent socket + IP, reused subId, stable
-// per-session author pubkey). Subscribe to current + previous so a clock skew or a boundary crossing
-// still meets. See A2 in docs/sec-audit-7726.md.
+// per-session author pubkey). Subscribe to the previous and next hours as well: each device moves on
+// by its own clock and only every ROLL_CHECK_MS, so around every hour one has moved and the other
+// has not. See A2 in docs/sec-audit-7726.md.
 const EPOCH_MS = 60 * 60 * 1000;
 const ROLL_CHECK_MS = 60 * 1000;
 const epochNow = (): number => Math.floor(Date.now() / EPOCH_MS);
@@ -159,14 +160,18 @@ class Mesh {
 
 	constructor(private readonly opts: MeshOptions) {}
 
-	// Resolve the room(s) for now: current+previous epoch when rotating, else the stable
-	// room. Publishes go to publishRoom; we subscribe to `rooms` (previous covers skew).
+	// Resolve the room(s) for now: the current epoch's and both its neighbours' when rotating, else
+	// the stable room. Publishes go to publishRoom; we subscribe to `rooms`.
 	private async roll(): Promise<void> {
 		const { groupKey, roomLabel, epochRooms } = this.opts;
 		if (epochRooms) {
 			this.epoch = epochNow();
 			this.publishRoom = await deriveRoomId(groupKey, roomLabel, this.epoch);
-			this.rooms = [this.publishRoom, await deriveRoomId(groupKey, roomLabel, this.epoch - 1)];
+			this.rooms = [
+				this.publishRoom,
+				await deriveRoomId(groupKey, roomLabel, this.epoch - 1),
+				await deriveRoomId(groupKey, roomLabel, this.epoch + 1),
+			];
 		} else {
 			this.publishRoom = await deriveRoomId(groupKey, roomLabel);
 			this.rooms = [this.publishRoom];

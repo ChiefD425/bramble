@@ -260,7 +260,8 @@ What the relay can observe, and the mitigations:
   linkage, nothing at rest.
 - **Room-id linkage → rotate per epoch (implemented).** The sync room is derived per hourly epoch
   (`deriveRoomId(groupKey, label, epoch)`); the mesh publishes to the current epoch and subscribes to
-  current+previous (one multi-value tag filter, with a minute-granularity rollover), so the relay
+  it and both neighbours (one multi-value tag filter, with a minute-granularity rollover, so a device
+  that moved to the new hour first is still heard by one that has not), so the relay
   can't link a group's sync activity across epochs. Gated to the sync room via the `epochRooms` flag;
   enrollment stays on a stable, clock-skew-independent room.
 - **Message size → vault size → pad payloads (implemented).** Relay-forward frames are padded into

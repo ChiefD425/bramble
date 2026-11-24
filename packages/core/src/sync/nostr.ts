@@ -153,7 +153,7 @@ export async function verifyEvent(verifier: NostrVerifier, e: NostrEvent): Promi
 }
 
 /** The REQ filter that subscribes to one or more rooms' signaling events (the relay
- * matches a multi-value tag filter, so current+previous epoch rooms ride one REQ). */
+ * matches a multi-value tag filter, so neighbouring epoch rooms ride one REQ). */
 export function signalFilter(rooms: string | string[]): NostrFilter {
 	return { kinds: [EPHEMERAL_KIND], [`#${ROOM_TAG}`]: Array.isArray(rooms) ? rooms : [rooms] };
 }
