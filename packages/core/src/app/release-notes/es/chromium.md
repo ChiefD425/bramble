@@ -1,10 +1,12 @@
 ---
-version: 1.42.0
+version: 1.43.0
 ---
 
-Importe sus contraseñas desde Firefox y 1Password 7, y conserve ambos cambios cuando dos dispositivos editen un mismo elemento.
+Las comprobaciones de filtraciones ahora cubren todos los inicios de sesión, y el menú de cada elemento permite duplicarlo o adjuntarle un archivo.
 
-- Cuando dos de sus dispositivos modifiquen distintas partes de un elemento, como su contraseña en uno y sus notas en el otro, se conservan ambos cambios.
-- Importe sus contraseñas desde Firefox y desde 1Password 7.
-- Añada una copia de seguridad de Bramble a la caja fuerte que tenga abierta desde Ajustes → Copias de seguridad → Importar una copia de seguridad. Las entradas que ya tiene no se añaden dos veces.
-- La exportación de KeePass ahora incluye sus llaves de acceso, para que KeePassXC pueda iniciar sesión con ellas.
+- Con «Comprobar contraseñas por filtraciones» activado, Bramble ahora comprueba todos los inicios de sesión en segundo plano, no solo los que abre, y cada inicio de sesión muestra cuándo se comprobó por última vez.
+- Duplique un elemento o adjúntele un archivo desde su menú ⋮ en la lista.
+- Una bóveda que no puede abrir ahora se puede eliminar de la lista de bóvedas sin su contraseña: elija «Eliminar una caja fuerte».
+- «Nunca para este sitio» ahora silencia solo ese sitio, como wiki.example.com, en lugar de todos los sitios de su dominio.
+- La vinculación con la aplicación de escritorio funciona en más navegadores WebKit que ejecutan extensiones de Chrome.
+- Cada dos semanas, una tarjeta en la lista de la bóveda pide una vez una donación. Desactívela con «Recordármelo cada dos semanas» en Configuración → Acerca de → Apoyar.

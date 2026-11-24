@@ -1,12 +1,13 @@
 ---
-version: 0.21.0
+version: 0.22.0
 ---
 
-Realice una copia de seguridad en Google Drive o Dropbox e importe sus contraseñas desde Firefox y 1Password 7.
+En macOS, Autorrelleno rellena sin preguntar mientras Bramble está desbloqueado, y se puede cambiar el atajo de Acceso rápido.
 
-- Realice una copia de seguridad de su bóveda en Google Drive o Dropbox desde Ajustes → Copias de seguridad.
-- En macOS, las sugerencias de AutoFill de Safari incluyen los inicios de sesión de todas sus bóvedas; el que utilizó por última vez aparece primero.
-- Cuando dos de sus dispositivos cambian distintas partes de un mismo elemento, como la contraseña en uno y las notas en el otro, se conservan ambos cambios.
-- Importe sus contraseñas desde Firefox y desde 1Password 7.
-- Añada una copia de seguridad de Bramble a la bóveda que tenga abierta desde Ajustes → Copias de seguridad → Importar una copia de seguridad. Los elementos que ya tiene no se añaden dos veces.
-- La exportación de KeePass ahora incluye sus llaves de acceso, por lo que KeePassXC puede iniciar sesión con ellas.
+- En macOS, Autorrelleno rellena inicios de sesión y códigos 2FA mientras Bramble está desbloqueado, sin pedir Touch ID ni su contraseña maestra.
+- Cambie el atajo de Acceso rápido, o desactívelo, en Configuración → General → «Atajo de Acceso rápido».
+- En Linux, abrir Bramble cuando ya está en ejecución vuelve a mostrar su ventana.
+- Con «Comprobar contraseñas por filtraciones» activado, Bramble ahora comprueba todos los inicios de sesión en segundo plano, no solo los que abre, y cada inicio de sesión muestra cuándo se comprobó por última vez.
+- Duplique un elemento o adjúntele un archivo desde su menú ⋮ en la lista.
+- Las copias ahora se borran después del tiempo establecido en Configuración → General → «Limpieza automática de portapapeles», en lugar de siempre después de 30 segundos.
+- Cada dos semanas, una tarjeta en la lista de la bóveda pide una vez una donación. Desactívela con «Recordármelo cada dos semanas» en Configuración → Acerca de → Apoyar.

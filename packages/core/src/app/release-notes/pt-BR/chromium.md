@@ -1,10 +1,12 @@
 ---
-version: 1.42.0
+version: 1.43.0
 ---
 
-Importe suas senhas do Firefox e do 1Password 7 e mantenha ambas as alterações quando dois dispositivos editarem um item.
+As verificações de vazamento agora abrangem todos os logins, e o menu de cada item pode duplicá-lo ou anexar um arquivo a ele.
 
-- Quando dois dos seus dispositivos alteram partes diferentes de um item, como a senha em um e as notas no outro, ambas as alterações são mantidas.
-- Importe suas senhas do Firefox e do 1Password 7.
-- Adicione um backup do Bramble ao cofre que você tem aberto em Configurações → Backups → Importar um backup. Os itens que você já possui não são adicionados duas vezes.
-- A exportação do KeePass agora inclui suas chaves de acesso, para que o KeePassXC possa fazer login com elas.
+- Com a opção Verificar senhas por violações ativada, o Bramble agora verifica todos os logins em segundo plano, não apenas os que você abre, e cada login mostra quando foi verificado pela última vez.
+- Duplique um item ou anexe um arquivo a ele pelo menu ⋮ na lista.
+- Um cofre que você não consegue abrir agora pode ser excluído da lista de cofres sem a senha: escolha Excluir um cofre.
+- A opção Nunca para este site agora silencia apenas esse site, como wiki.example.com, em vez de todos os sites do domínio.
+- A vinculação ao aplicativo para desktop funciona em mais navegadores WebKit que executam extensões do Chrome.
+- A cada duas semanas, um cartão na lista de cofres pede uma doação uma vez. Desative-o com Lembrar-me a cada duas semanas em Configurações → Sobre → Suporte.

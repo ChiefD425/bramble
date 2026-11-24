@@ -1,10 +1,11 @@
 ---
-version: 1.39.0
+version: 1.40.0
 ---
 
-Import your passwords from Firefox and 1Password 7, and keep both changes when two devices edit one item.
+Breach checks now cover every login, and each item's menu can duplicate it or attach a file.
 
-- When two of your devices change different parts of one item, like its password on one and its notes on the other, both changes are kept.
-- Import your passwords from Firefox, and from 1Password 7.
-- Add a Bramble backup to the vault you have open from Settings → Backups → Import a backup. Entries you already have aren't added twice.
-- The KeePass export now includes your passkeys, so KeePassXC can sign in with them.
+- With Check passwords for breaches on, Bramble now checks every login in the background, not just the ones you open, and each login shows when it was last checked.
+- Duplicate an item or attach a file to it from its ⋮ menu in the list.
+- A vault you can't open can now be deleted from the list of vaults, without its password: choose Delete a vault.
+- Never for this site now mutes only that site, such as wiki.example.com, instead of every site on its domain.
+- Every two weeks, a card on the vault list asks once for a donation. Turn it off with Remind me every two weeks in Settings → About → Support.

@@ -1,10 +1,12 @@
 ---
-version: 0.33.0
+version: 0.34.0
 ---
 
-Importi le password da Firefox e 1Password 7 e mantenga entrambe le modifiche quando due dispositivi modificano un elemento.
+La compilazione automatica può copiare il codice 2FA di un accesso durante la compilazione e rimane sbloccata quando l'app si blocca automaticamente.
 
-- Quando due dispositivi modificano parti diverse di uno stesso elemento, ad esempio la password su uno e le note sull'altro, entrambe le modifiche vengono mantenute.
-- Importi le password da Firefox e da 1Password 7.
-- Aggiunga un backup Bramble alla cassaforte attualmente aperta da Impostazioni → Backup → Importa un backup. Gli elementi già presenti non vengono aggiunti due volte.
-- L'esportazione KeePass ora include le passkey, così KeePassXC può accedere con esse.
+- Attivare l'opzione Copiare i codici 2FA durante la compilazione in Impostazioni → Generale per copiare il codice 2FA di un accesso mentre la compilazione automatica lo inserisce, pronto da incollare nella pagina successiva.
+- Il blocco automatico dell'app non blocca più la compilazione automatica, che mantiene un proprio timer e lo riavvia a ogni compilazione.
+- Con l'opzione Controllare le password per violazioni attiva, Bramble ora controlla ogni accesso in background, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
+- È possibile duplicare un elemento o allegarvi un file dal suo menu ⋮ nell'elenco.
+- Le copie ora vengono cancellate dopo il tempo impostato in Impostazioni → Generale → Auto-cancellazione della clipboard, invece che sempre dopo 30 secondi.
+- Ogni due settimane, una scheda nell'elenco delle casseforti chiede una volta una donazione. È possibile disattivarla con Ricordamelo ogni due settimane in Impostazioni → Informazioni → Supporto.

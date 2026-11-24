@@ -1,10 +1,11 @@
 ---
-version: 1.39.0
+version: 1.40.0
 ---
 
-Si possono importare le password da Firefox e 1Password 7 e mantenere entrambe le modifiche quando due dispositivi modificano un elemento.
+I controlli delle violazioni ora coprono ogni accesso e il menu di ciascun elemento consente di duplicarlo o di allegarvi un file.
 
-- Quando due dispositivi modificano parti diverse di un elemento, ad esempio la password su uno e le note sull'altro, entrambe le modifiche vengono mantenute.
-- Importare le password da Firefox e da 1Password 7.
-- Aggiungere un backup Bramble al vault aperto da Impostazioni → Backup → Importa un backup. Gli elementi già presenti non vengono aggiunti due volte.
-- L'esportazione KeePass ora include le passkey, così KeePassXC può accedere con esse.
+- Con l'opzione Controllare le password per violazioni attiva, Bramble ora controlla ogni accesso in background, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
+- È possibile duplicare un elemento o allegarvi un file dal suo menu ⋮ nell'elenco.
+- Una cassaforte che non è possibile aprire ora può essere eliminata dall'elenco delle casseforti, senza la sua password: selezionare Eliminare una cassaforte.
+- Mai per questo sito ora disattiva solo quel sito, ad esempio wiki.example.com, invece di tutti i siti del suo dominio.
+- Ogni due settimane, una scheda nell'elenco delle casseforti chiede una volta una donazione. È possibile disattivarla con Ricordamelo ogni due settimane in Impostazioni → Informazioni → Supporto.

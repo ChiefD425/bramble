@@ -1,12 +1,13 @@
 ---
-version: 0.21.0
+version: 0.22.0
 ---
 
-Back up to Google Drive or Dropbox, and import your passwords from Firefox and 1Password 7.
+On macOS, AutoFill fills without asking while Bramble is unlocked, and you can change the Quick Access shortcut.
 
-- Back up your vault to Google Drive or Dropbox from Settings → Backups.
-- On macOS, Safari's AutoFill suggestions include logins from all your vaults, with the one you used last first.
-- When two of your devices change different parts of one item, like its password on one and its notes on the other, both changes are kept.
-- Import your passwords from Firefox, and from 1Password 7.
-- Add a Bramble backup to the vault you have open from Settings → Backups → Import a backup. Entries you already have aren't added twice.
-- The KeePass export now includes your passkeys, so KeePassXC can sign in with them.
+- On macOS, AutoFill fills logins and 2FA codes while Bramble is unlocked, without asking for Touch ID or your master password.
+- Change the Quick Access shortcut, or turn it off, in Settings → General → Quick Access shortcut.
+- On Linux, opening Bramble while it's already running brings back its window.
+- With Check passwords for breaches on, Bramble now checks every login in the background, not just the ones you open, and each login shows when it was last checked.
+- Duplicate an item or attach a file to it from its ⋮ menu in the list.
+- Copies are now cleared after the time set in Settings → General → Clipboard auto-clear, instead of always after 30 seconds.
+- Every two weeks, a card on the vault list asks once for a donation. Turn it off with Remind me every two weeks in Settings → About → Support.

@@ -1,10 +1,11 @@
 ---
-version: 1.28.0
+version: 1.29.0
 ---
 
-Importe suas senhas do Firefox e do 1Password 7 e mantenha as duas alterações quando dois dispositivos editarem um item.
+O preenchimento automático permanece desbloqueado quando o aplicativo se bloqueia automaticamente, e as verificações de vazamento agora abrangem todos os logins.
 
-- Quando dois dos seus dispositivos alterarem partes diferentes de um item, como a senha em um e as notas no outro, ambas as alterações são mantidas.
-- Importe suas senhas do Firefox e do 1Password 7.
-- Adicione um backup do Bramble ao cofre que estiver aberto em Ajustes → Backups → Importar um backup. Os itens que você já tem não são adicionados duas vezes.
-- A exportação KeePass agora inclui suas chaves de acesso, para que o KeePassXC possa entrar com elas.
+- O bloqueio automático do aplicativo não bloqueia mais o preenchimento automático, que mantém seu próprio temporizador e o reinicia a cada preenchimento.
+- Com a opção Verificar senhas por violações ativada, o Bramble agora verifica todos os logins em segundo plano, não apenas os que você abre, e cada login mostra quando foi verificado pela última vez.
+- Duplique um item ou anexe um arquivo a ele pelo menu ⋮ na lista.
+- Um cofre que você não consegue abrir agora pode ser excluído da lista de cofres sem a senha: escolha Excluir um cofre.
+- As cópias agora são apagadas após o tempo definido em Configurações → Geral → Limpar automaticamente a área de transferência, em vez de sempre após 30 segundos.

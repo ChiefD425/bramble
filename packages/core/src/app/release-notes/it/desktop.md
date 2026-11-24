@@ -1,12 +1,13 @@
 ---
-version: 0.21.0
+version: 0.22.0
 ---
 
-Eseguire il backup su Google Drive o Dropbox e importare le proprie password da Firefox e 1Password 7.
+Su macOS, AutoFill inserisce i dati senza chiedere conferma mentre Bramble è sbloccato, ed è possibile modificare la scorciatoia di Accesso rapido.
 
-- Eseguire il backup del proprio archivio su Google Drive o Dropbox da Impostazioni → Backup.
-- Su macOS, i suggerimenti di riempimento automatico di Safari includono gli accessi di tutti i suoi archivi, con quello usato più di recente per primo.
-- Quando due dei suoi dispositivi modificano parti diverse dello stesso elemento, come la password su uno e le note sull'altro, entrambe le modifiche vengono mantenute.
-- Importare le proprie password da Firefox e da 1Password 7.
-- Aggiungere un backup Bramble all'archivio aperto da Impostazioni → Backup → Importare un backup. Gli elementi già presenti non vengono aggiunti due volte.
-- L'esportazione KeePass ora include le passkey, così KeePassXC può accedere con esse.
+- Su macOS, AutoFill inserisce accessi e codici 2FA mentre Bramble è sbloccato, senza chiedere Touch ID o la password principale.
+- È possibile modificare la scorciatoia di Accesso rapido, oppure disattivarla, in Impostazioni → Generale → Scorciatoia di Accesso rapido.
+- Su Linux, aprire Bramble mentre è già in esecuzione riporta in primo piano la sua finestra.
+- Con l'opzione Controllare le password per violazioni attiva, Bramble ora controlla ogni accesso in background, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
+- È possibile duplicare un elemento o allegarvi un file dal suo menu ⋮ nell'elenco.
+- Le copie ora vengono cancellate dopo il tempo impostato in Impostazioni → Generale → Auto-cancellazione della clipboard, invece che sempre dopo 30 secondi.
+- Ogni due settimane, una scheda nell'elenco delle casseforti chiede una volta una donazione. È possibile disattivarla con Ricordamelo ogni due settimane in Impostazioni → Informazioni → Supporto.

@@ -1,12 +1,13 @@
 ---
-version: 0.21.0
+version: 0.22.0
 ---
 
-Faça backup no Google Drive ou no Dropbox e importe suas senhas do Firefox e do 1Password 7.
+No macOS, o AutoFill preenche sem solicitar confirmação enquanto o Bramble está desbloqueado, e você pode alterar o atalho do Acesso rápido.
 
-- Faça backup do seu cofre no Google Drive ou no Dropbox em Configurações → Backups.
-- No macOS, as sugestões de Preenchimento Automático do Safari incluem logins de todos os seus cofres, com o que você usou por último primeiro.
-- Quando dois dos seus dispositivos alteram partes diferentes de um item, como a senha em um e as notas no outro, ambas as alterações são mantidas.
-- Importe suas senhas do Firefox e do 1Password 7.
-- Adicione um backup do Bramble ao cofre que estiver aberto em Configurações → Backups → Importar um backup. Os itens que você já possui não são adicionados duas vezes.
-- A exportação para KeePass agora inclui suas chaves de acesso, para que o KeePassXC possa entrar com elas.
+- No macOS, o AutoFill preenche logins e códigos 2FA enquanto o Bramble está desbloqueado, sem solicitar Touch ID nem a sua Senha Mestra.
+- Altere o atalho do Acesso rápido ou desative-o em Configurações → Geral → Atalho do Acesso rápido.
+- No Linux, abrir o Bramble enquanto ele já está em execução traz de volta a janela dele.
+- Com a opção Verificar senhas por violações ativada, o Bramble agora verifica todos os logins em segundo plano, não apenas os que você abre, e cada login mostra quando foi verificado pela última vez.
+- Duplique um item ou anexe um arquivo a ele pelo menu ⋮ na lista.
+- As cópias agora são apagadas após o tempo definido em Configurações → Geral → Limpar automaticamente a área de transferência, em vez de sempre após 30 segundos.
+- A cada duas semanas, um cartão na lista de cofres pede uma doação uma vez. Desative-o com Lembrar-me a cada duas semanas em Configurações → Sobre → Suporte.

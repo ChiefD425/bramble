@@ -1,10 +1,11 @@
 ---
-version: 1.28.0
+version: 1.29.0
 ---
 
-Importez vos mots de passe depuis Firefox et 1Password 7, et conservez les deux modifications lorsque deux appareils modifient un même élément.
+Le remplissage automatique reste déverrouillé lorsque l’application se verrouille automatiquement, et la vérification des fuites couvre désormais tous les identifiants.
 
-- Lorsque deux de vos appareils modifient différentes parties d’un même élément, par exemple son mot de passe sur l’un et ses notes sur l’autre, les deux modifications sont conservées.
-- Importez vos mots de passe depuis Firefox et depuis 1Password 7.
-- Ajoutez une sauvegarde Bramble au coffre-fort que vous avez ouvert depuis Réglages → Sauvegardes → Importer une sauvegarde. Les entrées déjà présentes ne sont pas ajoutées deux fois.
-- L’export KeePass inclut désormais vos clés d’accès, afin que KeePassXC puisse les utiliser pour se connecter.
+- Le verrouillage automatique de l’application ne verrouille plus le remplissage automatique, qui dispose de son propre minuteur et le redémarre à chaque remplissage.
+- Avec « Vérifier les mots de passe pour des violations » activé, Bramble vérifie désormais tous les identifiants en arrière-plan, pas seulement ceux que vous ouvrez, et chaque identifiant indique quand il a été vérifié pour la dernière fois.
+- Dupliquez un élément ou joignez-y un fichier depuis son menu ⋮ dans la liste.
+- Un coffre que vous ne pouvez pas ouvrir peut désormais être supprimé de la liste des coffres, sans son mot de passe : choisissez « Supprimer un coffre ».
+- Les copies sont désormais effacées après le délai défini dans Paramètres → Général → « Auto-effacement du presse-papiers », et non plus systématiquement après 30 secondes.

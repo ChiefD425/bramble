@@ -1,10 +1,12 @@
 ---
-version: 1.42.0
+version: 1.43.0
 ---
 
-Importieren Sie Ihre Passwörter aus Firefox und 1Password 7, und wenn zwei Geräte einen Eintrag bearbeiten, bleiben beide Änderungen erhalten.
+Die Prüfung auf Datenlecks umfasst jetzt alle Logins, und über das Menü jedes Eintrags können Sie ihn duplizieren oder eine Datei anhängen.
 
-- Wenn zwei Ihrer Geräte verschiedene Teile eines Eintrags ändern, z. B. auf einem das Passwort und auf dem anderen die Notizen, bleiben beide Änderungen erhalten.
-- Importieren Sie Ihre Passwörter aus Firefox und 1Password 7.
-- Fügen Sie dem geöffneten Tresor über Einstellungen → Backups → Backup importieren ein Bramble-Backup hinzu. Bereits vorhandene Einträge werden nicht doppelt hinzugefügt.
-- Der KeePass-Export enthält jetzt Ihre Passkeys, sodass KeePassXC sich damit anmelden kann.
+- Wenn „Passwörter auf Sicherheitslücken prüfen“ aktiviert ist, prüft Bramble jetzt alle Logins im Hintergrund, nicht nur die, die Sie öffnen, und bei jedem Login wird angezeigt, wann er zuletzt geprüft wurde.
+- Über das ⋮-Menü in der Liste können Sie einen Eintrag duplizieren oder eine Datei anhängen.
+- Ein Tresor, den Sie nicht öffnen können, kann jetzt ohne sein Passwort aus der Liste der Tresore gelöscht werden: Wählen Sie „Tresor löschen“.
+- „Nie für diese Seite speichern“ gilt jetzt nur noch für genau diese Website, z. B. wiki.example.com, statt für alle Websites ihrer Domain.
+- Die Verknüpfung mit der Desktop-App funktioniert in mehr WebKit-Browsern, die Chrome-Erweiterungen unterstützen.
+- Alle zwei Wochen bittet eine Karte in der Tresorliste einmal um eine Spende. Schalten Sie sie mit „Alle zwei Wochen erinnern“ unter Einstellungen → Über → Unterstützen aus.

@@ -1,10 +1,11 @@
 ---
-version: 1.28.0
+version: 1.29.0
 ---
 
-È possibile importare le password da Firefox e 1Password 7 e mantenere entrambe le modifiche quando due dispositivi modificano un elemento.
+La compilazione automatica resta sbloccata quando l'app si blocca automaticamente e i controlli delle violazioni ora coprono tutti gli accessi.
 
-- Quando due dispositivi modificano parti diverse di un elemento, come la password su uno e le note sull'altro, entrambe le modifiche vengono mantenute.
-- Importare le password da Firefox e da 1Password 7.
-- Aggiungere un backup Bramble al vault aperto da Impostazioni → Backup → Importare un backup. Gli elementi già presenti non vengono aggiunti due volte.
-- L'esportazione KeePass ora include le passkey, così KeePassXC può accedere con esse.
+- Il blocco automatico dell'app non blocca più la compilazione automatica, che mantiene un proprio timer e lo riavvia a ogni compilazione.
+- Con l'opzione Controllare le password per violazioni attiva, Bramble ora controlla ogni accesso in background, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
+- È possibile duplicare un elemento o allegarvi un file dal suo menu ⋮ nell'elenco.
+- Una cassaforte che non è possibile aprire ora può essere eliminata dall'elenco delle casseforti, senza la sua password: selezionare Eliminare una cassaforte.
+- Le copie ora vengono cancellate dopo il tempo impostato in Impostazioni → Generale → Auto-cancellazione della clipboard, invece che sempre dopo 30 secondi.
