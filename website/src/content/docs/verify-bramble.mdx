@@ -33,6 +33,10 @@ keywords:
   - addons.mozilla.org
   - APK
   - is this the real Bramble
+  - release notes
+  - security changes
+  - tested
+  - CI
 updatedDate: 2026-11-17
 ---
 
@@ -55,7 +59,7 @@ A release is reproducible when building it again from the same source gives exac
 | Desktop on Windows | The installer, apart from its signature, from its first release | When you run the check |
 | iPhone | Can't be checked: the App Store re-encrypts every app it delivers | |
 
-The daily checks run in Bramble's public [GitHub Actions](https://github.com/bramble-sh/bramble/actions/workflows/verify-releases.yml), so their results are visible to anyone.
+The daily checks run in Bramble's public [GitHub Actions](https://github.com/bramble-sh/bramble/actions/workflows/verify-releases.yml), so their results are visible to anyone.<Since commit="a4229fa1" on="chromium firefox desktop android"> Each release page on [GitHub](https://github.com/bramble-sh/bramble/releases) also lists the changes to security-sensitive code since the previous release, or says there were none, and links the tests the release had to pass before it was built.</Since>
 
 What's allowed to differ is only what's added after the build: each store's own signature, Apple's and Microsoft's code signatures, and an update address the Chrome Web Store writes into the extension's manifest. Everything else has to match exactly.
 
