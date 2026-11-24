@@ -1,8 +1,9 @@
-Was ist neu in dieser Version:
+Neu in dieser Version:
 
-- Wenn zwei Ihrer Geräte unterschiedliche Teile eines Eintrags ändern, etwa das Passwort auf dem einen und die Notizen auf dem anderen, bleiben beide Änderungen erhalten.
-- Importieren Sie Ihre Passwörter aus Firefox und 1Password 7.
-- Fügen Sie dem geöffneten Tresor über Einstellungen → Sicherungskopien → Ein Backup importieren ein Bramble-Backup hinzu. Bereits vorhandene Einträge werden nicht doppelt hinzugefügt.
-- Der KeePass-Export enthält jetzt Ihre Passkeys, sodass KeePassXC sich mit ihnen anmelden kann.
+- Die automatische Sperre der App sperrt Autofill nicht mehr; Autofill hat einen eigenen Timer und startet ihn bei jedem Ausfüllen neu.
+- Wenn „Passwörter auf Sicherheitslücken prüfen“ aktiviert ist, prüft Bramble jetzt alle Logins im Hintergrund, nicht nur die, die Sie öffnen, und bei jedem Login wird angezeigt, wann er zuletzt geprüft wurde.
+- Über das ⋮-Menü in der Liste können Sie einen Eintrag duplizieren oder eine Datei anhängen.
+- Ein Tresor, den Sie nicht öffnen können, kann jetzt ohne sein Passwort aus der Liste der Tresore gelöscht werden: Wählen Sie „Tresor löschen“.
+- Kopien werden jetzt nach der Zeit gelöscht, die unter Einstellungen → Allgemein → „Clipboard automatisch löschen“ festgelegt ist, statt immer nach 30 Sekunden.
 
 Kein Konto, keine Cloud. Alles bleibt auf Ihren Geräten.
