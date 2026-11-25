@@ -1,0 +1,79 @@
+---
+title: "The mailbox: sync for devices that are never on at the same time"
+description: "Bramble's devices sync directly with each other, which means two of them have to be online together. The mailbox holds your encrypted changes in between, so a phone and a laptop that never overlap still stay in step."
+pubDate: 2026-11-24
+since: "605dc73e"
+---
+
+Bramble's devices sync with each other directly. Nothing in between keeps a copy of your vault, and
+that is the point. It also means a change can only travel while two of your devices are unlocked
+and online at the same time.
+
+For a lot of people that happens on its own: a desktop app left running at home, a phone opened
+during the day. For others it never quite does. The laptop is closed by the time the phone comes
+out, the work computer is off all weekend, and a password changed on one is still the old one on
+the other.
+
+The mailbox closes that gap. Each device leaves its changes there, and the others collect them the
+next time they are unlocked, whether or not anything else is online.
+
+## A mailbox, not a cloud
+
+The mailbox holds changes in transit and nothing else. Each change is encrypted on your device
+before it is sent, and the mailbox deletes it as soon as every one of your devices has collected
+it. If one of them never comes back, its share goes after a year. Your vault itself stays on your
+devices, the way it always has.
+
+The mailbox cannot read what it holds. It knows your devices only by the keys they sign with, never
+by name, and it never sees your master password or your vault key. What it does see is when your
+devices check in and how much they store. Files you attach travel the same way, encrypted.
+
+Direct sync carries on beside it. Devices that are online together still talk to each other
+straight away; the mailbox is for the times they are not.
+
+## Bramble's mailbox, or your own
+
+Bramble runs a mailbox you can use for $2 a month, sold 6 to 36 months at a time. Each account
+holds up to 1 GB at once, which is far more than sync normally needs, since everything is deleted
+as soon as it is delivered.
+
+Or run your own. The mailbox server is open source, under the AGPL, and runs on Node with
+everything it stores in one folder. Point Bramble at it under **Settings → Sync → Mailbox →
+Advanced**, and it costs nothing.
+
+Sync between your devices stays free, as it always has. The mailbox costs money because storing and
+serving other people's data does, and charging for it keeps that cost off everyone who never uses
+it.
+
+## An account with nothing to leak
+
+A Bramble Mailbox account is a 25-digit number. There is no email address, no name and no
+password. You create one on [bramble.sh/account](https://bramble.sh/account), add time, and enter
+the number in Bramble.
+
+Payments go through Stripe, and they are kept apart from the account on purpose. Stripe never sees
+your account number. Bramble keeps a link between a payment and an account for 120 days, long
+enough to handle a refund or a dispute, and then deletes it. Our own records of sales keep the
+date, country, amount and tax, and no account.
+
+Purchases can be refunded within 14 days, less the days since you bought them. You can delete the
+account from the same page at any time.
+
+The iPhone and iPad app doesn't sell time. Buy it on the website, then sign in with the number in
+the app.
+
+## When the time runs out
+
+Nothing is lost. From 14 days before the end, Bramble says so on the vault list, with a way to buy
+more or to stop using the mailbox. Once the time ends, your devices still collect whatever is
+waiting for them. They just stop leaving new changes there, and go back to syncing when they are
+online together.
+
+## Getting started
+
+The mailbox needs a vault that already syncs between two or more devices. Then open **Settings →
+Sync**, and under **Mailbox** enter your account number, or your own server's address under
+**Advanced**. Your other devices pick it up on their own.
+
+The help center has the details, including what each status means:
+[Sync devices that are never on at the same time](/docs/sync-through-the-mailbox).

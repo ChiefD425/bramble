@@ -1,0 +1,102 @@
+---
+title: Sync devices that are never on at the same time
+description: The mailbox holds your encrypted changes until your other devices collect them, so a phone and a laptop that are never online together still sync.
+section: sync
+kind: guide
+order: 3
+keywords:
+  - mailbox
+  - Bramble Mailbox
+  - offline sync
+  - not online at the same time
+  - never on together
+  - account number
+  - buy time
+  - add time
+  - price
+  - subscription
+  - refund
+  - server
+  - self-host mailbox
+  - own server
+  - Mailbox server
+  - The mailbox is full
+  - The mailbox only delivers right now
+  - The mailbox doesn't recognize this account number
+  - Connect a device to enable the mailbox.
+  - Mailbox time ends
+updatedDate: 2026-11-24
+since: "605dc73e"
+---
+
+Your devices sync directly with each other, so a change travels only while two of them are unlocked and online together. The mailbox removes that wait: each device leaves its changes in the mailbox, and the others collect them whenever they're next unlocked.
+
+The mailbox can't read anything it holds. Each change is encrypted on your device before it's sent, and the mailbox deletes it once every device has it. Your vault stays on your devices.
+
+You can use Bramble's mailbox, which costs $2 a month, or run your own server for free.
+
+## Before you start
+
+The mailbox works for a vault that already syncs between devices. On a device that isn't paired with any other yet, the Mailbox card says **Connect a device to enable the mailbox.** [Add a device](/docs/add-a-device) first.
+
+## Use Bramble's mailbox
+
+1. Get an account number at [bramble.sh/account](https://bramble.sh/account): choose **Create an account**, then add time. Save the number somewhere safe. It's the only way into the account, and it can't be recovered.
+2. In Bramble, open **Settings**, then **Sync**.
+3. Under **Mailbox**, enter the number in **Account number** and choose **Sign in**.
+
+Your other devices pick up the mailbox and the number on their own the next time they sync with that one. A device that shows the sign-in anyway can choose **My other devices already use it**.
+
+An account number is 25 digits. There's no email, name or password: the number is the account. Time is $2 a month, sold 6 to 36 months at a time, and each account can hold 1 GB at once across all your devices. The prices are in US dollars, and tax is added at checkout where it applies.
+
+The iPhone and iPad app doesn't sell time. Buy it at [bramble.sh/account](https://bramble.sh/account) in a browser, then sign in with the number in the app.
+
+## See how it's doing
+
+The Mailbox card in **Settings → Sync** shows what the last round did, your paid time and how much of your storage is in use. Rounds run when you unlock, shortly after a change, every few minutes while Bramble is unlocked, and when you choose **Sync now**.
+
+| The card says | What it means |
+| --- | --- |
+| Synced through the mailbox | The last round worked. |
+| Waiting for another device to add this one | This device hasn't been let into the mailbox yet. Unlock one of your other devices. |
+| Can't reach the mailbox; trying again soon | No connection to the mailbox. It tries again on its own. |
+| The mailbox only delivers right now | The paid time has ended. Your devices still collect what's waiting, but can't leave new changes. |
+| The mailbox is full | The account holds 1 GB already. It frees up as your other devices collect what's waiting. |
+| The mailbox doesn't recognize this account number | Check the number under **Change account number**. |
+
+In **Settings → Sync**, each device in the list also says when it last checked the mailbox.
+
+## When your paid time runs out
+
+From 14 days before your time ends, the vault list shows **Mailbox time ends** with the date. Choose **Buy more time**, or close it: it comes back once 3 days before the end. Once the time has ended it stays until you buy time or stop using the mailbox.
+
+After that, nothing waiting in the mailbox is deleted early, and your devices keep collecting it. They just can't leave new changes there, so they go back to syncing only when they're online together.
+
+To add time, choose **Add time** on the Mailbox card or **Buy more time** on the vault list. On iPhone and iPad, buy it at [bramble.sh/account](https://bramble.sh/account).
+
+## Refunds and deleting your account
+
+Purchases can be refunded for 14 days, less the days since you bought them, on [bramble.sh/account](https://bramble.sh/account). The time refunded comes off the account.
+
+To delete the account, choose **Delete account** on the same page. Paid time is lost and it can't be undone. Your vault isn't affected.
+
+## Turn it off
+
+- **On one device:** turn off **Use the mailbox on this device**. Your other devices keep using it, and this one syncs only when it's online with them. Turn it back on and it catches up with what it missed.
+- **On every device:** choose **Stop using the mailbox**, then **Stop**. Your account and its time stay, and you can sign in again later.
+
+## Use your own server
+
+You can run the mailbox server yourself: it's open source, and the instructions are in its [README on GitHub](https://github.com/bramble-sh/bramble/tree/main/services/mailbox). Then:
+
+1. Open **Settings → Sync**, and under **Mailbox** choose **Advanced**.
+2. Enter your server's address in **Mailbox server**, and your token in **Access token (only for your own server)** if you set one.
+3. Choose **Use this server**.
+
+Your own server has no accounts and no time limit.
+
+## What the mailbox can see
+
+It stores encrypted changes and files for a group of devices it knows only by their signing keys. It can't read them or tell which vault they belong to, and it never sees your master password or your vault key. It sees when your devices connect and how much they store. Changes are deleted once every device has them, and after a year at most.
+
+Payments go through Stripe. Stripe never sees your account number, and Bramble keeps no link between a payment and an account after 120 days. See the [privacy policy](/privacy).
