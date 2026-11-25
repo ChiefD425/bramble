@@ -476,6 +476,10 @@ msgstr "Add custom fields to store additional information like security question
 msgid "Add field"
 msgstr "Add field"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add it for me"
+msgstr "Add it for me"
+
 #: packages/core/src/app/components/AddDropdown.tsx
 msgid "Add New"
 msgstr "Add New"
@@ -496,6 +500,10 @@ msgstr "Add the desktop's vault"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "Add the websites this login covers. Leave empty for a credential not tied to a site."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add this line to the top of ~/.ssh/config"
+msgstr "Add this line to the top of ~/.ssh/config"
 
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Add time"
@@ -521,6 +529,10 @@ msgstr "Added {added}"
 #: packages/core/src/app/entry-modes/tags.tsx
 msgid "Added tag {added}. {0} tags."
 msgstr "Added tag {added}. {0} tags."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Added to ~/.ssh/config"
+msgstr "Added to ~/.ssh/config"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Added when you create a passkey on a site with Bramble. Remove to delete."
@@ -681,6 +693,10 @@ msgstr "Archived items"
 #: packages/core/src/app/bulk-actions/archive.tsx
 msgid "Archiving…"
 msgstr "Archiving…"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Ask before each use"
+msgstr "Ask before each use"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Ask for {brand} as soon as the unlock screen appears, with no tap."
@@ -858,6 +874,14 @@ msgstr "Book"
 msgid "Bramble {version} is available. Updating downloads it and restarts the app. Your vault is not touched."
 msgstr "Bramble {version} is available. Updating downloads it and restarts the app. Your vault is not touched."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble asks every time a key is used, even while unlocked."
+msgstr "Bramble asks every time a key is used, even while unlocked."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble can't read it"
+msgstr "Bramble can't read it"
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
@@ -881,6 +905,10 @@ msgstr "Bramble couldn't safely update this device's key storage, so the vault s
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Bramble Desktop holds your Touch ID key, so the master password stays on."
 #~ msgstr "Bramble Desktop holds your Touch ID key, so the master password stays on."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble doesn't support its size or settings"
+msgstr "Bramble doesn't support its size or settings"
 
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Bramble hit an unexpected error. Your vault is safe — it stays encrypted on this device. Try reloading; if it keeps happening, reopen the app."
@@ -993,6 +1021,12 @@ msgstr "Can't reach the mailbox; trying again soon"
 #: packages/core/src/app/screens/TotpSetup/TotpSetup.tsx
 msgid "Can't save this code"
 msgstr "Can't save this code"
+
+#. placeholder {0}: k.name
+#. placeholder {1}: problem[k.reason]
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Can't use {0}: {1}"
+msgstr "Can't use {0}: {1}"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 #: packages/core/src/app/components/ui/confirm-dialog.tsx
@@ -1431,6 +1465,10 @@ msgstr "Copy log"
 msgid "Copy previous password"
 msgstr "Copy previous password"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy SSH config line"
+msgstr "Copy SSH config line"
+
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "Copy them anyway"
 msgstr "Copy them anyway"
@@ -1814,6 +1852,10 @@ msgstr "Downloading…"
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Downloads and restarts Bramble. Your vault is untouched."
 msgstr "Downloads and restarts Bramble. Your vault is untouched."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "DSA keys aren't supported"
+msgstr "DSA keys aren't supported"
 
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 #~ msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click \"Generate Private Duck Address\", and copy the token after \"authorization: Bearer\" in the Network tab."
@@ -2433,6 +2475,10 @@ msgstr "It holds a passkey the version shown doesn't."
 #~ msgid "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 #~ msgstr "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "it's in an old encrypted format"
+msgstr "it's in an old encrypted format"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "item"
 msgstr "item"
@@ -2461,6 +2507,10 @@ msgstr "Its credentials were entered in another vault, so this one cannot open t
 #: packages/core/src/app/screens/EntryDetail/ConflictBanner.tsx
 msgid "Its password is different from the version shown."
 msgstr "Its password is different from the version shown."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "its private key is on a security key"
+msgstr "its private key is on a security key"
 
 #: packages/core/src/app/screens/VaultSetup/components/ModeTabs.tsx
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
@@ -2606,6 +2656,12 @@ msgstr "Leave unset for your account's default domain, or pick one of your own."
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Leave unset to use your provider account's own default."
 msgstr "Leave unset to use your provider account's own default."
+
+#. placeholder {0}: l.host
+#. placeholder {1}: l.name
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Left out {0} on {1}: not a host name"
+msgstr "Left out {0} on {1}: not a host name"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Length"
@@ -2796,6 +2852,10 @@ msgstr "Moon"
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "More options"
 msgstr "More options"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Move this line to the top of ~/.ssh/config"
+msgstr "Move this line to the top of ~/.ssh/config"
 
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 msgid "Moves {browserName}'s entries and files into {desktopName}. Exact duplicates are skipped; near-duplicates are held for you to review."
@@ -3049,6 +3109,10 @@ msgstr "Off. You unlock by tapping a key."
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Off. You unlock with a security key."
 #~ msgstr "Off. You unlock with a security key."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Offer keys only to their hosts"
+msgstr "Offer keys only to their hosts"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3471,6 +3535,10 @@ msgstr "Rate Bramble"
 #: packages/core/src/app/screens/VaultSetup/components/PasswordCard.tsx
 msgid "Re-enter the password"
 msgstr "Re-enter the password"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."
+msgstr "Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."
 
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Read more"
@@ -3968,6 +4036,10 @@ msgstr "Server URL"
 #~ msgid "Server URL (self-hosted only)"
 #~ msgstr "Server URL (self-hosted only)"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on any key see none of your keys."
+msgstr "Servers not named on any key see none of your keys."
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
 msgstr "Set by a policy or another extension"
@@ -3975,6 +4047,7 @@ msgstr "Set by a policy or another extension"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Set password"
 msgstr "Set password"
+
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Set up {brand} on this device to use this."
@@ -4146,6 +4219,14 @@ msgstr "Space"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Spanner"
 msgstr "Spanner"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "SSH agent"
+msgstr "SSH agent"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "ssh and git sign with the keys in your vaults. Their public keys, names and hosts are stored outside your vaults while this is on."
+msgstr "ssh and git sign with the keys in your vaults. Their public keys, names and hosts are stored outside your vaults while this is on."
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "SSH key"
@@ -4511,9 +4592,17 @@ msgstr "The only new things in this file are attachments, which this browser can
 msgid "The other version"
 msgstr "The other version"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "the saved passphrase doesn't open it"
+msgstr "the saved passphrase doesn't open it"
+
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."
 msgstr "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The SSH agent couldn't start. Restart Bramble to try again."
+msgstr "The SSH agent couldn't start. Restart Bramble to try again."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "The vault locked, so the attachments read from that file were cleared. Open it again to import them."
@@ -4843,6 +4932,10 @@ msgstr "Toggle offer to save logins"
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Toggle passcode fallback"
 msgstr "Toggle passcode fallback"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Toggle SSH agent"
+msgstr "Toggle SSH agent"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
@@ -5230,6 +5323,10 @@ msgstr "Use your master password instead"
 msgid "Use your recovery code instead"
 msgstr "Use your recovery code instead"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use your SSH keys in the terminal"
+msgstr "Use your SSH keys in the terminal"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "username"
 msgstr "username"
@@ -5503,6 +5600,10 @@ msgstr "Your devices sync only when they're online together."
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "Your domain"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Your home folder's path is too long for the agent's socket."
+msgstr "Your home folder's path is too long for the agent's socket."
 
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
 msgid "Your new recovery code"

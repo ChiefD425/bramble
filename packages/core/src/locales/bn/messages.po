@@ -472,6 +472,10 @@ msgstr "বাড়তি তথ্য রাখতে কাস্টম ফ�
 msgid "Add field"
 msgstr "ফিল্ড যোগ করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add it for me"
+msgstr "আমার জন্য এটি যোগ করুন"
+
 #: packages/core/src/app/components/AddDropdown.tsx
 msgid "Add New"
 msgstr "নতুন যোগ করুন"
@@ -492,6 +496,10 @@ msgstr "ডেস্কটপের ভল্ট যোগ করুন"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "এই লগইন কোন কোন ওয়েবসাইটের জন্য, সেগুলো যোগ করুন। কোনো সাইটের সাথে যুক্ত নয় এমন লগইনের জন্য ফাঁকা রাখুন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add this line to the top of ~/.ssh/config"
+msgstr "এই লাইনটি ~/.ssh/config-এর শুরুতে যোগ করুন"
 
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Add time"
@@ -517,6 +525,10 @@ msgstr "{added} যোগ করা হয়েছে"
 #: packages/core/src/app/entry-modes/tags.tsx
 msgid "Added tag {added}. {0} tags."
 msgstr "{added} ট্যাগ যোগ হয়েছে। মোট {0}টি ট্যাগ।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Added to ~/.ssh/config"
+msgstr "~/.ssh/config-এ যোগ করা হয়েছে"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Added when you create a passkey on a site with Bramble. Remove to delete."
@@ -677,6 +689,10 @@ msgstr "আর্কাইভ করা আইটেম"
 #: packages/core/src/app/bulk-actions/archive.tsx
 msgid "Archiving…"
 msgstr "আর্কাইভ করা হচ্ছে…"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Ask before each use"
+msgstr "প্রতিটি ব্যবহারের আগে জিজ্ঞাসা করুন"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Ask for {brand} as soon as the unlock screen appears, with no tap."
@@ -854,6 +870,14 @@ msgstr "বই"
 msgid "Bramble {version} is available. Updating downloads it and restarts the app. Your vault is not touched."
 msgstr "Bramble {version} এসেছে। আপডেট করলে এটি ডাউনলোড হবে এবং অ্যাপ আবার চালু হবে। আপনার ভল্টে কোনো পরিবর্তন হবে না।"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble asks every time a key is used, even while unlocked."
+msgstr "Bramble প্রতিবার একটি কী ব্যবহারের সময় জিজ্ঞাসা করে, এমনকি আনলক অবস্থায়ও।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble can't read it"
+msgstr "Bramble এটি পড়তে পারে না"
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
@@ -869,6 +893,10 @@ msgstr "Bramble এই মুহূর্তে এই ভল্ট খুলত
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "Bramble এই ডিভাইসের কি স্টোরেজ নিরাপদে আপডেট করতে পারেনি, তাই ভল্ট লক অবস্থাতেই আছে। আবার চেষ্টা করুন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble doesn't support its size or settings"
+msgstr "Bramble এটির আকার বা সেটিংস সমর্থন করে না"
 
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Bramble hit an unexpected error. Your vault is safe — it stays encrypted on this device. Try reloading; if it keeps happening, reopen the app."
@@ -981,6 +1009,12 @@ msgstr "মেইলবক্সে পৌঁছানো যাচ্ছে ন
 #: packages/core/src/app/screens/TotpSetup/TotpSetup.tsx
 msgid "Can't save this code"
 msgstr "এই কোড সেভ করা যাচ্ছে না"
+
+#. placeholder {0}: k.name
+#. placeholder {1}: problem[k.reason]
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Can't use {0}: {1}"
+msgstr "{0} ব্যবহার করা যাবে না: {1}"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 #: packages/core/src/app/components/ui/confirm-dialog.tsx
@@ -1419,6 +1453,10 @@ msgstr "লগ কপি করুন"
 msgid "Copy previous password"
 msgstr "আগের পাসওয়ার্ড কপি করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy SSH config line"
+msgstr "SSH কনফিগ লাইন কপি করুন"
+
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "Copy them anyway"
 msgstr "তবুও কপি করুন"
@@ -1802,6 +1840,10 @@ msgstr "ডাউনলোড হচ্ছে…"
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Downloads and restarts Bramble. Your vault is untouched."
 msgstr "আপডেট ডাউনলোড করে Bramble আবার চালু হবে। আপনার ভল্টে কোনো পরিবর্তন হবে না।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "DSA keys aren't supported"
+msgstr "DSA কী সমর্থিত নয়"
 
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 #~ msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click \"Generate Private Duck Address\", and copy the token after \"authorization: Bearer\" in the Network tab."
@@ -2421,6 +2463,10 @@ msgstr "এতে একটি পাসকি আছে যা দেখান�
 #~ msgid "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 #~ msgstr "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "it's in an old encrypted format"
+msgstr "এটি পুরোনো এনক্রিপ্টেড ফর্ম্যাটে আছে"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "item"
 msgstr "আইটেম"
@@ -2449,6 +2495,10 @@ msgstr "এর লগইন তথ্য অন্য একটি ভল্ট�
 #: packages/core/src/app/screens/EntryDetail/ConflictBanner.tsx
 msgid "Its password is different from the version shown."
 msgstr "এর পাসওয়ার্ড দেখানো ভার্সন থেকে আলাদা।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "its private key is on a security key"
+msgstr "এর প্রাইভেট কী একটি সিকিউরিটি কী-তে আছে"
 
 #: packages/core/src/app/screens/VaultSetup/components/ModeTabs.tsx
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
@@ -2594,6 +2644,12 @@ msgstr "আপনার অ্যাকাউন্টের ডিফল্ট 
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Leave unset to use your provider account's own default."
 msgstr "আপনার প্রোভাইডার অ্যাকাউন্টের নিজস্ব ডিফল্ট ব্যবহার করতে খালি রাখুন।"
+
+#. placeholder {0}: l.host
+#. placeholder {1}: l.name
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Left out {0} on {1}: not a host name"
+msgstr "{0} বাদ দেওয়া হয়েছে {1}-এ: হোস্ট নাম নয়"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Length"
@@ -2780,6 +2836,10 @@ msgstr "চাঁদ"
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "More options"
 msgstr "আরও অপশন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Move this line to the top of ~/.ssh/config"
+msgstr "এই লাইনটি ~/.ssh/config-এর শুরুতে সরান"
 
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 msgid "Moves {browserName}'s entries and files into {desktopName}. Exact duplicates are skipped; near-duplicates are held for you to review."
@@ -3033,6 +3093,10 @@ msgstr "বন্ধ। আপনি সিকিউরিটি কি-তে �
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Off. You unlock with a security key."
 #~ msgstr "Off. You unlock with a security key."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Offer keys only to their hosts"
+msgstr "কীগুলো কেবল তাদের হোস্টে অফার করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3455,6 +3519,10 @@ msgstr "Bramble-কে রেটিং দিন"
 #: packages/core/src/app/screens/VaultSetup/components/PasswordCard.tsx
 msgid "Re-enter the password"
 msgstr "পাসওয়ার্ডটি আবার দিন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."
+msgstr "ssh-keygen -p -f <file> ব্যবহার করে কীটি OpenSSH ফর্ম্যাটে পুনরায় সংরক্ষণ করুন।"
 
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Read more"
@@ -3944,6 +4012,10 @@ msgstr "সার্ভার URL"
 #~ msgid "Server URL (self-hosted only)"
 #~ msgstr "Server URL (self-hosted only)"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on any key see none of your keys."
+msgstr "কোনো কী-তে নাম নেই এমন সার্ভারগুলো আপনার কোনো কী দেখতে পায় না।"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
 msgstr "কোনো পলিসি বা অন্য এক্সটেনশন দিয়ে সেট করা"
@@ -3951,6 +4023,7 @@ msgstr "কোনো পলিসি বা অন্য এক্সটেন�
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Set password"
 msgstr "পাসওয়ার্ড সেট করুন"
+
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Set up {brand} on this device to use this."
@@ -4122,6 +4195,14 @@ msgstr "স্পেস"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Spanner"
 msgstr "স্প্যানার"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "SSH agent"
+msgstr "SSH এজেন্ট"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "ssh and git sign with the keys in your vaults. Their public keys, names and hosts are stored outside your vaults while this is on."
+msgstr "ssh এবং git আপনার ভল্টের কী দিয়ে সাইন করে। এটি চালু থাকলে তাদের পাবলিক কী, নাম এবং হোস্ট আপনার ভল্টের বাইরে সংরক্ষণ করা হয়।"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "SSH key"
@@ -4483,9 +4564,17 @@ msgstr "এই ফাইলে নতুন বলতে শুধু সংয�
 msgid "The other version"
 msgstr "অন্য ভার্সনটি"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "the saved passphrase doesn't open it"
+msgstr "সংরক্ষিত পাসফ্রেজ দিয়ে এটি খোলে না"
+
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."
 msgstr "যে সিগন্যালিং রিলে ডিভাইসগুলোর পরিচয় করিয়ে দেয়। ডিফল্ট হিসেবে হোস্টেড রিলে ব্যবহার হয়; চাইলে আপনার নিজের বা যেকোনো পাবলিক Nostr রিলে দিতে পারেন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The SSH agent couldn't start. Restart Bramble to try again."
+msgstr "SSH এজেন্ট চালু করা যায়নি। আবার চেষ্টা করতে Bramble পুনরায় চালু করুন।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "The vault locked, so the attachments read from that file were cleared. Open it again to import them."
@@ -4815,6 +4904,10 @@ msgstr "লগইন সেভ করার প্রস্তাব চাল�
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Toggle passcode fallback"
 msgstr "বিকল্প হিসেবে পাসকোড চালু বা বন্ধ করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Toggle SSH agent"
+msgstr "SSH এজেন্ট টগল করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
@@ -5194,6 +5287,10 @@ msgstr "এর বদলে আপনার মাস্টার পাসও�
 msgid "Use your recovery code instead"
 msgstr "এর বদলে আপনার রিকভারি কোড ব্যবহার করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use your SSH keys in the terminal"
+msgstr "টার্মিনালে আপনার SSH কী ব্যবহার করুন"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "username"
 msgstr "ইউজারনেম"
@@ -5467,6 +5564,10 @@ msgstr "আপনার ডিভাইসগুলি কেবল তখনই
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "আপনার ডোমেইন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Your home folder's path is too long for the agent's socket."
+msgstr "আপনার হোম ফোল্ডারের পাথ এজেন্টের সকেটের জন্য খুব দীর্ঘ।"
 
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
 msgid "Your new recovery code"

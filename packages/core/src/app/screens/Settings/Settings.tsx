@@ -23,6 +23,7 @@ import { DesktopLinkSection } from "./components/DesktopLinkSection";
 import { GeneralSection } from "./components/GeneralSection";
 import { RotateSecretSection } from "./components/RotateSecretSection";
 import { SecuritySection } from "./components/SecuritySection";
+import { SshAgentSection } from "./components/SshAgentSection";
 import { SupportSection } from "./components/SupportSection";
 import { SyncConnectSection } from "./components/SyncConnectSection";
 import { UpdatesSection } from "./components/UpdatesSection";
@@ -83,6 +84,8 @@ export function Settings() {
 				{tab === "general" && (
 					<>
 						<GeneralSection />
+						{/* Renders itself away off the desktop. */}
+						<SshAgentSection />
 						<AppearanceSection />
 						<DeleteVaultSection />
 					</>
