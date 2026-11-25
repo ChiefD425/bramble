@@ -29,7 +29,6 @@ import {
 } from "../sync";
 import { base64ToBytes } from "../util/bytes";
 import type { EncryptedEntry, VaultBlob } from "../vault-format";
-import { toAutofillIndex } from "./autofill-index";
 import { foldCarriedCopy, type MatchedCopy } from "./combine-into";
 import { createEntriesBlobStore } from "./entries-blob";
 import { entryDataSchema, normalizeEntryData } from "./entry-normalize";
@@ -40,6 +39,7 @@ import {
 	withPasswordChangelog,
 	withSupersededPasswords,
 } from "./password-changelog";
+import { publishToPlatform } from "./publish-index";
 import { normalizeTags, tagKey, tagsEqual } from "./tags";
 import { withVaultWriteLock } from "./write-lock";
 
@@ -117,7 +117,7 @@ export interface EntryMutationsDeps {
 		"encryptEntry" | "encryptWithVek" | "decryptWithVek" | "decryptEntries" | "notifyExternalChange"
 	>;
 	storage: Pick<StorageAdapter, "writeVaultBlob">;
-	autofill: Pick<AutofillAdapter, "beginIndexUpdate" | "setIndex">;
+	autofill: Pick<AutofillAdapter, "beginIndexUpdate" | "setIndex" | "setSshKeys">;
 	readDecodedBlob: () => Promise<{ blob: VaultBlob }>;
 	/** Lazily resolves this device's HLC; mutations stamp new writes from it. */
 	clock: () => Promise<HybridClock>;
@@ -482,7 +482,7 @@ export function createEntryMutations(deps: EntryMutationsDeps): EntryMutations {
 			});
 			// It's on disk now, whatever the index does.
 			crypto.notifyExternalChange?.();
-			await autofill.setIndex(toAutofillIndex(state.entries), indexLease);
+			await publishToPlatform(autofill, state.entries, indexLease);
 			// Last, so the read this asks for comes after the caller has committed.
 			if (!unmoved && next.diskSeen !== undefined) onDiskMerged?.();
 			return next.diskSeen === undefined ? state : { ...state, diskSeen: written };

@@ -108,6 +108,26 @@ describe("desktopAutofill", () => {
 	});
 
 	// A copy of any vault the picker no longer lists is pruned when the next copy is written.
+	it("setSshKeys sends the vault's keys, name and listed vaults", async () => {
+		const keys = [{ id: "k", name: "Deploy", privateKey: "PK", hosts: ["github.com"] }];
+		await personal().setSshKeys?.(keys);
+		expect(invoke).toHaveBeenCalledWith("ssh_agent_set_keys", {
+			vaultId: "v1",
+			vaultName: "Personal",
+			listedVaultIds: ["v0", "v1"],
+			keys,
+		});
+	});
+
+	it("the unscoped adapter has no setSshKeys", () => {
+		expect(desktopAutofill.setSshKeys).toBeUndefined();
+	});
+
+	it("clearing a vault's provider data forgets its SSH keys", async () => {
+		await personal().clearProviderData?.();
+		expect(invoke).toHaveBeenCalledWith("ssh_agent_forget_vault", { vaultId: "v1" });
+	});
+
 	it("tells the copy which vaults the picker lists", async () => {
 		onMac(true);
 		meta.set(VAULT_REGISTRY_KEY, {
