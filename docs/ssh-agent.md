@@ -56,19 +56,14 @@
   `Hostname` becomes the key's host when it is one, and stays a custom field when it isn't.
   "Use with the SSH agent" is a setting rather than content, so only `.bramble` keeps it.
 
-### Older apps must keep fields they don't know
+### Older apps keep the new fields
 
-An edit today saves only what the form knows: `EntryEditRoute` passes the form's data and the
-vault writes `{ id, ...valid }`. An app from before this change that renames an SSH key would drop
-its hosts, and sync would carry the removal to every device. So:
-
-1. **First**, an edit keeps every field of the version it replaces that the form didn't mention
-   at all. A form that clears a field still clears it, because every entry mode's `toEntry` names
-   each field it owns, `undefined` when empty. This ships on every target before step 2.
-2. **Then** the two fields appear, behind the `sshKeyFields` flag in `flags.json`, flipped once
-   step 1 has shipped on the extension, iOS, Android and the desktop.
-
-Step 1 protects every future field, not only these two.
+An app that doesn't know `hosts` keeps it when it edits an SSH key. Since 7797ce90 (2026-10-24,
+shipped on every target) the edit form saves the opened version with the form's fields laid over
+it, and the other callers that update an entry pass the whole entry. A field is only cleared when
+a form names it, so every entry mode's `toEntry` names each field it owns, `undefined` when empty;
+a test checks every mode for that. Only a build older than that commit, still in use, would drop
+the hosts on an edit.
 
 ## Setting it up
 
