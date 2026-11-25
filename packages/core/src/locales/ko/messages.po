@@ -823,6 +823,10 @@ msgstr "Bramble은 잠금 해제 상태에서도 키를 사용할 때마다 확�
 msgid "Bramble can't read it"
 msgstr "Bramble이 읽을 수 없습니다."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't change ~/.ssh/config. Add the line yourself."
+msgstr "Bramble이 ~/.ssh/config을 변경하지 못했습니다. 해당 줄을 직접 추가하십시오."
+
 #: packages/core/src/app/components/CryptoErrorText.tsx
 msgid "Bramble couldn't open this vault right now. Please report this error in <0>our issue tracker</0>."
 msgstr "Bramble이 지금 이 보관함을 열 수 없습니다. <0>이슈 트래커</0>에 이 오류를 보고해 주세요."
@@ -834,6 +838,10 @@ msgstr "Bramble이 지금 이 보관함을 열 수 없습니다. 이슈 트래�
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "Bramble이 이 기기의 키 저장소를 안전하게 업데이트하지 못해 보관함이 잠긴 상태로 유지되었습니다. 다시 시도하세요."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't write its files in ~/.ssh/bramble."
+msgstr "Bramble이 ~/.ssh/bramble에 파일을 쓰지 못했습니다."
 
 #: packages/core/src/hooks/useVault.tsx
 #~ msgid "Bramble Desktop didn't answer. Open it and try again, or use your master password."
@@ -4271,6 +4279,10 @@ msgstr "다른 버전"
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "the saved passphrase doesn't open it"
 msgstr "저장된 암호로 열 수 없습니다."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The setting didn't change. Try again."
+msgstr "설정이 변경되지 않았습니다. 다시 시도하십시오."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."

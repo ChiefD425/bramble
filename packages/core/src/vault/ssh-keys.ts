@@ -33,6 +33,6 @@ export function toSshKeys(entries: Entry[]): SshKeyForAgent[] {
 			name: e.name,
 			privateKey: e.privateKey,
 			...(e.passphrase ? { passphrase: e.passphrase } : {}),
-			hosts: e.hosts ?? [],
+			hosts: Array.isArray(e.hosts) ? e.hosts.filter((h) => typeof h === "string") : [],
 		}));
 }

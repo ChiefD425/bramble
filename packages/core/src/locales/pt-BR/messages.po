@@ -915,6 +915,10 @@ msgstr "O Bramble pergunta sempre que uma chave é usada, mesmo quando desbloque
 msgid "Bramble can't read it"
 msgstr "O Bramble não pode lê-la"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't change ~/.ssh/config. Add the line yourself."
+msgstr "O Bramble não conseguiu alterar ~/.ssh/config. Adicione a linha manualmente."
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "O Bramble não conseguiu abrir este cofre no momento. Nada nele foi alterado. Tente novamente."
@@ -930,6 +934,10 @@ msgstr "O Bramble não conseguiu abrir este cofre agora. Informe este erro no no
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "O Bramble não conseguiu atualizar com segurança o armazenamento de chaves deste dispositivo, por isso o cofre permaneceu bloqueado. Tente novamente."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't write its files in ~/.ssh/bramble."
+msgstr "O Bramble não conseguiu gravar os próprios arquivos em ~/.ssh/bramble."
 
 #: packages/core/src/hooks/useVault.tsx
 #~ msgid "Bramble Desktop didn't answer. Open it and try again, or use your master password."
@@ -4624,6 +4632,10 @@ msgstr "A outra versão"
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "the saved passphrase doesn't open it"
 msgstr "a frase secreta salva não a abre"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The setting didn't change. Try again."
+msgstr "A configuração não foi alterada. Tente novamente."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."

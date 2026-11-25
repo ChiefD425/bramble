@@ -915,6 +915,10 @@ msgstr "Bramble fragt bei jeder Verwendung eines Schlüssels, auch wenn die App 
 msgid "Bramble can't read it"
 msgstr "Bramble kann es nicht lesen"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't change ~/.ssh/config. Add the line yourself."
+msgstr "Bramble konnte ~/.ssh/config nicht ändern. Fügen Sie die Zeile selbst hinzu."
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "Bramble konnte diesen Tresor gerade nicht öffnen. Es wurde nichts darin geändert. Bitte versuchen Sie es erneut."
@@ -930,6 +934,10 @@ msgstr "Bramble konnte diesen Tresor gerade nicht öffnen. Bitte melden Sie dies
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "Bramble konnte den Schlüsselspeicher dieses Geräts nicht sicher aktualisieren, daher blieb der Tresor gesperrt. Versuchen Sie es erneut."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't write its files in ~/.ssh/bramble."
+msgstr "Bramble konnte seine Dateien nicht in ~/.ssh/bramble schreiben."
 
 #: packages/core/src/hooks/useVault.tsx
 #~ msgid "Bramble Desktop didn't answer. Open it and try again, or use your master password."
@@ -4624,6 +4632,10 @@ msgstr "Die andere Version"
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "the saved passphrase doesn't open it"
 msgstr "die gespeicherte Passphrase öffnet ihn nicht"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The setting didn't change. Try again."
+msgstr "Die Einstellung hat sich nicht geändert. Versuchen Sie es erneut."
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."

@@ -16,6 +16,7 @@ export function SshAgentSection() {
 	const { t } = useLingui();
 	const [status, setStatus] = useState<SshAgentStatus | null>(null);
 	const [copied, setCopied] = useState(false);
+	const [failed, setFailed] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!sshAgent) return;
@@ -31,10 +32,27 @@ export function SshAgentSection() {
 	if (!sshAgent || !status) return null;
 
 	const set = async (patch: Parameters<typeof sshAgent.set>[0]) => {
-		const next = await sshAgent.set(patch);
-		setStatus(next);
-		// Switched on while unlocked: the open vault's keys go to the agent now, not on the next save.
-		if (patch.enabled) await refreshAutofillIndex();
+		setFailed(null);
+		try {
+			setStatus(await sshAgent.set(patch));
+			// Switched on while unlocked: the open vault's keys go to the agent now, not on the next
+			// save, and the keys it can't use show straight away.
+			if (patch.enabled) {
+				await refreshAutofillIndex();
+				setStatus(await sshAgent.status());
+			}
+		} catch {
+			setFailed(t`The setting didn't change. Try again.`);
+		}
+	};
+
+	const addLine = async () => {
+		setFailed(null);
+		try {
+			setStatus(await sshAgent.addIncludeLine());
+		} catch {
+			setFailed(t`Bramble couldn't change ~/.ssh/config. Add the line yourself.`);
+		}
 	};
 
 	const copyLine = async () => {
@@ -94,11 +112,7 @@ export function SshAgentSection() {
 							</Button>
 						</div>
 						{status.canAddLine && status.setup !== "set-up" && (
-							<Button
-								variant="secondary"
-								size="sm"
-								onClick={() => void sshAgent.addIncludeLine().then(setStatus)}
-							>
+							<Button variant="secondary" size="sm" onClick={() => void addLine()}>
 								{t`Add it for me`}
 							</Button>
 						)}
@@ -106,11 +120,16 @@ export function SshAgentSection() {
 
 					{status.error && (
 						<p className="text-xs text-destructive">
-							{status.error === "path-too-long"
-								? t`Your home folder's path is too long for the agent's socket.`
-								: t`The SSH agent couldn't start. Restart Bramble to try again.`}
+							{
+								{
+									"path-too-long": t`Your home folder's path is too long for the agent's socket.`,
+									"bind-failed": t`The SSH agent couldn't start. Restart Bramble to try again.`,
+									"config-failed": t`Bramble couldn't write its files in ~/.ssh/bramble.`,
+								}[status.error]
+							}
 						</p>
 					)}
+					{failed && <p className="text-xs text-destructive">{failed}</p>}
 
 					<Row
 						icon={<ShieldQuestion className="w-4 h-4 text-primary" />}

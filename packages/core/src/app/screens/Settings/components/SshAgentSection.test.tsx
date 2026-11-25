@@ -7,13 +7,14 @@ import type { SshAgentAdapter, SshAgentStatus } from "../../../../adapters/ssh-a
 import { type Platform, PlatformProvider } from "../../../../context/PlatformContext";
 import { SshAgentSection } from "./SshAgentSection";
 
-const h = vi.hoisted(() => ({ calls: [] as string[] }));
+const h = vi.hoisted(() => ({ calls: [] as string[], onRefresh: null as null | (() => void) }));
 
 vi.mock("../../../../hooks/useVault", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../../../../hooks/useVault")>()),
 	useVaultActions: () => ({
 		refreshAutofillIndex: async () => {
 			h.calls.push("refresh");
+			h.onRefresh?.();
 		},
 	}),
 }));
@@ -21,6 +22,7 @@ vi.mock("../../../../hooks/useVault", async (importOriginal) => ({
 afterEach(() => {
 	cleanup();
 	h.calls = [];
+	h.onRefresh = null;
 });
 
 beforeAll(() => {
@@ -42,6 +44,9 @@ const ON: SshAgentStatus = { ...OFF, enabled: true };
 
 function adapter(start: SshAgentStatus, after: Partial<SshAgentStatus> = {}) {
 	let current = start;
+	h.onRefresh = () => {
+		current = { ...current, unusable: [{ entryId: "1", name: "Old box", reason: "dsa" }] };
+	};
 	return {
 		status: vi.fn(async () => current),
 		set: vi.fn(async (patch: Partial<SshAgentStatus>) => {
@@ -56,6 +61,7 @@ function adapter(start: SshAgentStatus, after: Partial<SshAgentStatus> = {}) {
 		onRequest: () => () => {},
 		onDone: () => () => {},
 		answer: async () => {},
+		pending: async () => [],
 	} satisfies SshAgentAdapter;
 }
 
@@ -144,6 +150,29 @@ describe("SshAgentSection", () => {
 		expect(screen.getByText("Left out my server on Deploy: not a host name")).toBeTruthy();
 		expect(
 			screen.getByText("Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."),
+		).toBeTruthy();
+	});
+
+	it("shows keys it can't use right after switching on", async () => {
+		mount(adapter(OFF));
+		fireEvent.click(await screen.findByRole("button", { name: "Toggle SSH agent" }));
+		expect(await screen.findByText("Can't use Old box: DSA keys aren't supported")).toBeTruthy();
+	});
+
+	it("says when Add it for me fails", async () => {
+		const a = adapter(ON);
+		a.addIncludeLine.mockRejectedValueOnce(new Error("denied"));
+		mount(a);
+		fireEvent.click(await screen.findByRole("button", { name: "Add it for me" }));
+		expect(
+			await screen.findByText("Bramble couldn't change ~/.ssh/config. Add the line yourself."),
+		).toBeTruthy();
+	});
+
+	it("says when its files can't be written", async () => {
+		mount(adapter({ ...ON, error: "config-failed" }));
+		expect(
+			await screen.findByText("Bramble couldn't write its files in ~/.ssh/bramble."),
 		).toBeTruthy();
 	});
 

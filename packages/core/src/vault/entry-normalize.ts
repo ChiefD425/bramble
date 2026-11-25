@@ -99,6 +99,8 @@ export const entryDataSchema: z.ZodType<EntryData> = z.discriminatedUnion("type"
 		privateKey: z.string(),
 		passphrase: z.string().optional(),
 		keyType: z.string().optional(),
+		hosts: z.array(z.string()).optional(),
+		agentDisabled: z.literal(true).optional(),
 	}),
 	z.object({ ...baseEntryFields, type: z.literal("unlock-key"), passkey: passkeyCredentialSchema }),
 ]);

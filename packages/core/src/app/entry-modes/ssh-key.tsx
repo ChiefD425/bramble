@@ -43,6 +43,10 @@ interface SshKeyFormValues {
 	notes: string;
 }
 
+/** A stored host list, or none when it isn't one (an older or hand-made entry). */
+export const hostList = (hosts: unknown): string[] =>
+	Array.isArray(hosts) ? hosts.filter((h): h is string => typeof h === "string") : [];
+
 const hostLines = (text: string) =>
 	text
 		.split("\n")
@@ -227,15 +231,15 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 				</DetailField>
 			)}
 
-			{key.hosts && key.hosts.length > 0 && (
+			{hostList(key.hosts).length > 0 && (
 				<DetailField
 					label={t`Hosts`}
 					copied={copied}
 					copyName="hosts"
-					onCopy={() => copy("hosts", key.hosts?.join("\n") ?? "")}
+					onCopy={() => copy("hosts", hostList(key.hosts).join("\n"))}
 				>
 					<DetailValue mono wrap>
-						{key.hosts.join(", ")}
+						{hostList(key.hosts).join(", ")}
 					</DetailValue>
 				</DetailField>
 			)}
@@ -276,7 +280,7 @@ export const sshKeyMode: EntryMode = {
 			publicKey: key.publicKey,
 			privateKey: key.privateKey,
 			passphrase: key.passphrase ?? "",
-			hosts: (key.hosts ?? []).join("\n"),
+			hosts: hostList(key.hosts).join("\n"),
 			useAgent: key.agentDisabled !== true,
 			notes: key.notes ?? "",
 		};
@@ -322,6 +326,6 @@ export const sshKeyMode: EntryMode = {
 
 	searchText: (entry) => {
 		const key = entry as SshKeyEntry;
-		return `${key.keyType ?? ""} ${key.publicKey} ${(key.hosts ?? []).join(" ")}`.toLowerCase();
+		return `${key.keyType ?? ""} ${key.publicKey} ${hostList(key.hosts).join(" ")}`.toLowerCase();
 	},
 };

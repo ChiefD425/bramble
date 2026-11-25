@@ -22,6 +22,13 @@ export function SshAgentRequestsProvider({ children }: { children: ReactNode }) 
 			setQueue((q) => [...q.filter((x) => x.id !== r.id), r]),
 		);
 		const stopDone = sshAgent.onDone((id) => setQueue((q) => q.filter((x) => x.id !== id)));
+		// A window opened (or rebuilt) after a request was asked never got its event.
+		void sshAgent
+			.pending()
+			.then((waiting) =>
+				setQueue((q) => [...waiting.filter((w) => !q.some((x) => x.id === w.id)), ...q]),
+			)
+			.catch(() => {});
 		return () => {
 			stopRequests();
 			stopDone();

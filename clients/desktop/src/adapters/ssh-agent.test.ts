@@ -34,6 +34,12 @@ describe("desktopSshAgent", () => {
 		expect(invoke).toHaveBeenCalledWith("ssh_agent_answer", { requestId: "r1", approve: false });
 	});
 
+	it("asks Rust for the requests already waiting", async () => {
+		invoke.mockResolvedValueOnce([{ id: "r0", mode: "unlock" }]);
+		expect(await desktopSshAgent.pending()).toEqual([{ id: "r0", mode: "unlock" }]);
+		expect(invoke).toHaveBeenCalledWith("ssh_agent_pending");
+	});
+
 	it("passes requests and their end to the window", async () => {
 		const seen: unknown[] = [];
 		const stop = desktopSshAgent.onRequest((r) => seen.push(r));

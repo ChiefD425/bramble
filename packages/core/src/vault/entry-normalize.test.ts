@@ -268,3 +268,16 @@ describe("passkey PRF fields", () => {
 		);
 	});
 });
+
+describe("entryDataSchema: SSH key fields", () => {
+	const key = { type: "ssh-key", name: "K", publicKey: "", privateKey: "k" };
+	it("takes hosts as a list of text and agentDisabled as true", () => {
+		expect(
+			entryDataSchema.safeParse({ ...key, hosts: ["github.com"], agentDisabled: true }).success,
+		).toBe(true);
+	});
+	it("refuses hosts that aren't a list of text", () => {
+		expect(entryDataSchema.safeParse({ ...key, hosts: "github.com" }).success).toBe(false);
+		expect(entryDataSchema.safeParse({ ...key, hosts: [1] }).success).toBe(false);
+	});
+});

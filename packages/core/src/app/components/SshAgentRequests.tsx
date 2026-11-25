@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { SshAgentRequest } from "../../adapters/ssh-agent";
 import { useSshAgentRequests } from "../../hooks/useSshAgentRequests";
 import { useVault, useVaultActions } from "../../hooks/useVault";
@@ -38,11 +38,15 @@ export function SshAgentRequests() {
 	const { activeId, vaults, selectVault } = useVaultRegistry();
 	const { t } = useLingui();
 
+	// Once per request: picking another vault on the unlock screen is the user's choice.
+	const selectedFor = useRef<string | null>(null);
 	const wanted = current?.vaultId;
+	const requestId = current?.id;
 	useEffect(() => {
-		if (!isLocked || !wanted || wanted === activeId) return;
-		if (vaults.some((v) => v.id === wanted)) selectVault(wanted);
-	}, [isLocked, wanted, activeId, vaults, selectVault]);
+		if (!isLocked || !wanted || !requestId || selectedFor.current === requestId) return;
+		selectedFor.current = requestId;
+		if (wanted !== activeId && vaults.some((v) => v.id === wanted)) selectVault(wanted);
+	}, [isLocked, wanted, requestId, activeId, vaults, selectVault]);
 
 	if (!current || isLocked) return null;
 

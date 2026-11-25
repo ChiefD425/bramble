@@ -32,4 +32,5 @@ export const desktopSshAgent: SshAgentAdapter = {
 	onRequest: (callback) => subscribe<SshAgentRequest>("ssh-agent://request", callback),
 	onDone: (callback) => subscribe<{ id: string }>("ssh-agent://done", (p) => callback(p.id)),
 	answer: (id, approve) => invoke<void>("ssh_agent_answer", { requestId: id, approve }),
+	pending: () => invoke<SshAgentRequest[]>("ssh_agent_pending"),
 };

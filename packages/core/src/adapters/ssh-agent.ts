@@ -22,7 +22,7 @@ export interface SshAgentStatus {
 	/** Bramble may add the line itself: false for a symlinked or read-only config. */
 	canAddLine: boolean;
 	includeLine: string;
-	error?: "path-too-long" | "bind-failed";
+	error?: "path-too-long" | "bind-failed" | "config-failed";
 	unusable: { entryId: string; name: string; reason: SshKeyProblem }[];
 	leftOut: { entryId: string; name: string; host: string }[];
 }
@@ -50,4 +50,6 @@ export interface SshAgentAdapter {
 	onRequest(callback: (request: SshAgentRequest) => void): () => void;
 	onDone(callback: (id: string) => void): () => void;
 	answer(id: string, approve: boolean): Promise<void>;
+	/** The requests already waiting, for a window that opened after they were asked. */
+	pending(): Promise<SshAgentRequest[]>;
 }

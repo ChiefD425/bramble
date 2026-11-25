@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { type FieldValues, FormProvider, type UseFormReturn, useForm } from "react-hook-form";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SshKeyEntryData } from "../../hooks/useVault";
+import { toSshKeys } from "../../vault/ssh-keys";
 import { sshKeyMode } from "./ssh-key";
 import type { EntryDetailBodyProps } from "./types";
 
@@ -88,6 +89,13 @@ describe("SSH key hosts and agent switch", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Use with the SSH agent" }));
 		expect(save().agentDisabled).toBe(true);
 		expect(sshKeyMode.toForm({ ...KEY, agentDisabled: true }).useAgent).toBe(false);
+	});
+
+	it("a hosts value that isn't a list breaks nothing", () => {
+		const odd = { ...KEY, id: "k", hosts: "github.com" } as unknown as SshKeyEntryData;
+		expect(() => sshKeyMode.searchText?.(odd as never)).not.toThrow();
+		expect(sshKeyMode.toForm(odd).hosts).toBe("");
+		expect(toSshKeys([odd as never])[0]?.hosts).toEqual([]);
 	});
 
 	it("search matches a host", () => {

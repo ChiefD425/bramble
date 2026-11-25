@@ -44,7 +44,7 @@ beforeEach(() => {
 	h.calls = [];
 });
 
-function fakeAgent() {
+function fakeAgent(waiting: SshAgentRequest[] = []) {
 	let onRequest: ((r: SshAgentRequest) => void) | null = null;
 	let onDone: ((id: string) => void) | null = null;
 	const answers: [string, boolean][] = [];
@@ -69,6 +69,7 @@ function fakeAgent() {
 		answer: async (id: string, approve: boolean) => {
 			answers.push([id, approve]);
 		},
+		pending: async () => waiting,
 	} satisfies SshAgentAdapter;
 	return {
 		adapter,
@@ -79,8 +80,8 @@ function fakeAgent() {
 	};
 }
 
-function mount(sshAgent?: SshAgentAdapter) {
-	render(
+function tree(sshAgent?: SshAgentAdapter) {
+	return (
 		<I18nProvider i18n={i18n}>
 			<PlatformProvider platform={{ sshAgent } as unknown as Platform}>
 				<SshAgentRequestsProvider>
@@ -88,8 +89,12 @@ function mount(sshAgent?: SshAgentAdapter) {
 					<SshAgentRequestLine />
 				</SshAgentRequestsProvider>
 			</PlatformProvider>
-		</I18nProvider>,
+		</I18nProvider>
 	);
+}
+
+function mount(sshAgent?: SshAgentAdapter) {
+	return render(tree(sshAgent));
 }
 
 const deploy = { keyName: "Deploy", purpose: "git" as const };
@@ -177,6 +182,27 @@ describe("SSH agent requests", () => {
 		expect(screen.getByText("Allow this use of Deploy?")).toBeTruthy();
 		await agent.done("r1");
 		expect(screen.queryByText("Allow this use of Deploy?")).toBeNull();
+	});
+
+	it("picks up requests asked before the window opened", async () => {
+		const agent = fakeAgent([
+			{ id: "r0", caller: "ssh", mode: "unlock", vaultId: "P", keyName: "Deploy", purpose: "git" },
+		]);
+		mount(agent.adapter);
+		expect(await screen.findByText("ssh wants to sign a git commit with Deploy")).toBeTruthy();
+	});
+
+	it("picking another vault while locked isn't undone", async () => {
+		const agent = fakeAgent();
+		const { rerender } = mount(agent.adapter);
+		await agent.ask({ ...deploy, vaultId: "W", vaultName: "Work" });
+		await waitFor(() => expect(h.calls).toEqual(["select W"]));
+		h.activeId = "W";
+		rerender(tree(agent.adapter));
+		h.activeId = "P";
+		rerender(tree(agent.adapter));
+		await act(async () => {});
+		expect(h.calls).toEqual(["select W"]);
 	});
 
 	it("renders nothing without an adapter", () => {
