@@ -113,6 +113,25 @@ Host 123.123.123.123 *.example.com
   its own `ssh`) and every tool that runs `ssh` behave the same.
 - `ssh` takes the first value it finds for a setting, so Bramble's lines win over the user's for
   the same host. Help says to put any host-specific `IdentityAgent` above the `Include` line.
+- **Bramble owns these files; nobody edits them.** Every save of an SSH key rewrites its vault's
+  `.conf`, `.pub` files and key list, because the save already sends the keys to Rust. A rename
+  touches only the list (no names here); a changed host rewrites the `.conf`; a replaced or deleted
+  key takes its `.pub` with it; a vault with no hosts left loses its `.conf`. Hand edits are
+  overwritten, as the header says; host-specific settings belong in the user's own config.
+- **Edits from another device** arrive by sync, which reloads the open vault and rewrites the same
+  way. Sync doesn't run while locked, so a vault's files reflect the last time it was open here.
+  The cost is small: a key removed elsewhere stays listed until then, and using it brings up the
+  unlock, after which the key is gone and the request fails.
+- **Writes are atomic and in order.** Each file goes through a temporary file and a rename, so
+  `ssh` never reads half of one, and a slow older save never lands after a newer one: each save
+  takes a per-vault sequence number and an older one is dropped.
+- **A deleted `~/.ssh/bramble`** comes back with the next save or launch.
+- **Bramble has to be running** for a host named on a key: that host is offered only the key that
+  lives in Bramble. With Bramble quit, `ssh` carries on without the agent, and that host gets only
+  the keys the user's own config names, or a password prompt if it takes one.
+- **Uninstalling:** switch the agent off first, which deletes `~/.ssh/bramble`. The `Include` line
+  can stay: a missing file matches nothing. No installer can do this for you, since the files are
+  per user.
 - Paths inside these files are absolute and quoted (shown with `~` above): OpenSSH expands `~` from
   the account's passwd entry, not `$HOME`. Only the `Include` line in the user's own config uses
   `~`.
