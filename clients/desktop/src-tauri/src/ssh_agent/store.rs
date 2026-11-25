@@ -15,6 +15,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::keys::{self, AgentKey, Unusable};
 use super::protocol::{self, Purpose};
@@ -22,8 +23,8 @@ use super::protocol::{self, Purpose};
 /// More distinct questions than this waiting at once is a flood, not a person at a terminal.
 pub const MAX_PENDING: usize = 8;
 
-/// One SSH key entry as the vault sends it.
-#[derive(Clone, Deserialize)]
+/// One SSH key entry as the vault sends it. Wiped when dropped: it holds the private key text.
+#[derive(Clone, Deserialize, Zeroize, ZeroizeOnDrop)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyInput {
     pub id: String,
@@ -133,6 +134,8 @@ struct Pending {
     key: Option<Vec<u8>>,
     answer: Option<bool>,
     waiters: usize,
+    /// When it was asked, for listing them in order.
+    order: u64,
 }
 
 type CacheEntry = ([u8; 32], Result<Arc<AgentKey>, Unusable>);
@@ -151,6 +154,7 @@ struct State {
     generation: u64,
     claimed: HashMap<String, u64>,
     applied: HashMap<String, u64>,
+    asked: u64,
 }
 
 /// What one request is after.
@@ -239,8 +243,15 @@ impl Store {
         vault_id: &str,
         vault_name: &str,
         prepared: Prepared,
+        locked: bool,
     ) -> Option<Applied> {
         let mut st = self.state();
+        // Locked before the keys arrived (a later lock moves the generation instead). Their
+        // parse went into the cache after the lock emptied it, so empty it again.
+        if locked {
+            st.cache.clear();
+            return None;
+        }
         if !st.enabled || prepared.generation != st.generation {
             return None;
         }
@@ -259,15 +270,15 @@ impl Store {
                         hosted.push((input.id.clone(), blob.clone(), input.hosts.clone()));
                     }
                     let entry = PublicEntry {
-                        entry_id: input.id,
-                        name: input.name,
+                        entry_id: input.id.clone(),
+                        name: input.name.clone(),
                         public_key: blob,
                     };
                     open.push((entry, key));
                 }
                 Err(reason) => unusable.push(UnusableKey {
-                    entry_id: input.id,
-                    name: input.name,
+                    entry_id: input.id.clone(),
+                    name: input.name.clone(),
                     reason,
                 }),
             }
@@ -329,11 +340,22 @@ impl Store {
 
     pub fn set_ask_each_use(&self, on: bool) {
         self.state().ask_each_use = on;
+        self.changed.notify_all();
     }
 
-    /// Drop the lists of vaults the picker no longer shows.
+    /// Drop the lists of vaults the picker no longer shows. Requests waiting on them fail now.
     pub fn prune(&self, listed: &[String]) {
         self.state().lists.retain(|l| listed.contains(&l.vault_id));
+        self.changed.notify_all();
+    }
+
+    /// The questions waiting for an answer, oldest first, for a window that opens after they
+    /// were sent.
+    pub fn pending_asks(&self) -> Vec<Ask> {
+        let st = self.state();
+        let mut pending: Vec<_> = st.pending.values().collect();
+        pending.sort_by_key(|p| p.order);
+        pending.into_iter().map(|p| p.ask.clone()).collect()
     }
 
     pub fn unusable(&self) -> Vec<UnusableKey> {
@@ -385,6 +407,10 @@ impl Store {
 
     /// Decide, ask if needed, and wait until the decision is to proceed or fail. `Some(key)` to
     /// sign with (always `Some(None)` for a list), `None` to fail.
+    ///
+    /// A request waits on one ask at a time. When what it needs changes (an unlock answered for
+    /// another vault becomes a switch, an unlock under Ask before each use becomes a confirm), it
+    /// leaves that ask and asks again, so the window always shows what the request now needs.
     fn run(
         &self,
         target: Target,
@@ -394,6 +420,7 @@ impl Store {
         timeout: Duration,
     ) -> Option<Option<Arc<AgentKey>>> {
         let deadline = Instant::now() + timeout;
+        // The ask this request waits on, and whether it made it.
         let mut mine: Option<(String, bool)> = None;
         let mut st = self.state();
         let outcome = loop {
@@ -401,6 +428,7 @@ impl Store {
             let pending = mine.as_ref().and_then(|(id, _)| st.pending.get(id));
             let answer = pending.and_then(|p| p.answer);
             let asked = pending.map(|p| p.ask.mode);
+            let created = mine.as_ref().is_some_and(|(_, c)| *c);
             if let Some(host_key) = &conn.forwarded_by {
                 // A yes to the server card, or an unlock this request asked for, allows the server.
                 let unlocked_for_it = asked == Some(Mode::Unlock) && !locked && st.open.is_some();
@@ -408,7 +436,12 @@ impl Store {
                     st.allowed_servers.insert(host_key.clone());
                 }
             }
-            match decide(&st, &target, conn, locked, answer, asked) {
+            // A yes, or an unlock or switch the request waited on, approves it. Under Ask before
+            // each use only the request that brought the card up counts it as its own yes.
+            let approved = answer == Some(true)
+                || (matches!(asked, Some(Mode::Unlock | Mode::Switch))
+                    && (created || !st.ask_each_use));
+            match decide(&st, &target, conn, locked, answer, approved) {
                 Decision::Proceed(key) => break Some(key),
                 Decision::Fail => break None,
                 Decision::Ask {
@@ -416,26 +449,49 @@ impl Store {
                     vault,
                     key_name,
                 } => {
+                    let vault_id = vault.as_ref().map(|v| v.0.clone());
+                    if let Some((id, _)) = mine.take() {
+                        let same = st
+                            .pending
+                            .get(&id)
+                            .is_some_and(|p| p.ask.mode == mode && p.ask.vault_id == vault_id);
+                        if same {
+                            mine = Some((id, created));
+                        } else if let Some(ended) = leave(&mut st, &id) {
+                            drop(st);
+                            hooks.done(&ended);
+                            st = self.state();
+                            continue;
+                        }
+                    }
                     if mine.is_none() {
                         let blob = match &target {
                             Target::Sign(b) if mode == Mode::Confirm => Some(b.to_vec()),
                             _ => None,
                         };
-                        let joined = st.pending.iter_mut().find(|(_, p)| {
-                            p.ask.mode == mode
-                                && p.ask.vault_id == vault.as_ref().map(|v| v.0.clone())
-                                && p.ask.server == conn.server
-                                && p.key == blob
-                        });
+                        // Never join a confirm: each use is its own yes. Never join one already
+                        // answered: that answer was for the requests waiting then.
+                        let joined = (mode != Mode::Confirm)
+                            .then(|| {
+                                st.pending.iter_mut().find(|(_, p)| {
+                                    p.answer.is_none()
+                                        && p.ask.mode == mode
+                                        && p.ask.vault_id == vault_id
+                                        && p.ask.server == conn.server
+                                        && p.key == blob
+                                })
+                            })
+                            .flatten();
                         if let Some((id, p)) = joined {
                             p.waiters += 1;
                             mine = Some((id.clone(), false));
                         } else if st.pending.len() >= MAX_PENDING {
                             break None;
                         } else {
+                            st.asked += 1;
                             let ask = Ask {
                                 id: request_id(),
-                                vault_id: vault.as_ref().map(|v| v.0.clone()),
+                                vault_id,
                                 vault_name: vault.map(|v| v.1),
                                 key_name,
                                 caller: conn.caller.clone(),
@@ -444,6 +500,7 @@ impl Store {
                                 mode,
                             };
                             let id = ask.id.clone();
+                            let order = st.asked;
                             st.pending.insert(
                                 id.clone(),
                                 Pending {
@@ -451,6 +508,7 @@ impl Store {
                                     key: blob,
                                     answer: None,
                                     waiters: 1,
+                                    order,
                                 },
                             );
                             mine = Some((id, true));
@@ -473,17 +531,26 @@ impl Store {
             }
         };
         if let Some((id, _)) = mine {
-            let last = st.pending.get_mut(&id).is_some_and(|p| {
-                p.waiters -= 1;
-                p.waiters == 0
-            });
-            if last {
-                st.pending.remove(&id);
+            if let Some(ended) = leave(&mut st, &id) {
                 drop(st);
-                hooks.done(&id);
+                hooks.done(&ended);
             }
         }
         outcome
+    }
+}
+
+/// Stop waiting on an ask; the id back when this was its last waiter, for `done`.
+fn leave(st: &mut State, id: &str) -> Option<String> {
+    let last = st.pending.get_mut(id).is_some_and(|p| {
+        p.waiters -= 1;
+        p.waiters == 0
+    });
+    if last {
+        st.pending.remove(id);
+        Some(id.to_string())
+    } else {
+        None
     }
 }
 
@@ -495,14 +562,14 @@ fn forget(st: &mut State) {
     st.generation += 1;
 }
 
-/// The one decision, re-made on every wake. `answer` and `asked` are this request's own.
+/// The one decision, re-made on every wake. `answer` and `approved` are this request's own.
 fn decide(
     st: &State,
     target: &Target,
     conn: &Conn,
     locked: bool,
     answer: Option<bool>,
-    asked: Option<Mode>,
+    approved: bool,
 ) -> Decision {
     if !st.enabled || answer == Some(false) {
         return Decision::Fail;
@@ -536,8 +603,6 @@ fn decide(
         return Decision::Proceed(None);
     }
     if let (Some((entry, key)), false) = (open_key, locked) {
-        // An unlock or switch this request asked for was the user's yes.
-        let approved = answer == Some(true) || matches!(asked, Some(Mode::Unlock | Mode::Switch));
         if st.ask_each_use && !approved {
             let vault = st.open.as_ref().map(|o| o.vault_id.clone());
             let name = st
@@ -776,7 +841,7 @@ mod tests {
     fn open(store: &Store, vault: &str, keys: Vec<KeyInput>) -> Option<Applied> {
         let seq = store.claim(vault);
         let prepared = store.prepare(keys);
-        store.apply(seq, vault, &format!("{vault} vault"), prepared)
+        store.apply(seq, vault, &format!("{vault} vault"), prepared, false)
     }
 
     fn blob(pem: &str) -> Vec<u8> {
@@ -858,7 +923,7 @@ mod tests {
         let seq = store.claim("A");
         let prepared = store.prepare(vec![key("1", "K", ED, None, &[])]);
         store.forget_keys();
-        assert!(store.apply(seq, "A", "A vault", prepared).is_none());
+        assert!(store.apply(seq, "A", "A vault", prepared, false).is_none());
         assert!(store.list(&local(), &*unlocked(), SHORT).is_empty());
         assert_eq!(store.cached(), 0);
     }
@@ -870,8 +935,8 @@ mod tests {
         let second = store.claim("A");
         let p1 = store.prepare(vec![key("1", "Old", ED, None, &[])]);
         let p2 = store.prepare(vec![key("2", "New", ECDSA, None, &[])]);
-        assert!(store.apply(second, "A", "A vault", p2).is_some());
-        assert!(store.apply(first, "A", "A vault", p1).is_none());
+        assert!(store.apply(second, "A", "A vault", p2, false).is_some());
+        assert!(store.apply(first, "A", "A vault", p1, false).is_none());
         let ids = store.list(&local(), &*unlocked(), SHORT);
         assert_eq!(ids, vec![(blob(ECDSA), "New".to_string())]);
     }
@@ -1149,6 +1214,149 @@ mod tests {
             .is_none());
         let asks = hooks.asks();
         assert_eq!(*hooks.done.lock().unwrap(), vec![asks[0].id.clone()]);
+    }
+
+    #[test]
+    fn keys_sent_after_a_lock_are_not_loaded() {
+        let store = Store::new(vec![], true, false);
+        let seq = store.claim("A");
+        let prepared = store.prepare(vec![key("1", "K", ED, None, &[])]);
+        assert!(store.apply(seq, "A", "A vault", prepared, true).is_none());
+        assert!(store.list(&local(), &*unlocked(), SHORT).is_empty());
+        assert_eq!(store.cached(), 0, "a locked apply keeps nothing");
+    }
+
+    #[test]
+    fn an_unlock_ask_becomes_a_switch_for_the_next_vault() {
+        let lists = vec![
+            list_of("A", &[("KA", blob(ED))]),
+            list_of("B", &[("KB", blob(ECDSA))]),
+        ];
+        let store = Arc::new(Store::new(lists, true, false));
+        let hooks = TestHooks::locked();
+        let b = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ECDSA), b"d", 0, &local(), &*hooks, LONG))
+        };
+        let first = hooks.wait_ask();
+        assert_eq!(
+            (first.mode, first.vault_id.as_deref()),
+            (Mode::Unlock, Some("B"))
+        );
+        hooks.locked.store(false, Ordering::SeqCst);
+        open(&store, "A", vec![key("1", "KA", ED, None, &[])]).unwrap();
+        for _ in 0..200 {
+            if hooks.asks().len() == 2 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        let asks = hooks.asks();
+        assert_eq!(asks.len(), 2, "{asks:?}");
+        assert_eq!(
+            (asks[1].mode, asks[1].vault_id.as_deref()),
+            (Mode::Switch, Some("B"))
+        );
+        assert!(
+            hooks.done.lock().unwrap().contains(&first.id),
+            "the old ask ends"
+        );
+        store.answer(&asks[1].id, false);
+        assert!(b.join().unwrap().is_none());
+    }
+
+    #[test]
+    fn confirm_asks_are_never_joined() {
+        let store = Arc::new(Store::new(vec![], true, true));
+        open(&store, "A", vec![key("1", "K", ED, None, &[])]).unwrap();
+        let hooks = unlocked();
+        let waiters: Vec<_> = (0..2)
+            .map(|_| {
+                let (store, hooks) = (store.clone(), hooks.clone());
+                thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, SHORT))
+            })
+            .collect();
+        for w in waiters {
+            w.join().unwrap();
+        }
+        let asks = hooks.asks();
+        assert_eq!(asks.len(), 2);
+        assert!(asks.iter().all(|a| a.mode == Mode::Confirm));
+    }
+
+    #[test]
+    fn under_ask_each_use_an_unlock_approves_only_the_request_that_asked() {
+        let store = Arc::new(Store::new(
+            vec![list_of("A", &[("K", blob(ED))])],
+            true,
+            true,
+        ));
+        let hooks = TestHooks::locked();
+        let first = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, LONG))
+        };
+        hooks.wait_ask();
+        let second = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, SHORT))
+        };
+        thread::sleep(Duration::from_millis(50));
+        assert_eq!(hooks.asks().len(), 1, "the second joins the unlock");
+        hooks.locked.store(false, Ordering::SeqCst);
+        open(&store, "A", vec![key("1", "K", ED, None, &[])]).unwrap();
+        assert!(first.join().unwrap().is_some(), "the unlock was its yes");
+        assert!(second.join().unwrap().is_none(), "it needed its own yes");
+        let asks = hooks.asks();
+        assert_eq!(asks.last().map(|a| a.mode), Some(Mode::Confirm));
+    }
+
+    #[test]
+    fn pending_asks_are_listed_in_order() {
+        let lists = vec![
+            list_of("A", &[("KA", blob(ED))]),
+            list_of("B", &[("KB", blob(ECDSA))]),
+        ];
+        let store = Arc::new(Store::new(lists, true, false));
+        let hooks = TestHooks::locked();
+        let a = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, SHORT))
+        };
+        hooks.wait_ask();
+        let b = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ECDSA), b"d", 0, &local(), &*hooks, SHORT))
+        };
+        thread::sleep(Duration::from_millis(50));
+        let pending: Vec<_> = store
+            .pending_asks()
+            .into_iter()
+            .map(|a| a.vault_id)
+            .collect();
+        assert_eq!(pending, [Some("A".to_string()), Some("B".to_string())]);
+        a.join().unwrap();
+        b.join().unwrap();
+        assert!(store.pending_asks().is_empty());
+    }
+
+    #[test]
+    fn pruning_a_vault_wakes_its_waiters() {
+        let store = Arc::new(Store::new(
+            vec![list_of("A", &[("K", blob(ED))])],
+            true,
+            false,
+        ));
+        let hooks = TestHooks::locked();
+        let waiter = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, LONG))
+        };
+        hooks.wait_ask();
+        let started = Instant::now();
+        store.prune(&[]);
+        assert!(waiter.join().unwrap().is_none());
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 
     #[test]

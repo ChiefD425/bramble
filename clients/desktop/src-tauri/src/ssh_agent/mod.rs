@@ -87,6 +87,7 @@ impl Agent {
         drop(state);
         if let Err(e) = self.write_main() {
             log::warn!("ssh agent config not written: {e}");
+            self.state().error = Some("config-failed");
         }
     }
 

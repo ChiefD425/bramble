@@ -383,6 +383,7 @@ pub fn run() {
             ssh_agent::commands::ssh_agent_set_keys,
             ssh_agent::commands::ssh_agent_forget_vault,
             ssh_agent::commands::ssh_agent_answer,
+            ssh_agent::commands::ssh_agent_pending,
             autolock::autolock_touch,
             socket::link_sync_send,
             socket::link_sync_peers,

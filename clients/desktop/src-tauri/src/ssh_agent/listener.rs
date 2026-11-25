@@ -372,7 +372,7 @@ mod tests {
         let store = Arc::new(Store::new(vec![], true, false));
         let seq = store.claim("A");
         let prepared = store.prepare(keys);
-        store.apply(seq, "A", "Personal", prepared).unwrap();
+        store.apply(seq, "A", "Personal", prepared, false).unwrap();
         let hooks = Arc::new(Yes {
             store: store.clone(),
             asks: Mutex::new(Vec::new()),

@@ -12,7 +12,7 @@ use tauri::Window;
 use super::{
     agent, listener,
     ssh_config::{self, Setup, VaultKey},
-    store::{self, KeyInput, Prepared, Store, UnusableKey},
+    store::{self, Ask, KeyInput, Prepared, Store, UnusableKey},
     Agent, ASK_EACH_USE, ENABLED, ONLY_THEIR_HOSTS,
 };
 
@@ -38,7 +38,7 @@ pub struct SshAgentStatus {
     pub setup: Setup,
     pub can_add_line: bool,
     pub include_line: &'static str,
-    /// "path-too-long" or "bind-failed".
+    /// "path-too-long", "bind-failed" or "config-failed".
     pub error: Option<&'static str>,
     pub unusable: Vec<UnusableKey>,
     pub left_out: Vec<LeftOutHost>,
@@ -73,9 +73,10 @@ pub(super) fn save(
     vault_name: &str,
     listed: &[String],
     prepared: Prepared,
+    locked: &dyn Fn() -> bool,
 ) -> io::Result<Option<Vec<LeftOutHost>>> {
     let _write = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let Some(applied) = store.apply(seq, vault_id, vault_name, prepared) else {
+    let Some(applied) = store.apply(seq, vault_id, vault_name, prepared, locked()) else {
         return Ok(None);
     };
     store::write_list(paths.root, &applied.list)?;
@@ -228,12 +229,32 @@ pub async fn ssh_agent_set_keys(
         &vault_name,
         &listed_vault_ids,
         prepared,
-    )
-    .map_err(err)?;
-    if let Some(left_out) = saved {
-        agent.state().left_out = left_out;
+        &vault_crypto::is_locked,
+    );
+    match saved {
+        Ok(Some(left_out)) => {
+            let mut state = agent.state();
+            state.left_out = left_out;
+            if state.error == Some("config-failed") {
+                state.error = None;
+            }
+            Ok(())
+        }
+        Ok(None) => Ok(()),
+        Err(e) => {
+            // Settings says so: otherwise it would read "Added to ~/.ssh/config" while ssh never
+            // reaches Bramble (say, a file called ~/.ssh/bramble already there).
+            agent.state().error = Some("config-failed");
+            Err(err(e))
+        }
     }
-    Ok(())
+}
+
+/// The questions waiting for the user, for a window that opened after they were asked.
+#[tauri::command]
+pub fn ssh_agent_pending(window: Window) -> Result<Vec<Ask>, String> {
+    main_only(window.label())?;
+    Ok(agent()?.store.pending_asks())
 }
 
 #[tauri::command]
@@ -315,6 +336,7 @@ mod tests {
             "Personal",
             &["A".to_string()],
             prepared,
+            &|| false,
         )
         .unwrap()
     }

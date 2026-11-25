@@ -73,11 +73,23 @@ fn bramble_dir(home: &Path) -> PathBuf {
 }
 
 /// A path as a quoted ssh_config argument; refused if it could break out of the quotes.
+/// Backslashes are doubled: ssh's parser reads `\\` as one, which would turn a Windows pipe
+/// name (`\\.\pipe\...`) into something else.
 fn quoted(path: &str) -> io::Result<String> {
     if path.contains(['"', '\n', '\r']) {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "path"));
     }
-    Ok(format!("\"{path}\""))
+    Ok(format!("\"{}\"", path.replace('\\', "\\\\")))
+}
+
+/// `~/.ssh` owner-only when Bramble is the one creating it; an existing one is left as it is.
+fn ensure_ssh_dir(home: &Path) -> io::Result<()> {
+    let ssh = home.join(".ssh");
+    if ssh.exists() {
+        Ok(())
+    } else {
+        make_private_dir(&ssh)
+    }
 }
 
 fn make_private_dir(dir: &Path) -> io::Result<()> {
@@ -99,6 +111,7 @@ pub fn write_main(home: &Path, agent_address: &str, only_their_hosts: bool) -> i
     if only_their_hosts {
         text.push_str("  IdentitiesOnly yes\n");
     }
+    ensure_ssh_dir(home)?;
     make_private_dir(&dir)?;
     write_private(&dir.join("config"), text.as_bytes())
 }
@@ -144,20 +157,23 @@ pub fn write_vault(
         ));
         pubs.push((name, pub_line(&key.blob)?));
     }
+    ensure_ssh_dir(home)?;
     make_private_dir(&dir)?;
     for sub in ["vaults", "keys"] {
         make_private_dir(&dir.join(sub))?;
     }
+    // The keys first, then the file naming them, then the keys nothing names any more: ssh never
+    // reads a Host block whose key file is missing.
     for (name, line) in &pubs {
         write_private(&dir.join("keys").join(name), line.as_bytes())?;
     }
-    remove_pubs(&dir, vault_id, |name| pubs.iter().any(|(n, _)| n == name))?;
     let conf = dir.join("vaults").join(format!("{vault_id}.conf"));
     if blocks.is_empty() {
         remove(&conf)?;
     } else {
         write_private(&conf, format!("{HEADER}\n{}", blocks.join("\n")).as_bytes())?;
     }
+    remove_pubs(&dir, vault_id, |name| pubs.iter().any(|(n, _)| n == name))?;
     Ok(left_out)
 }
 
@@ -187,12 +203,51 @@ pub fn prune_vaults(home: &Path, listed: &[String]) -> io::Result<()> {
     Ok(())
 }
 
-/// `~/.ssh/bramble`, gone. The user's own files in `~/.ssh` are untouched.
+/// Every file Bramble wrote in `~/.ssh/bramble`, gone, and the folders with them once empty.
+/// Anything else there (a folder the user had before, a file they added) is left alone.
 pub fn delete_all(home: &Path) -> io::Result<()> {
-    match fs::remove_dir_all(bramble_dir(home)) {
-        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
-        _ => Ok(()),
+    let dir = bramble_dir(home);
+    if !dir.is_dir() {
+        return Ok(());
     }
+    let written_by_us =
+        |path: &Path| fs::read_to_string(path).is_ok_and(|text| text.starts_with(HEADER));
+    let main = dir.join("config");
+    if written_by_us(&main) {
+        remove(&main)?;
+    }
+    for (sub, ours) in [
+        (
+            "vaults",
+            &(|p: &Path, name: &str| {
+                name.strip_suffix(".conf").is_some_and(valid_vault_id) && written_by_us(p)
+            }) as &dyn Fn(&Path, &str) -> bool,
+        ),
+        ("keys", &|_: &Path, name: &str| is_our_pub(name)),
+    ] {
+        if let Ok(entries) = fs::read_dir(dir.join(sub)) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if ours(&entry.path(), &name) {
+                    remove(&entry.path())?;
+                }
+            }
+        }
+        let _ = fs::remove_dir(dir.join(sub));
+    }
+    let _ = fs::remove_dir(&dir);
+    Ok(())
+}
+
+/// `<vault id>-<64 hex>.pub`, the only names Bramble gives its key files.
+fn is_our_pub(name: &str) -> bool {
+    let Some(stem) = name.strip_suffix(".pub") else {
+        return false;
+    };
+    let Some((vault, hash)) = stem.rsplit_once('-') else {
+        return false;
+    };
+    valid_vault_id(vault) && hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 /// Whether `~/.ssh/config` includes Bramble's config, and where.
@@ -699,6 +754,50 @@ mod tests {
     }
 
     #[test]
+    fn delete_all_keeps_files_bramble_did_not_write() {
+        let home = tempfile::tempdir().unwrap();
+        let mine = home.path().join(".ssh/bramble/my-own-key");
+        fs::create_dir_all(mine.parent().unwrap()).unwrap();
+        fs::write(&mine, "user data").unwrap();
+        fs::write(home.path().join(".ssh/bramble/config"), "Host mine\n").unwrap();
+        delete_all(home.path()).unwrap();
+        assert_eq!(fs::read_to_string(&mine).unwrap(), "user data");
+        assert!(
+            home.path().join(".ssh/bramble/config").exists(),
+            "a config Bramble didn't write"
+        );
+
+        fs::remove_file(&mine).unwrap();
+        fs::remove_file(home.path().join(".ssh/bramble/config")).unwrap();
+        write_main(home.path(), "/a.sock", false).unwrap();
+        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
+        delete_all(home.path()).unwrap();
+        assert!(
+            !home.path().join(".ssh/bramble").exists(),
+            "only Bramble's files: all gone"
+        );
+    }
+
+    #[test]
+    fn quoted_paths_double_their_backslashes() {
+        let home = tempfile::tempdir().unwrap();
+        write_main(home.path(), r"\\.\pipe\agent", false).unwrap();
+        let main = fs::read_to_string(home.path().join(".ssh/bramble/config")).unwrap();
+        assert!(
+            main.contains(r#"IdentityAgent "\\\\.\\pipe\\agent""#),
+            "{main}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_main_makes_a_missing_ssh_dir_owner_only() {
+        let home = tempfile::tempdir().unwrap();
+        write_main(home.path(), "/a.sock", false).unwrap();
+        assert_eq!(mode(&home.path().join(".ssh")), 0o700);
+    }
+
+    #[test]
     fn a_replaced_key_leaves_no_stale_pub() {
         let home = tempfile::tempdir().unwrap();
         write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
@@ -769,6 +868,17 @@ mod tests {
             text.contains("identityagent /tmp/bramble-test-agent.sock"),
             "{text}"
         );
+
+        // Backslashes reach ssh as written: a Windows path or pipe name must survive its parser.
+        write_main(home.path(), "/tmp/a\\b.sock", false).unwrap();
+        let out = Command::new("ssh")
+            .args(["-G", "-F"])
+            .arg(&config)
+            .arg("x")
+            .output()
+            .unwrap();
+        let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
+        assert!(text.contains("identityagent /tmp/a\\b.sock"), "{text}");
 
         delete_all(home.path()).unwrap();
         let user = home.path().join("user-config");
