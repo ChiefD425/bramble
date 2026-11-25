@@ -126,7 +126,10 @@ Host 123.123.123.123 *.example.com
   unlock, after which the key is gone and the request fails.
 - **Writes are atomic and in order.** Each file goes through a temporary file and a rename, so
   `ssh` never reads half of one, and a slow older save never lands after a newer one: each save
-  takes a per-vault sequence number and an older one is dropped.
+  takes a per-vault sequence number and an older one is dropped. The number is taken when the save
+  reaches Rust, so it orders arrivals there; two saves the window sent close together can arrive
+  either way round, and the next save corrects the files. Keys that arrive after a lock are
+  refused, and so is anything parsed before it.
 - **A deleted `~/.ssh/bramble`** comes back with the next save or launch.
 - **Bramble has to be running** for a host named on a key: that host is offered only the key that
   lives in Bramble. With Bramble quit, `ssh` carries on without the agent, and that host gets only
@@ -138,13 +141,16 @@ Host 123.123.123.123 *.example.com
   the account's passwd entry, not `$HOME`. Only the `Include` line in the user's own config uses
   `~`.
 - No vault or key names in these files: vault ids, hosts and fingerprints only. Dir 0700, files
-  0600. Pruned like the key lists below; deleted, with the folder, when the switch goes off. The
+  0600. Pruned like the key lists below; deleted when the switch goes off, and at launch while it
+  is off. Only files Bramble wrote go (its header, or its key-file names); a `~/.ssh/bramble` the
+  user had before keeps whatever else is in it, and the folder goes only once it is empty. The
   `Include` line can stay: a missing file matches nothing.
 
 ## How a request goes
 
 1. **ssh asks for the list.** Bramble answers with every vault's public keys, locked or not,
-   without asking: the open vault's first, then the others, each vault's last-used key first. The
+   without asking: the open vault's first, then the others. Within a vault, the key last used in
+   the app (copied or filled) comes first; a signature doesn't count as a use. The
    comment `ssh-add -l` shows is the entry's name. When the host is named on a key, ssh has
    already narrowed the offer to that key.
 2. **ssh offers keys to the server** one at a time, and the server says which it accepts. No
@@ -216,8 +222,13 @@ is forwarded. On such a connection:
 - **SHA-1 RSA signatures are refused.** OpenSSH has asked for `rsa-sha2-256` or `rsa-sha2-512`
   since 7.2, and turned SHA-1 `ssh-rsa` off by default in 8.8.
 - **Prompts stay calm.** One card or unlock line per vault at a time; a request that arrives while
-  one is showing joins it rather than raising the window again. At most 8 requests wait and 64
-  connections are open; past that, requests fail at once.
+  one is showing joins it rather than raising the window again. Never a confirm card, though: with
+  Ask before each use every use gets its own, and an unlock approves only the request that brought
+  it up. At most 8 requests wait and 64 connections are open; past that, requests fail at once.
+- **A request always shows what it now needs.** One waiting on an unlock that finds another vault
+  opened asks again, as the switch card. A window opened after a request was asked (rebuilt after
+  a close, or reloaded) fetches the requests already waiting. While locked, the key's vault is put
+  on the unlock screen once per request, so choosing another vault there sticks.
 - **Hostile keys can't stall the app.** At most 1024 bcrypt-pbkdf rounds and 8192-bit RSA; beyond
   either, the key is "not supported". Keys are parsed off the main thread.
 - **Only the vault window drives the agent.** Commands this crate defines aren't limited by Tauri's

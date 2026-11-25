@@ -49,7 +49,7 @@ Bramble has to be running for `ssh` to reach it, so let it start at login.
 
 Open an SSH key in your vault, choose **Edit**, and list its **Hosts**, one per line: what you type after `ssh`, such as `github.com`, `10.0.0.5`, `*.example.com`, or an alias from your own config. `ssh` then offers that host this key only, from the first connection.
 
-A host no key names is offered every key, from every vault, most recently used first. Many servers stop after six tries with **Too many authentication failures**; naming the host on the right key fixes it. To offer keys only to the hosts they name, turn on **Offer keys only to their hosts**.
+A host no key names is offered every key, from every vault, the open vault's first. Many servers stop after six tries with **Too many authentication failures**; naming the host on the right key fixes it. To offer keys only to the hosts they name, turn on **Offer keys only to their hosts**.
 
 Turn off **Use with the SSH agent** on a key that should never sign from the terminal, such as a certificate authority key.
 
@@ -88,4 +88,4 @@ git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe
 
 ## Turn it off, or uninstall
 
-Turning **Use your SSH keys in the terminal** off deletes `~/.ssh/bramble`. The `Include` line can stay: with nothing to include, `ssh` carries on without Bramble. Turn the agent off before you uninstall the app, so those files go with it.
+Turning **Use your SSH keys in the terminal** off deletes the files Bramble wrote in `~/.ssh/bramble`; anything of yours there stays. The `Include` line can stay: with nothing to include, `ssh` carries on without Bramble. Turn the agent off before you uninstall the app, so those files go with it.
