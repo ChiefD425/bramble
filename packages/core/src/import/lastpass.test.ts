@@ -219,8 +219,23 @@ describe("SSH keys", () => {
 			passphrase: "keypass",
 			keyType: "ed25519",
 			notes: "Deploy key",
+			hosts: ["ssh.example.com"],
 		});
-		expect(fields(entry)).toMatchObject({ "Bit Strength": "4096", Hostname: "ssh.example.com" });
+		expect(fields(entry)).toMatchObject({ "Bit Strength": "4096" });
+		expect(fields(entry)).not.toHaveProperty("Hostname");
+	});
+
+	it("keeps a hostname that isn't a host as a custom field", () => {
+		const entry = first<SshKeyEntryData>(
+			csv(
+				note(
+					"NoteType:SSH Key\nLanguage:en-US\nBit Strength:1\nFormat:\nPassphrase:\nPrivate Key:PK\nPublic Key:ssh-ed25519 AAAA\nHostname:my server\nDate:\nNotes:",
+					"Odd",
+				),
+			),
+		);
+		expect(entry.hosts).toBeUndefined();
+		expect(fields(entry)).toMatchObject({ Hostname: "my server" });
 	});
 
 	it("stays a note when the type says SSH Key but no key came across", () => {

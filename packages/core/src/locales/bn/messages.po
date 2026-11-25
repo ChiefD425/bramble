@@ -917,6 +917,10 @@ msgstr "ডেস্কটপ অ্যাপের সাথে যোগায
 msgid "Bramble needs your permission to talk to the desktop app on this computer. Your browser will ask you to confirm."
 msgstr "এই কম্পিউটারের ডেস্কটপ অ্যাপের সাথে যোগাযোগ করতে Bramble-এর আপনার অনুমতি লাগবে। আপনার ব্রাউজার আপনাকে নিশ্চিত করতে বলবে।"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Bramble offers this key only to these hosts."
+msgstr "Bramble এই হোস্টগুলিতে কেবল এই কীটি অফার করে।"
+
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
 msgstr "Bramble-এর শুধু আপলোড আর তালিকা দেখার অনুমতি লাগে। কি-টিকে শুধু এই একটি বাকেটে সীমিত রাখলে আর মোছার অনুমতি না দিলে, কখনো চুরি হলেও এটি দিয়ে খুব বেশি ক্ষতি করা যাবে না।"
@@ -2262,6 +2266,14 @@ msgstr "একটি পাসকি আছে"
 msgid "Horse"
 msgstr "ঘোড়া"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts"
+msgstr "হোস্ট"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts (optional)"
+msgstr "হোস্ট (ঐচ্ছিক)"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
 msgstr "বালুঘড়ি"
@@ -2950,6 +2962,10 @@ msgstr "সিঙ্ক হচ্ছে না: এই ডিভাইস এখ
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "সিঙ্ক হচ্ছে না: আপনার অন্য ডিভাইসগুলো আর এই ডিভাইসটিকে চিনছে না। সংযোগ বিচ্ছিন্ন করুন, তারপর অন্য ডিভাইসের কোড দিয়ে আবার যুক্ত হোন।"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Not used by the SSH agent"
+msgstr "SSH agent দ্বারা ব্যবহৃত হয় না"
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Not using the mailbox"
 msgstr "মেইলবক্স ব্যবহার করা হচ্ছে না"
@@ -3005,6 +3021,10 @@ msgstr "বন্ধ"
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Off on this device"
 msgstr "এই ডিভাইসে বন্ধ"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Off: Bramble never offers or signs with this key."
+msgstr "বন্ধ: Bramble কখনো এই কীটি অফার করে না বা এই কী দিয়ে স্বাক্ষর করে না।"
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
@@ -5122,6 +5142,10 @@ msgstr "লাইট বা ডার্ক থিম ব্যবহার ক�
 msgid "Use only digits, spaces or dashes."
 msgstr "শুধু সংখ্যা, স্পেস বা ড্যাশ ব্যবহার করুন।"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use only the host, like github.com or 10.0.0.5"
+msgstr "কেবল হোস্ট ব্যবহার করুন, যেমন github.com বা 10.0.0.5"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Use password"
 msgstr "পাসওয়ার্ড ব্যবহার করুন"
@@ -5157,6 +5181,10 @@ msgstr "মাস্টার পাসওয়ার্ড টাইপ কর
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "Use Touch ID, Windows Hello or a security key like a YubiKey instead of typing your master password."
 msgstr "মাস্টার পাসওয়ার্ড টাইপ করার বদলে Touch ID, Windows Hello বা YubiKey-এর মতো সিকিউরিটি কি ব্যবহার করুন।"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use with the SSH agent"
+msgstr "SSH agent এর সাথে ব্যবহার"
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your master password instead"

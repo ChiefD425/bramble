@@ -228,6 +228,7 @@ function credentialsFor(e: Entry, warnings: string[]): CxfCredential[] {
 			{ key: "Public Key", value: e.publicKey },
 			{ key: "Private Key", value: e.privateKey, hidden: true },
 			{ key: "Passphrase", value: e.passphrase ?? "", hidden: true },
+			{ key: "Hosts", value: (e.hosts ?? []).join("\n") },
 			...extra,
 		]);
 	}

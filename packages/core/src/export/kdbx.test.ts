@@ -306,6 +306,18 @@ describe("toKdbxEntries: non-login types", () => {
 		expect(isProtected(e, "Public Key")).toBe(false);
 	});
 
+	it("writes an SSH key's hosts as a Hosts field", async () => {
+		const e: EntryData = {
+			type: "ssh-key",
+			name: "Deploy key",
+			publicKey: "ssh-ed25519 AAAA",
+			privateKey: "-----BEGIN-----",
+			hosts: ["github.com", "10.0.0.5"],
+		};
+		expect(value(e, "Hosts")).toBe("github.com\n10.0.0.5");
+		expect(isProtected(e, "Hosts")).toBe(false);
+	});
+
 	it("reduces a note to Title plus Notes", async () => {
 		const e: EntryData = { type: "note", name: "Wi-Fi", notes: "SSID: Nimbus" };
 		expect(fields(e).map((s) => s.key)).toEqual(["Title", "Notes"]);

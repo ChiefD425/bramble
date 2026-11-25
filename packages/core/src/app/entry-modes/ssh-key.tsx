@@ -5,13 +5,14 @@ import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { SshKeyEntry, SshKeyEntryData } from "../../hooks/useVault";
-import { deriveKeyType, sshFingerprint } from "../../util/ssh";
+import { deriveKeyType, normalizeHost, sshFingerprint } from "../../util/ssh";
 import { Button } from "../components/ui/button";
 import { SecretArea } from "../components/ui/secret-area";
 import { TextArea } from "../components/ui/text-area";
 import { TextField } from "../components/ui/text-field";
 import { useRevealState } from "../hooks/useRevealState";
 import { DetailField, DetailNotes, DetailValue } from "./DetailField";
+import { ToggleRow } from "./toggle-row";
 import type { EntryDetailBodyProps, EntryMode } from "./types";
 
 /** OpenSSH SHA-256 fingerprint of `publicKey`. undefined until derived (async) and on parse failure. */
@@ -36,11 +37,25 @@ interface SshKeyFormValues {
 	publicKey: string;
 	privateKey: string;
 	passphrase: string;
+	/** One host per line. */
+	hosts: string;
+	useAgent: boolean;
 	notes: string;
 }
 
+const hostLines = (text: string) =>
+	text
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+
 function SshKeyFields() {
-	const { register } = useFormContext<SshKeyFormValues>();
+	const {
+		register,
+		watch,
+		setValue,
+		formState: { errors },
+	} = useFormContext<SshKeyFormValues>();
 	const { t } = useLingui();
 	const [showPassphrase, setShowPassphrase] = useRevealState(false);
 
@@ -65,6 +80,29 @@ function SshKeyFields() {
 					</Button>
 				}
 				{...register("passphrase")}
+			/>
+			<div>
+				<TextArea
+					label={t`Hosts (optional)`}
+					rows={2}
+					autoGrow
+					className="font-mono"
+					error={errors.hosts?.message}
+					{...register("hosts", {
+						validate: (text) =>
+							hostLines(text).every((line) => normalizeHost(line) !== null) ||
+							t`Use only the host, like github.com or 10.0.0.5`,
+					})}
+				/>
+				<p className="text-xs text-muted-foreground mt-1.5">
+					{t`Bramble offers this key only to these hosts.`}
+				</p>
+			</div>
+			<ToggleRow
+				title={t`Use with the SSH agent`}
+				subtitle={t`Off: Bramble never offers or signs with this key.`}
+				checked={watch("useAgent")}
+				onChange={(v) => setValue("useAgent", v, { shouldDirty: true })}
 			/>
 			<TextArea label={t`Notes (optional)`} rows={2} autoGrow {...register("notes")} />
 		</>
@@ -189,6 +227,23 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 				</DetailField>
 			)}
 
+			{key.hosts && key.hosts.length > 0 && (
+				<DetailField
+					label={t`Hosts`}
+					copied={copied}
+					copyName="hosts"
+					onCopy={() => copy("hosts", key.hosts?.join("\n") ?? "")}
+				>
+					<DetailValue mono wrap>
+						{key.hosts.join(", ")}
+					</DetailValue>
+				</DetailField>
+			)}
+
+			{key.agentDisabled && (
+				<p className="text-xs text-muted-foreground">{t`Not used by the SSH agent`}</p>
+			)}
+
 			{key.notes && <DetailNotes label={t`Notes`} value={key.notes} copied={copied} copy={copy} />}
 		</>
 	);
@@ -204,7 +259,15 @@ export const sshKeyMode: EntryMode = {
 	},
 	icon: KeyRound,
 
-	emptyForm: () => ({ name: "", publicKey: "", privateKey: "", passphrase: "", notes: "" }),
+	emptyForm: () => ({
+		name: "",
+		publicKey: "",
+		privateKey: "",
+		passphrase: "",
+		hosts: "",
+		useAgent: true,
+		notes: "",
+	}),
 
 	toForm: (entry) => {
 		const key = entry as SshKeyEntryData;
@@ -213,6 +276,8 @@ export const sshKeyMode: EntryMode = {
 			publicKey: key.publicKey,
 			privateKey: key.privateKey,
 			passphrase: key.passphrase ?? "",
+			hosts: (key.hosts ?? []).join("\n"),
+			useAgent: key.agentDisabled !== true,
 			notes: key.notes ?? "",
 		};
 	},
@@ -226,6 +291,14 @@ export const sshKeyMode: EntryMode = {
 			privateKey: v.privateKey,
 			passphrase: v.passphrase || undefined,
 			keyType: deriveKeyType(v.publicKey, v.privateKey),
+			// Named even when empty, so clearing the list clears it (the edit keeps unnamed fields).
+			hosts: (() => {
+				const hosts = hostLines(v.hosts ?? "")
+					.map(normalizeHost)
+					.filter((h): h is string => h !== null);
+				return hosts.length > 0 ? hosts : undefined;
+			})(),
+			agentDisabled: v.useAgent === false ? true : undefined,
 			notes: v.notes || undefined,
 		};
 	},
@@ -249,6 +322,6 @@ export const sshKeyMode: EntryMode = {
 
 	searchText: (entry) => {
 		const key = entry as SshKeyEntry;
-		return `${key.keyType ?? ""} ${key.publicKey}`.toLowerCase();
+		return `${key.keyType ?? ""} ${key.publicKey} ${(key.hosts ?? []).join(" ")}`.toLowerCase();
 	},
 };

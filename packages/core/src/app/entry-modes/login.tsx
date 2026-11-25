@@ -47,9 +47,9 @@ import { PasswordStrengthMeter } from "../components/ui/password-strength-meter"
 import { SelectField } from "../components/ui/select-field";
 import { TextArea } from "../components/ui/text-area";
 import { TextField } from "../components/ui/text-field";
-import { Toggle } from "../components/ui/toggle";
 import { useRevealState } from "../hooks/useRevealState";
 import { DetailField, DetailNotes, DetailValue, NumberedChars } from "./DetailField";
+import { ToggleRow } from "./toggle-row";
 import type { EntryDetailBodyProps, EntryFieldsProps, EntryMode } from "./types";
 
 /** The login form's value shape. (Custom fields are host-owned and shared across modes, so not listed here.) */
@@ -472,25 +472,6 @@ function LoginFields({ initialBreach }: EntryFieldsProps) {
 				</div>
 			</AdvancedDisclosure>
 		</>
-	);
-}
-
-interface ToggleRowProps {
-	title: string;
-	subtitle: string;
-	checked: boolean;
-	onChange: (next: boolean) => void;
-}
-
-function ToggleRow({ title, subtitle, checked, onChange }: ToggleRowProps) {
-	return (
-		<div className="flex items-start justify-between gap-3">
-			<div className="min-w-0">
-				<p className="text-sm">{title}</p>
-				<p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-			</div>
-			<Toggle checked={checked} onChange={onChange} label={title} />
-		</div>
 	);
 }
 

@@ -68,6 +68,8 @@ const FULL: Record<string, EntryData> = {
 		privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----",
 		passphrase: "pp",
 		keyType: "ed25519",
+		hosts: ["github.com"],
+		agentDisabled: true,
 	},
 };
 

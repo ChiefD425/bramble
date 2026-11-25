@@ -921,6 +921,10 @@ msgstr "O Bramble precisa dessa permissão para se comunicar com o aplicativo de
 msgid "Bramble needs your permission to talk to the desktop app on this computer. Your browser will ask you to confirm."
 msgstr "O Bramble precisa da sua permissão para se comunicar com o aplicativo de desktop neste computador. Seu navegador pedirá confirmação."
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Bramble offers this key only to these hosts."
+msgstr "O Bramble oferece esta chave somente a estes hosts."
+
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
 msgstr "O Bramble só precisa fazer upload e listar. Restringir a chave a este único bucket e não incluir a exclusão limita o que ela pode fazer se for roubada."
@@ -2262,6 +2266,14 @@ msgstr "Contém uma passkey"
 msgid "Horse"
 msgstr "Cavalo"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts"
+msgstr "Hosts"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts (optional)"
+msgstr "Hosts (opcional)"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
 msgstr "Ampulheta"
@@ -2950,6 +2962,10 @@ msgstr "Não está sincronizando: este dispositivo não consegue ler a chave de 
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "Não está sincronizando: seus outros dispositivos não reconhecem mais este. Desconecte e entre novamente com um código de outro dispositivo."
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Not used by the SSH agent"
+msgstr "Não utilizada pelo agente SSH"
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Not using the mailbox"
 msgstr "Não está usando a caixa de correio"
@@ -3005,6 +3021,10 @@ msgstr "Desativado"
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Off on this device"
 msgstr "Desativado neste dispositivo"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Off: Bramble never offers or signs with this key."
+msgstr "Desativado: o Bramble nunca oferece esta chave nem assina com ela."
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
@@ -5134,6 +5154,10 @@ msgstr "Usar claro, escuro ou combinar com o sistema"
 msgid "Use only digits, spaces or dashes."
 msgstr "Use apenas dígitos, espaços ou hífens."
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use only the host, like github.com or 10.0.0.5"
+msgstr "Usar apenas o host, como github.com ou 10.0.0.5"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Use password"
 msgstr "Usar senha"
@@ -5169,6 +5193,10 @@ msgstr "Usar Touch ID ou Windows Hello em vez de digitar a sua senha mestre."
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "Use Touch ID, Windows Hello or a security key like a YubiKey instead of typing your master password."
 msgstr "Usar Touch ID, Windows Hello ou uma chave de segurança como uma YubiKey em vez de digitar a sua senha mestre."
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use with the SSH agent"
+msgstr "Usar com o agente SSH"
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your master password instead"
