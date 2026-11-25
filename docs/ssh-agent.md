@@ -76,8 +76,8 @@ Settings > General > **SSH agent**, desktop only:
   - Add it for me puts the line first in `~/.ssh/config`, creating `~/.ssh` (0700) and the file
     (0600) if needed, written through a temporary file and a rename. When `~/.ssh/config` is a
     symlink (a dotfiles manager) or not writable, the button isn't offered.
-  - The row reads **Set up** when the line is in the file before any `Host` or `Match`, and
-    **Move this line to the top of ~/.ssh/config** when it's lower down.
+  - The row reads **Added to ~/.ssh/config** when the line is in the file before any `Host` or
+    `Match`, and **Move this line to the top of ~/.ssh/config** when it's lower down.
 - **Ask before each use**, off. "Bramble asks every time a key is used, even while unlocked."
 - **Offer keys only to their hosts**, off. "Servers not named on any key see none of your keys."
 - **Keys Bramble can't use**, with the reason and the fix, and hosts it left out.
