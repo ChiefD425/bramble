@@ -109,10 +109,18 @@ import Layout from "@/layouts/Layout.astro";
 					<Button data-months="36" type="button" variant="outline">36</Button>
 				</div>
 				<p data-account="months-error" hidden class="text-sm text-error">Choose 6 to 36 months.</p>
-				<Button data-account="buy" type="button">Add 6 months, $12</Button>
+				<div class="flex flex-wrap gap-2">
+					<Button data-account="buy" type="button">Add 6 months, $12</Button>
+					<Button data-account="buy-crypto" type="button" variant="outline">
+						Pay with Bitcoin or Monero
+					</Button>
+				</div>
 				<p class="text-sm text-muted-foreground">
 					$2 a month. Prices in US dollars. Tax is added at checkout where it applies. Refunds within 14 days of a
 					purchase, less the days since you bought it, none after.
+				</p>
+				<p class="text-sm text-muted-foreground">
+					Paid in Bitcoin or Monero, nothing is added to the price, and the payment can't be refunded.
 				</p>
 			</div>
 

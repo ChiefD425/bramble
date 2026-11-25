@@ -18,7 +18,11 @@ const BILLING_CODES = [
 	"bad_request",
 	"payment_provider",
 	"nothing_to_refund",
+	"method_unavailable",
 ] as const;
+/** A card through Stripe, or Bitcoin and Monero through BTCPay. */
+export type PaymentMethod = "card" | "crypto";
+
 export type AccountErrorCode = (typeof BILLING_CODES)[number] | "network" | "unexpected";
 
 export class AccountError extends Error {
@@ -81,8 +85,12 @@ export function accountApi(opts: { billing: string; mailbox: string; fetch?: typ
 		challenge: async () => (await call(`${opts.billing}/v1/challenge`)) as Challenge,
 		openAccount: async (altcha: string) =>
 			field(await post("/v1/accounts", { altcha }), "number", isString),
-		checkout: async (number: string, months: number, altcha: string) =>
-			field(await post("/v1/checkout", { number, months, altcha }), "url", isString),
+		checkout: async (
+			number: string,
+			months: number,
+			altcha: string,
+			method: PaymentMethod = "card",
+		) => field(await post("/v1/checkout", { number, months, altcha, method }), "url", isString),
 		purchases: async (number: string) =>
 			field(await post("/v1/purchases", { number }), "purchases", Array.isArray) as Purchase[],
 		refund: async (number: string, purchase: string): Promise<Refunded> => {

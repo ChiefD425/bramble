@@ -407,3 +407,58 @@ test("a valid number clears the message", async ({ page }) => {
 	await expect(page.getByText("Choose 6 to 36 months.")).toBeHidden();
 	await expect(page.getByRole("button", { name: "Add 6 months, $12" })).toBeEnabled();
 });
+
+test("Pay with Bitcoin or Monero asks billing for crypto and opens BTCPay's invoice", async ({
+	page,
+}) => {
+	services.checkout = () => ({ code: 200, body: { url: "https://pay.bramble.sh/i/test" } });
+	await fromApp(page);
+	await page.getByRole("button", { name: "12", exact: true }).click();
+	await page.getByRole("button", { name: "Pay with Bitcoin or Monero" }).click();
+	await expect(page.getByText("BTCPay test invoice")).toBeVisible();
+	const [call] = callsTo("/v1/checkout");
+	expect(JSON.parse(call?.body ?? "{}")).toMatchObject({ months: 12, method: "crypto" });
+});
+
+test("the card button still asks for a card", async ({ page }) => {
+	await fromApp(page);
+	await page.getByRole("button", { name: "6 months, $12" }).click();
+	await expect(page.getByText("Stripe test checkout")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).toMatchObject({ method: "card" });
+});
+
+test("where crypto isn't offered, the page says so and both buttons work again", async ({
+	page,
+}) => {
+	services.checkout = () => ({ code: 404, body: { error: "method_unavailable" } });
+	await fromApp(page);
+	const crypto = page.getByRole("button", { name: "Pay with Bitcoin or Monero" });
+	await crypto.click();
+	await expect(
+		page.getByText(/Paying with Bitcoin or Monero isn't available right now/),
+	).toBeVisible();
+	await expect(crypto).toBeEnabled();
+	await expect(crypto).not.toHaveAttribute("aria-busy");
+	await expect(page.getByRole("button", { name: "6 months, $12" })).toBeEnabled();
+});
+
+test("back from a crypto payment, the page says the time lands once it confirms", async ({
+	page,
+}) => {
+	await page.clock.install();
+	await page.addInitScript(
+		([number, paidThrough]) => {
+			sessionStorage.setItem("bramble.account", number);
+			sessionStorage.setItem("bramble.paidThrough", paidThrough);
+		},
+		[NUMBER, String(PAID.paidThrough)],
+	);
+	// The payment is seen, but its time hasn't landed yet.
+	services.status = () => ({ code: 200, body: PAID });
+	await page.goto("/account/paid?via=crypto");
+	await page.clock.runFor(35_000);
+	await expect(
+		page.getByText(/once the payment confirms, which can take up to an hour/),
+	).toBeVisible();
+	await expect(page.getByText(NUMBER, { exact: true })).toBeVisible();
+});

@@ -11,6 +11,7 @@ import {
 	AccountError,
 	type AccountErrorCode,
 	accountApi,
+	type PaymentMethod,
 	type Purchase,
 	solveAltcha,
 } from "./api";
@@ -22,6 +23,8 @@ const MESSAGES: Record<AccountErrorCode, string> = {
 	challenge_failed: "The browser check didn't go through. Try again.",
 	account_unknown: "That account number isn't recognized.",
 	payment_provider: "The payment provider didn't answer. Try again shortly.",
+	method_unavailable:
+		"Paying with Bitcoin or Monero isn't available right now. You can pay by card.",
 	nothing_to_refund: "That purchase can't be refunded.",
 	network: "Can't reach Bramble right now.",
 	bad_request: "Something went wrong. Try again.",
@@ -92,6 +95,7 @@ export function start(
 	const numberError = part("number-error");
 	const months = part<HTMLInputElement>("months");
 	const buy = part<HTMLButtonElement>("buy");
+	const buyCrypto = part<HTMLButtonElement>("buy-crypto");
 	let number: string | null = null;
 	let shown = false;
 	let paidThrough = 0;
@@ -255,6 +259,7 @@ export function start(
 	function paintMonths() {
 		const chosen = chosenMonths(months.value);
 		buy.disabled = busy || chosen === null;
+		buyCrypto.disabled = busy || chosen === null;
 		part("months-error").hidden = chosen !== null;
 		if (chosen !== null) buy.textContent = `Add ${chosen} months, $${chosen * PRICE_PER_MONTH}`;
 	}
@@ -266,24 +271,34 @@ export function start(
 		});
 	}
 
-	buy.addEventListener("click", async () => {
+	/** Checkout by card or crypto: the processor's page, with the paid time remembered for the paid
+	 * page to tell when the new time lands. */
+	async function checkout(method: PaymentMethod, button: HTMLButtonElement) {
 		const chosen = chosenMonths(months.value);
 		if (busy || !number || chosen === null) return;
 		busy = true;
-		working(buy, true);
+		working(button, true);
+		paintMonths();
 		showError(null);
 		try {
-			const url = await api.checkout(number, chosen, await solveAltcha(await api.challenge()));
+			const url = await api.checkout(
+				number,
+				chosen,
+				await solveAltcha(await api.challenge()),
+				method,
+			);
 			if (!url.startsWith("https://")) throw new AccountError("unexpected");
 			sessionStorage.setItem(PAID_THROUGH_KEY, String(paidThrough));
 			location.assign(url);
 		} catch (err) {
 			showError(messageFor(err));
 			busy = false;
-			working(buy, false);
+			working(button, false);
 			paintMonths();
 		}
-	});
+	}
+	buy.addEventListener("click", () => void checkout("card", buy));
+	buyCrypto.addEventListener("click", () => void checkout("crypto", buyCrypto));
 
 	part("show").addEventListener("click", () => {
 		shown = !shown;
@@ -328,6 +343,7 @@ export function start(
 		if (!event.persisted) return;
 		busy = false;
 		working(buy, false);
+		working(buyCrypto, false);
 		paintMonths();
 		working(create, false);
 		checking.hidden = true;
