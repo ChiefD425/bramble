@@ -32,7 +32,13 @@ import { bytesToBase64 } from "@core/util/bytes";
 import type { PortableVaultBlob } from "@core/wasm";
 import { invoke } from "@tauri-apps/api/core";
 import { rawBytes } from "./files";
-import { markLocked, markUnlocked, onExternalChange, onExternalLock } from "./vault-session";
+import {
+	markLocked,
+	markUnlocked,
+	onExternalChange,
+	onExternalLock,
+	onExternalUnlock,
+} from "./vault-session";
 
 /**
  * `magicVersion` is a Uint8Array in the adapter contract; Tauri's IPC is JSON, and the
@@ -76,6 +82,7 @@ export const desktopCrypto: CryptoAdapter = {
 	// Sync merges write entries out of band, so the open list has to be told. The shell's
 	// auto-lock arrives as a Tauri event that calls markLocked (../auto-lock.ts).
 	onExternalLock,
+	onExternalUnlock,
 	onExternalChange,
 
 	generateSalt: () => invoke<string>("crypto_generate_salt"),

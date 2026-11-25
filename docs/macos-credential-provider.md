@@ -401,6 +401,13 @@ The extension asks the running app rather than holding a session of its own
   the app locked.
 - Passkeys still unlock in the extension: signing needs the private key in that process. They
   keep claiming user verification for that reason.
+- The other way round, an unlock in the extension unlocks the app (`unlock`). Without it a two-step
+  sign-in asked twice: the email page's fill unlocked only the extension, which exits after each
+  request, and the password page found the app still locked. The extension hands over the key it
+  just unwrapped; the app takes it only while locked, only for the vault it has open (never a
+  switch behind the user's back), and only if it opens that vault's AutoFill copy. Then the
+  window opens the vault as after its own Touch ID, and auto-lock counts from that moment. The
+  key crosses the same signature-checked socket, to the process that owns it anyway.
 
 ## What iteration 0 proved
 

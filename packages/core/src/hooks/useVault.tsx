@@ -1162,6 +1162,21 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		return crypto.onExternalLock(closeOpenVault);
 	}, [crypto, closeOpenVault]);
 
+	// The macOS AutoFill extension unlocked this vault and the shell loaded its key: open it here
+	// too, as after the app's own Touch ID, so the next fill asks for nothing. The shell only does
+	// that for the active vault while locked; the id check keeps a stale event from opening another.
+	useEffect(() => {
+		return crypto.onExternalUnlock?.((vaultId) => {
+			if (vaultId !== activeId) return;
+			void openUnlocked(vaultId)
+				.then(() => {
+					setIsLocked(false);
+					void shell.flushPendingCornerCapture().catch(() => {});
+				})
+				.catch((e) => console.error("[vault] AutoFill unlock did not open the vault:", e));
+		});
+	}, [crypto, activeId, openUnlocked, shell]);
+
 	// Re-decrypt when the background commits a vault write (corner-prompt path)
 	// outside this context, keeping in-memory entries in sync with disk.
 	useEffect(() => {

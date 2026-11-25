@@ -229,6 +229,22 @@ fn copy_path(dir: &Path, vault_id: &str) -> Result<PathBuf, String> {
     Ok(dir.join(COPIES_DIR).join(format!("{vault_id}.json")))
 }
 
+/// Whether `decrypt` opens `vault_id`'s copy: how a key handed over by the extension is checked
+/// against the vault before the app takes it.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub(crate) fn copy_opens(dir: &Path, vault_id: &str, decrypt: impl Fn(&str, &str) -> bool) -> bool {
+    #[derive(Deserialize)]
+    struct Sealed {
+        iv: String,
+        ciphertext: String,
+    }
+    copy_path(dir, vault_id)
+        .ok()
+        .and_then(|path| fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice::<Sealed>(&bytes).ok())
+        .is_some_and(|c| decrypt(&c.iv, &c.ciphertext))
+}
+
 fn remove_if_present(path: &Path) -> Result<bool, String> {
     match fs::remove_file(path) {
         Ok(()) => Ok(true),
@@ -896,6 +912,21 @@ mod tests {
         let written = write_mirror(dir.path(), &mirror_for("v1", &[]), 3).unwrap();
         assert!(written.pruned.is_empty());
         assert!(dir.path().join(COPIES_DIR).join("v2.json").exists());
+    }
+
+    #[test]
+    fn a_key_is_checked_against_that_vaults_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let m = mirror_for("v1", &[]);
+        write_mirror(dir.path(), &m, 1).unwrap();
+        let opens = |iv: &str, ct: &str| iv == m.iv && ct == m.ciphertext;
+        assert!(copy_opens(dir.path(), "v1", opens));
+        assert!(!copy_opens(dir.path(), "v1", |_, _| false));
+        assert!(!copy_opens(dir.path(), "v2", |_, _| true), "no copy");
+        assert!(
+            !copy_opens(dir.path(), "../v1", |_, _| true),
+            "not a vault id"
+        );
     }
 
     #[test]

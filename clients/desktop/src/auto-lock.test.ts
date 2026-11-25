@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
 	invoked: [] as string[],
-	listeners: new Map<string, () => void>(),
+	listeners: new Map<string, (event: { payload: unknown }) => void>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -11,14 +11,16 @@ vi.mock("@tauri-apps/api/core", () => ({
 	},
 }));
 vi.mock("@tauri-apps/api/event", () => ({
-	listen: async (name: string, cb: () => void) => {
+	listen: async (name: string, cb: (event: { payload: unknown }) => void) => {
 		h.listeners.set(name, cb);
 		return () => h.listeners.delete(name);
 	},
 }));
 
 const { reportActivity, startAutoLock } = await import("./auto-lock");
-const { onExternalLock, onVaultStateChange } = await import("./adapters/vault-session");
+const { onExternalLock, onExternalUnlock, onVaultStateChange } = await import(
+	"./adapters/vault-session"
+);
 
 beforeEach(() => {
 	vi.useFakeTimers();
@@ -55,12 +57,30 @@ describe("startAutoLock", () => {
 		const stop = startAutoLock(new EventTarget());
 		await vi.waitFor(() => expect(h.listeners.has("vault://auto-locked")).toBe(true));
 
-		h.listeners.get("vault://auto-locked")?.();
+		h.listeners.get("vault://auto-locked")?.({ payload: null });
 		expect(states).toEqual([true]);
 		expect(relocks).toHaveBeenCalledTimes(1);
 
 		stop();
 		offState();
 		offLock();
+	});
+
+	it("turns an unlock in AutoFill into an app unlock of that vault", async () => {
+		const states: boolean[] = [];
+		const offState = onVaultStateChange((locked) => states.push(locked));
+		const opened: string[] = [];
+		const offUnlock = onExternalUnlock((id) => opened.push(id));
+		const stop = startAutoLock(new EventTarget());
+		await vi.waitFor(() => expect(h.listeners.has("vault://autofill-unlocked")).toBe(true));
+
+		h.listeners.get("vault://autofill-unlocked")?.({ payload: "v1" });
+		expect(states).toEqual([false]);
+		expect(opened).toEqual(["v1"]);
+
+		stop();
+		await vi.waitFor(() => expect(h.listeners.has("vault://autofill-unlocked")).toBe(false));
+		offState();
+		offUnlock();
 	});
 });

@@ -1,6 +1,7 @@
 // Fill from the unlocked desktop app, so AutoFill asks for nothing while Bramble is unlocked and
 // asks again once it locks or quits (src-tauri/src/autofill_session.rs). The app keeps the key;
 // this asks it for one login at a time. Anything short of a trusted answer means "unlock here".
+// The other way round, an unlock here hands the key to a locked app, so it stays unlocked.
 
 import Foundation
 import Security
@@ -44,6 +45,13 @@ enum AppSession {
 		var request = ["op": "list"]
 		if let vaultId { request["vaultId"] = vaultId }
 		return ask(request, at: socketPath(container)).flatMap(decodeList)
+	}
+
+	/// Hand a key this extension just unwrapped to the app, which unlocks with it if it is locked on
+	/// that vault. True when it did.
+	@discardableResult
+	static func unlock(vaultId: String, vek: String, at path: String, requirement: String = appRequirement) -> Bool {
+		ask(["op": "unlock", "vaultId": vaultId, "vek": vek], at: path, requirement: requirement).map(ok) ?? false
 	}
 
 	static func socketPath(_ container: URL) -> String {

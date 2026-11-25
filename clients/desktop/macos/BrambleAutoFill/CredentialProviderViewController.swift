@@ -388,7 +388,20 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 	// MARK: After unlock
 
+	/// Unlocked here: hand the key to the app first, so it stays unlocked for the next fill (a
+	/// two-step sign-in's password page) until its own auto-lock. Before filling, because macOS may
+	/// end this process as soon as a fill completes.
 	private func onUnlocked(_ mirror: VaultCopy) {
+		guard let vaultId = mirror.vaultId, let container = groupContainer(), let vek = try? exportVek() else {
+			return proceed(mirror)
+		}
+		DispatchQueue.global(qos: .userInitiated).async {
+			AppSession.unlock(vaultId: vaultId, vek: vek, at: AppSession.socketPath(container))
+			DispatchQueue.main.async { self.proceed(mirror) }
+		}
+	}
+
+	private func proceed(_ mirror: VaultCopy) {
 		switch pending {
 		case .passwords(let hosts, let recordId):
 			offer(creds(mirror), hosts: hosts, recordId: recordId) { [weak self] in self?.fill($0) }

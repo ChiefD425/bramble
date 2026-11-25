@@ -21,6 +21,7 @@ vi.mock("./vault-session", () => ({
 	markUnlocked: () => {},
 	onExternalChange: () => () => {},
 	onExternalLock: () => () => {},
+	onExternalUnlock: () => () => {},
 	onVaultStateChange: () => () => {},
 }));
 
