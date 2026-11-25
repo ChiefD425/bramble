@@ -1,6 +1,9 @@
 ---
 import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
+import CreditCard from "@tabler/icons/outline/credit-card.svg";
+import CurrencyBitcoin from "@tabler/icons/outline/currency-bitcoin.svg";
+import CurrencyMonero from "@tabler/icons/outline/currency-monero.svg";
 import { Button } from "@/components/starwind/button";
 import Layout from "@/layouts/Layout.astro";
 ---
@@ -109,18 +112,22 @@ import Layout from "@/layouts/Layout.astro";
 					<Button data-months="36" type="button" variant="outline">36</Button>
 				</div>
 				<p data-account="months-error" hidden class="text-sm text-error">Choose 6 to 36 months.</p>
+				<p id="add-time-total" data-account="total" class="text-lg font-medium">6 months, $12</p>
 				<div class="flex flex-wrap gap-2">
-					<Button data-account="buy" type="button">Add 6 months, $12</Button>
-					<Button data-account="buy-crypto" type="button" variant="outline">
-						Pay with Bitcoin or Monero
+					<Button data-pay="card" type="button" variant="outline" aria-describedby="add-time-total">
+						<CreditCard aria-hidden="true" />Credit/Debit card
+					</Button>
+					<Button data-pay="bitcoin" type="button" variant="outline" aria-describedby="add-time-total">
+						<CurrencyBitcoin aria-hidden="true" />Bitcoin
+					</Button>
+					<Button data-pay="monero" type="button" variant="outline" aria-describedby="add-time-total">
+						<CurrencyMonero aria-hidden="true" />Monero
 					</Button>
 				</div>
 				<p class="text-sm text-muted-foreground">
-					$2 a month. Prices in US dollars. Tax is added at checkout where it applies. Refunds within 14 days of a
-					purchase, less the days since you bought it, none after.
-				</p>
-				<p class="text-sm text-muted-foreground">
-					Paid in Bitcoin or Monero, nothing is added to the price, and the payment can't be refunded.
+					$2 a month, in US dollars. By card, tax is added at checkout where it applies, and a purchase can be
+					refunded within 14 days, less the days since you bought it. In Bitcoin or Monero, nothing is added to
+					the price, and the payment can't be refunded.
 				</p>
 			</div>
 

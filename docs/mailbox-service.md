@@ -725,12 +725,13 @@ deleted early because of payment. The app warns before `paid_through` arrives.
   the webhook adds the time.
 - **No crypto refunds** in v1 (design call). A refund would mean collecting a return address, a
   new data point.
-- **As built** (billing's plan 6). The account page's **Pay with Bitcoin or Monero** asks billing
-  for a BTCPay invoice of the months at $2, with nothing added, and opens it. The invoice carries
-  only the reference and the months, and returns the buyer to the paid page, which says the time
-  lands once the payment confirms. BTCPay's signed `InvoiceSettled` webhook makes billing read the
+- **As built** (billing's plan 6). The account page offers **Credit/Debit card**, **Bitcoin** and
+  **Monero** as three buttons of equal weight. A coin asks billing for a BTCPay invoice of the
+  months at $2, with nothing added, payable in that coin only, and opens it. The invoice carries
+  only the reference, the coin and the months, and returns the buyer to the paid page, which says
+  the time lands once the payment confirms. BTCPay's signed `InvoiceSettled` webhook makes billing read the
   invoice back and record the sale as a card's is recorded, never refundable, with the country
-  `ZZ`, no tax and `crypto` in the ledger; a daily catch-up records any settled invoice whose
+  `ZZ`, no tax and the coin in the ledger; a daily catch-up records any settled invoice whose
   webhook never landed. The sandbox offers no crypto: BTCPay runs on mainnet only.
 - **Tax** for a payer whose country is unknown is an open question for the accountant.
 

@@ -20,8 +20,8 @@ const BILLING_CODES = [
 	"nothing_to_refund",
 	"method_unavailable",
 ] as const;
-/** A card through Stripe, or Bitcoin and Monero through BTCPay. */
-export type PaymentMethod = "card" | "crypto";
+/** A card through Stripe, or Bitcoin or Monero through BTCPay. */
+export type PaymentMethod = "card" | "bitcoin" | "monero";
 
 export type AccountErrorCode = (typeof BILLING_CODES)[number] | "network" | "unexpected";
 

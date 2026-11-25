@@ -94,8 +94,8 @@ export function start(
 	const input = part<HTMLInputElement>("number-input");
 	const numberError = part("number-error");
 	const months = part<HTMLInputElement>("months");
-	const buy = part<HTMLButtonElement>("buy");
-	const buyCrypto = part<HTMLButtonElement>("buy-crypto");
+	/** The three ways to pay, each its own button of the same weight. */
+	const payButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-pay]")];
 	let number: string | null = null;
 	let shown = false;
 	let paidThrough = 0;
@@ -255,13 +255,14 @@ export function start(
 		showAccount(parsed, false);
 	});
 
-	/** The button follows the field: what it buys and costs, or disabled for a number it can't buy. */
+	/** The total follows the field, and the buttons are disabled for a number it can't buy. */
 	function paintMonths() {
 		const chosen = chosenMonths(months.value);
-		buy.disabled = busy || chosen === null;
-		buyCrypto.disabled = busy || chosen === null;
+		for (const button of payButtons) button.disabled = busy || chosen === null;
 		part("months-error").hidden = chosen !== null;
-		if (chosen !== null) buy.textContent = `Add ${chosen} months, $${chosen * PRICE_PER_MONTH}`;
+		const total = part("total");
+		total.hidden = chosen === null;
+		if (chosen !== null) total.textContent = `${chosen} months, $${chosen * PRICE_PER_MONTH}`;
 	}
 	months.addEventListener("input", paintMonths);
 	for (const shortcut of document.querySelectorAll<HTMLButtonElement>("[data-months]")) {
@@ -297,8 +298,12 @@ export function start(
 			paintMonths();
 		}
 	}
-	buy.addEventListener("click", () => void checkout("card", buy));
-	buyCrypto.addEventListener("click", () => void checkout("crypto", buyCrypto));
+	for (const button of payButtons) {
+		button.addEventListener(
+			"click",
+			() => void checkout(button.dataset.pay as PaymentMethod, button),
+		);
+	}
 
 	part("show").addEventListener("click", () => {
 		shown = !shown;
@@ -342,8 +347,7 @@ export function start(
 	window.addEventListener("pageshow", (event) => {
 		if (!event.persisted) return;
 		busy = false;
-		working(buy, false);
-		working(buyCrypto, false);
+		for (const button of payButtons) working(button, false);
 		paintMonths();
 		working(create, false);
 		checking.hidden = true;
