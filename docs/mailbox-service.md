@@ -734,8 +734,9 @@ deleted early because of payment. The app warns before `paid_through` arrives.
   which says the time lands once the payment confirms. BTCPay's signed `InvoiceSettled` webhook
   makes billing read the invoice back, report a taxed sale to Stripe Tax, and record it as a card's
   is recorded, never refundable, with the declared country, its tax and the coin in the ledger; a
-  daily catch-up records any settled invoice whose webhook never landed. The sandbox offers no
-  crypto: BTCPay runs on mainnet only.
+  daily catch-up records any settled invoice whose webhook never landed. BTCPay runs on mainnet
+  only, so the sandbox sells through a second store on the same server and its tests settle
+  invoices by hand (Mark as settled).
 - **Tax** (owner, 2026-11-25): on top of the price as for cards, from the country (and Canadian
   province) the buyer picks, calculated by Stripe Tax; no US tax without a state registration.
 
