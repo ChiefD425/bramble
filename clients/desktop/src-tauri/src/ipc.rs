@@ -137,6 +137,10 @@ mod unix {
     pub fn connect(root: &Path) -> io::Result<Stream> {
         UnixStream::connect(endpoint(root))
     }
+
+    pub fn connect_named(root: &Path, name: &str) -> io::Result<Stream> {
+        UnixStream::connect(named_endpoint(root, name))
+    }
 }
 
 #[cfg(windows)]
@@ -191,7 +195,7 @@ mod windows {
             // exactly the thing this is here to prevent.
             let sd = owner_only_descriptor()?;
             let listener = PipeListenerOptions::new()
-                .path(name.as_str())
+                .path(name)
                 .security_descriptor(Some(sd))
                 .create_duplex::<pipe_mode::Bytes>()?;
             Ok(Self(listener))
@@ -204,6 +208,10 @@ mod windows {
 
     pub fn connect(root: &Path) -> io::Result<Stream> {
         Stream::connect_by_path(endpoint(root).as_str())
+    }
+
+    pub fn connect_named(root: &Path, name: &str) -> io::Result<Stream> {
+        Stream::connect_by_path(named_endpoint(root, name).as_str())
     }
 
     /// A DACL granting the current user full control and naming nobody else.
@@ -296,6 +304,18 @@ pub fn connect(root: &Path) -> io::Result<Stream> {
     }
 }
 
+/// Dial a named endpoint under `root`, such as the SSH agent's.
+pub fn connect_named(root: &Path, name: &str) -> io::Result<Stream> {
+    #[cfg(unix)]
+    {
+        unix::connect_named(root, name)
+    }
+    #[cfg(windows)]
+    {
+        windows::connect_named(root, name)
+    }
+}
+
 /// A second handle onto the same connection, so one thread can write while another is parked
 /// in a read.
 ///
@@ -337,6 +357,34 @@ pub fn shutdown(stream: &Stream) {
 mod tests_windows {
     use super::*;
     use std::io::{Read, Write};
+
+    #[test]
+    fn named_pipe_carries_the_user_tag() {
+        let root = Path::new(r"C:\Users\a\AppData\Roaming\app.bramble.desktop");
+        assert_eq!(
+            named_endpoint(root, "ssh-agent"),
+            format!(
+                r"\\.\pipe\app.bramble.desktop.ssh-agent.{}",
+                endpoint_tag(root)
+            )
+        );
+        assert_ne!(named_endpoint(root, "ssh-agent"), windows::endpoint(root));
+    }
+
+    #[test]
+    fn a_named_pipe_takes_a_connection() {
+        let dir = tempfile::tempdir().unwrap();
+        let listener = Listener::bind_named(dir.path(), "ssh-agent").expect("bind");
+        let server = std::thread::spawn(move || {
+            let mut conn = listener.incoming().next().unwrap().unwrap();
+            let mut buf = [0u8; 2];
+            conn.read_exact(&mut buf).unwrap();
+            buf
+        });
+        let mut client = connect_named(dir.path(), "ssh-agent").expect("connect");
+        client.write_all(b"ok").unwrap();
+        assert_eq!(&server.join().unwrap(), b"ok");
+    }
 
     #[test]
     fn bytes_round_trip_over_the_pipe() {

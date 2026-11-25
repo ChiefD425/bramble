@@ -5,7 +5,6 @@
 
 use std::{
     collections::HashMap,
-    fs,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{
@@ -36,7 +35,8 @@ const SUN_PATH: usize = 108;
 
 #[derive(Debug)]
 pub enum ListenError {
-    /// The home folder's path leaves no room for the socket's.
+    /// The home folder's path leaves no room for the socket's. Unix only: a pipe name has room.
+    #[cfg_attr(windows, allow(dead_code))]
     PathTooLong,
     Bind(String),
 }
@@ -130,14 +130,12 @@ pub fn stop(root: &Path) {
         return;
     };
     was.stopped.store(true, Ordering::SeqCst);
+    // Wakes the accept loop so it sees the flag and drops the listener.
+    let _ = ipc::connect_named(root, SSH_AGENT_NAME);
     #[cfg(unix)]
-    {
-        // Wakes the accept loop so it sees the flag and drops the listener.
-        let _ = std::os::unix::net::UnixStream::connect(&was.address);
-        let _ = fs::remove_file(&was.address);
-    }
+    let _ = std::fs::remove_file(&was.address);
     #[cfg(not(unix))]
-    let _ = (&was.address, fs::metadata);
+    let _ = &was.address;
 }
 
 /// One connection's requests, in order, until it closes or the agent stops.
@@ -196,7 +194,54 @@ pub(super) fn caller_name(stream: &ipc::Stream) -> String {
     peer_name(stream.as_raw_fd()).unwrap_or_else(|| "unknown".into())
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+pub(super) fn caller_name(stream: &ipc::Stream) -> String {
+    use std::os::windows::io::{AsHandle, AsRawHandle};
+    use windows_sys::Win32::{
+        Foundation::CloseHandle,
+        System::{
+            Pipes::GetNamedPipeClientProcessId,
+            Threading::{
+                OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+                PROCESS_QUERY_LIMITED_INFORMATION,
+            },
+        },
+    };
+    let pipe = stream.as_handle().as_raw_handle();
+    let mut pid = 0u32;
+    // SAFETY: the handle is the live pipe this connection owns; pid is a live local.
+    if unsafe { GetNamedPipeClientProcessId(pipe, &mut pid) } == 0 {
+        return "unknown".into();
+    }
+    // SAFETY: plain calls on a pid; the process handle is closed below.
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if process.is_null() {
+        return "unknown".into();
+    }
+    let mut buf = [0u16; 1024];
+    let mut len = buf.len() as u32;
+    // SAFETY: buf and len are live locals of the size passed.
+    let ok = unsafe {
+        QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, buf.as_mut_ptr(), &mut len)
+    };
+    // SAFETY: process came from OpenProcess above.
+    unsafe { CloseHandle(process) };
+    if ok == 0 {
+        return "unknown".into();
+    }
+    let path = String::from_utf16_lossy(&buf[..len as usize]);
+    let name = Path::new(&path)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    if name.is_empty() {
+        "unknown".into()
+    } else {
+        name
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
 pub(super) fn caller_name(_stream: &ipc::Stream) -> String {
     "unknown".into()
 }
@@ -246,6 +291,7 @@ fn peer_name(fd: std::ffi::c_int) -> Option<String> {
     const SOL_SOCKET: c_int = 1;
     const SO_PEERCRED: c_int = 17;
     #[repr(C)]
+    #[allow(dead_code)] // uid and gid are filled in by the kernel and not needed.
     struct Ucred {
         pid: i32,
         uid: u32,
@@ -279,7 +325,7 @@ fn peer_name(fd: std::ffi::c_int) -> Option<String> {
     if got != 0 || cred.pid <= 0 {
         return None;
     }
-    let name = fs::read_to_string(format!("/proc/{}/comm", cred.pid)).ok()?;
+    let name = std::fs::read_to_string(format!("/proc/{}/comm", cred.pid)).ok()?;
     let name = name.trim();
     (!name.is_empty()).then(|| name.to_string())
 }
@@ -292,6 +338,7 @@ mod tests {
         store::{Ask, KeyInput},
     };
     use std::{
+        fs,
         io::{self, Read, Write},
         net::TcpListener,
         os::unix::net::{UnixListener, UnixStream},
