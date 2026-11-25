@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const native = vi.hoisted(() => ({
 	send: vi.fn(),
 	sendFile: vi.fn(),
+	download: vi.fn(),
 }));
 
 // The cache dir, in memory: path -> base64 appends, so a spooled body can be read back.
@@ -32,7 +33,7 @@ vi.mock("@capacitor/core", () => ({
 	Capacitor: { isNativePlatform: () => platform.isNative },
 }));
 
-const { mobileHttp } = await import("./http");
+const { mobileHttp, nativeDownload } = await import("./http");
 
 beforeEach(() => {
 	platform.isNative = true;
@@ -193,5 +194,48 @@ describe("mobileHttp with a body too large for the bridge", () => {
 			mobileHttp.send({ method: "PUT", url: "https://dav.example/x", body: source(10) }),
 		).rejects.toThrow("offline");
 		expect(cache.size).toBe(0);
+	});
+});
+
+describe("files that already sit on the device", () => {
+	it("sends a body from its own file, never through the bridge or a spool", async () => {
+		const read = vi.fn();
+		await mobileHttp.send({
+			method: "PUT",
+			url: "https://mailbox.example/v1/blob",
+			headers: { "content-type": "application/octet-stream" },
+			body: { size: 3, read, path: "/data/blobs/v/h" },
+		});
+		expect(native.sendFile).toHaveBeenCalledWith({
+			method: "PUT",
+			url: "https://mailbox.example/v1/blob",
+			headers: { "content-type": "application/octet-stream" },
+			path: "/data/blobs/v/h",
+		});
+		expect(read).not.toHaveBeenCalled();
+		expect(native.send).not.toHaveBeenCalled();
+		expect(cache.size).toBe(0);
+	});
+
+	it("downloads into a file natively and answers its hash", async () => {
+		native.download.mockResolvedValue({ status: 200, sha256: "ab" });
+		const res = await nativeDownload(
+			{ method: "GET", url: "https://m.example/b", headers: {} },
+			"/p",
+		);
+		expect(res).toEqual({ status: 200, sha256: "ab" });
+		expect(native.download).toHaveBeenCalledWith({
+			method: "GET",
+			url: "https://m.example/b",
+			headers: {},
+			path: "/p",
+		});
+	});
+
+	it("names a download the OS stopped as interrupted", async () => {
+		native.download.mockRejectedValue(Object.assign(new Error("closed"), { code: "interrupted" }));
+		await expect(
+			nativeDownload({ method: "GET", url: "https://m.example/b", headers: {} }, "/p"),
+		).rejects.toThrow(TRANSFER_INTERRUPTED);
 	});
 });

@@ -18,6 +18,7 @@ import {
 	type WireRecoverySlot,
 } from "..";
 import { type PairingSas, pairingSas } from "../pairing-sas";
+import { addDevice, carriesRevokedKey, emptyRoster } from "../roster";
 import type { Channel } from "./channel";
 import {
 	type Awaitable,
@@ -134,7 +135,11 @@ export interface EnrollOptions {
 	/** Joiner: report a recoverable enrollment failure (e.g. the typed password did not
 	 * match the existing device) so the host surfaces it instead of hanging. */
 	onJoinError?: (message: string) => void;
-	/** Inviter: the joiner's roster entry (JSON), to add to our roster. */
+	/** Inviter: admission-sign the joiner, before the bundle goes so its own copy holds the
+	 * admission. Without it, a joiner carrying a removed device's key could never be seated, so it
+	 * is refused before anything is sent. */
+	admit?: (entry: RosterEntry) => Promise<RosterEntry>;
+	/** Inviter: the joiner's roster entry (JSON), admitted if `admit` is set, to add to our roster. */
 	onEnrolled?: (entryJson: string) => void;
 	/** Inviter: show the SAS + the joiner's label, resolving with the user's answer. REQUIRED (no
 	 * "approved" fallback). `label` is joiner-chosen, so it is context, never proof. */
@@ -342,6 +347,17 @@ async function serveJoiner(opts: EnrollOptions, channel: Channel, sess: Session)
 	if (!opts.approve) throw new Error("enroll: refusing to invite without an approval gate");
 	const entry = await recvJoinerHello(opts, channel, sess);
 	if (!entry) return; // reason already reported
+	// Only an admission brings a removed device's key back; without one the roster would drop the
+	// joiner the moment it was added, after the vault had gone over.
+	if (opts.roster && !opts.admit && carriesRevokedKey(opts.roster, entry)) {
+		opts.report("⚠ this device was removed from the group, not enrolling");
+		opts.onEnrollFailed?.(
+			"That device was removed from this sync group, and this device can't add it back. Nothing was sent.",
+		);
+		await sendSecure(channel, opts.wasm, sess.sessionId, ENROLL_REJECTED);
+		await awaitReceipt(opts, channel, sess, REJECT_ACK_TIMEOUT_MS);
+		return;
+	}
 	const sas = await pairingSas(opts.psk, opts.devicePubB64, sess.remoteStatic);
 	// The status line stays digits-only: it is a log, and the emoji belong where the user is
 	// actually being asked to compare them.
@@ -355,9 +371,20 @@ async function serveJoiner(opts: EnrollOptions, channel: Channel, sess: Session)
 		await awaitReceipt(opts, channel, sess, REJECT_ACK_TIMEOUT_MS);
 		return;
 	}
+	let admitted: RosterEntry;
+	try {
+		admitted = opts.admit ? await opts.admit(entry) : entry;
+	} catch {
+		opts.report("⚠ could not sign the device's admission, not enrolling");
+		opts.onEnrollFailed?.("Couldn't add that device. Nothing was sent.");
+		await sendSecure(channel, opts.wasm, sess.sessionId, ENROLL_REJECTED);
+		await awaitReceipt(opts, channel, sess, REJECT_ACK_TIMEOUT_MS);
+		return;
+	}
 	opts.report("confirmed ✅, transferring vault…");
-	await sendBundle(opts, channel, sess);
-	opts.onEnrolled?.(JSON.stringify(entry));
+	const roster = addDevice(opts.roster ?? emptyRoster(), admitted);
+	await sendBundle({ ...opts, roster }, channel, sess);
+	opts.onEnrolled?.(JSON.stringify(admitted));
 	opts.report("device enrolled ✅");
 	// Last, and never gating the roster add above: this only holds the transport open long enough
 	// for the bundle to actually leave.

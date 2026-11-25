@@ -76,7 +76,11 @@ test("the extension pairs with the app on the device and its data lands there", 
 		// sync.relay and would silently send us to the hosted relay.
 		await inviter.page.getByRole("button", { name: "Settings" }).click();
 		await inviter.page.getByRole("button", { name: "Sync", exact: true }).click();
-		await inviter.page.getByRole("button", { name: /Advanced/i }).click();
+		// Device sync's, which comes before the Mailbox card's.
+		await inviter.page
+			.getByRole("button", { name: /Advanced/i })
+			.first()
+			.click();
 		await inviter.page.getByLabel(/Nostr relay URL/i).fill(RELAY);
 		await inviter.page.getByLabel(/TURN \/ ICE servers URL/i).fill("");
 		await inviter.page

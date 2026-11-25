@@ -152,7 +152,11 @@ const LOCAL_RELAY_HOST = "localhost:7400";
  * vault exists: creating the first one resets the relay (see launchExtensionPeer).
  */
 export async function useLocalRelay(page: Page): Promise<void> {
-	await page.getByRole("button", { name: /Advanced/i }).click();
+	// Device sync's, which comes before the Mailbox card's.
+	await page
+		.getByRole("button", { name: /Advanced/i })
+		.first()
+		.click();
 	await page.getByLabel(/Nostr relay URL/i).fill(RELAY_URL);
 	// The ICE endpoint derives from the relay; blank it so nothing reaches for the hosted one.
 	await page.getByLabel(/TURN \/ ICE servers URL/i).fill("");

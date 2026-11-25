@@ -7,6 +7,7 @@ import {
 	type RosterEntry,
 	type RosterPayload,
 } from "..";
+import { canonicalAdmission, canonicalRosterEntry, verifyRemoteRoster } from "../roster";
 import type { Channel } from "./channel";
 import type { PeerSession } from "./mesh";
 import { currentRoster } from "./peer-auth";
@@ -718,5 +719,149 @@ describe("what each tick sends", () => {
 		expect(gotB).toHaveLength(1);
 		await vi.advanceTimersByTimeAsync(3 * TICK);
 		expect(gotB).toEqual(["vault-1", "vault-1"]);
+	});
+});
+
+describe("verifyRosterEnvelope (admissions that outlast a re-stamp)", () => {
+	// A signature here is its key over the exact message, so a changed message fails.
+	const wasm = {
+		roster_verify: async (pub: string, message: string, sig: string) => sig === `${pub}|${message}`,
+	} as unknown as RosterSyncWasm;
+	const selfSigned = (e: RosterEntry): RosterEntry => ({
+		...e,
+		sig: `${e.sigKey}|${canonicalRosterEntry(e)}`,
+	});
+	const laptop = selfSigned({
+		id: "laptop",
+		publicKey: "pk-laptop",
+		label: "laptop",
+		addedAt: 0,
+		hlc: { wall: 1, counter: 0, node: "laptop" },
+		sigKey: "sk-laptop",
+		admissionKey: "adm-laptop",
+	});
+	const phone = selfSigned({
+		id: "phone",
+		publicKey: "pk-phone",
+		label: "phone",
+		addedAt: 0,
+		hlc: { wall: 2, counter: 0, node: "phone" },
+		sigKey: "sk-phone",
+	});
+	const admitted: RosterEntry = {
+		...phone,
+		admission: {
+			by: "laptop",
+			sig: `adm-laptop|${canonicalRosterEntry(phone)}`,
+			stableSig: `adm-laptop|${canonicalAdmission(phone)}`,
+		},
+	};
+	// The phone publishes its own admission key: a new stamp, re-signed by itself.
+	const restamped = selfSigned({
+		...admitted,
+		hlc: { wall: 5, counter: 0, node: "phone" },
+		admissionKey: "adm-phone",
+	});
+	const local: RosterPayload = { devices: [laptop], revoked: [] };
+	const opts = (roster: RosterPayload) => ({
+		roster,
+		fetchLocalRoster: async () => encodeRoster(roster),
+		wasm,
+	});
+	const kept = async (roster: RosterPayload, remote: RosterEntry) => {
+		const out = await verifyRosterEnvelope(
+			opts(roster),
+			encodeRoster({ devices: [remote], revoked: [] }),
+		);
+		return decodeRoster(out as string).devices.map((d) => d.id);
+	};
+
+	it("an admission still verifies after its entry is re-stamped", async () => {
+		expect(await kept(local, restamped)).toEqual(["phone"]);
+	});
+
+	it("an admission with only the old form still verifies at its stamp", async () => {
+		const legacy = {
+			...phone,
+			admission: { by: "laptop", sig: `adm-laptop|${canonicalRosterEntry(phone)}` },
+		};
+		expect(await kept(local, legacy)).toEqual(["phone"]);
+	});
+
+	it("a forged stable signature is refused", async () => {
+		const forged = { ...restamped, admission: { by: "laptop", sig: "x", stableSig: "forged" } };
+		expect(await kept(local, forged)).toEqual([]);
+	});
+
+	it("a stable signature counts only on an entry its owner signed", async () => {
+		// It doesn't cover the admission key, so any member could otherwise set that key.
+		const { sig: _dropped, ...unsigned } = { ...restamped, admissionKey: "adm-attacker" };
+		expect(await kept(local, unsigned)).toEqual([]);
+	});
+
+	// The admitter may be gone by now, so nothing here can verify: these turn on the comparison.
+	const afterGossip = (had: RosterEntry, got: RosterEntry) =>
+		verifyRemoteRoster(
+			{ devices: [laptop, had], revoked: [] },
+			{ devices: [got], revoked: [] },
+			() => true,
+			() => false,
+		).devices[0];
+
+	it("a copy without the stable signature keeps the admission, whichever side lacks it", () => {
+		const { stableSig: _dropped, ...legacy } = admitted.admission ?? { by: "", sig: "" };
+		const older = { ...admitted, admission: legacy };
+		expect(afterGossip(admitted, older)?.admission?.by).toBe("laptop");
+		expect(afterGossip(older, admitted)?.admission?.by).toBe("laptop");
+	});
+
+	it("a different stable signature has to verify", () => {
+		const other = { ...admitted, admission: { by: "laptop", sig: "s", stableSig: "other" } };
+		const had = { ...admitted, admission: { by: "laptop", sig: "s", stableSig: "held" } };
+		expect(afterGossip(had, other)?.admission).toBeUndefined();
+	});
+
+	it("an entry that changes a key it was admitted under loses the admission", () => {
+		expect(
+			afterGossip(admitted, { ...admitted, publicKey: "pk-tablet" })?.admission,
+		).toBeUndefined();
+	});
+
+	it("an admission by a device sharing the entry's key is refused", async () => {
+		// A member, while still trusted, planted an alias carrying its key and an admission key of
+		// its choosing; the alias now vouches for a second alias.
+		const alias = selfSigned({
+			id: "alias1",
+			publicKey: "pk-alias1",
+			label: "alias1",
+			addedAt: 0,
+			hlc: { wall: 3, counter: 0, node: "alias1" },
+			sigKey: "sk-mal",
+			admissionKey: "adm-mal",
+		});
+		const roster: RosterPayload = { devices: [laptop, alias], revoked: [] };
+		for (const shared of [{ sigKey: "sk-mal" }, { publicKey: "pk-alias1", sigKey: "sk-other" }]) {
+			const second = selfSigned({
+				id: "alias2",
+				publicKey: "pk-alias2",
+				label: "alias2",
+				addedAt: 0,
+				hlc: { wall: 4, counter: 0, node: "alias2" },
+				...shared,
+			});
+			const vouched = {
+				...second,
+				admission: {
+					by: "alias1",
+					sig: `adm-mal|${canonicalRosterEntry(second)}`,
+					stableSig: `adm-mal|${canonicalAdmission(second)}`,
+				},
+			};
+			expect(await kept(roster, vouched)).toEqual([]);
+		}
+	});
+
+	it("a member's admission of another member still holds", async () => {
+		expect(await kept(local, admitted)).toEqual(["phone"]);
 	});
 });

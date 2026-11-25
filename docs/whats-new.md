@@ -61,10 +61,12 @@ The vault list has one spot for a card (`VaultHomeRoute`). In order:
 1. The mobile update notice: a newer version matters more than notes on this one, which arrive
    with that version anyway.
 2. What's new.
-3. The donation card, every two weeks (docs/support-ask.md). It asks for a moment rather than
+3. The hosted mailbox's paid time ending (docs/mailbox-service.md, "The paid-time card"). Once the
+   time has ended it can't be closed, so it holds back the cards below until it is acted on.
+4. The donation card, every two weeks (docs/support-ask.md). It asks for a moment rather than
    waiting to be acted on, so it goes ahead of the two below, which could otherwise hold it back.
-4. The store review ask.
-5. The default password manager offer (extension).
+5. The store review ask.
+6. The default password manager offer (extension).
 
 Closing a card, or acting on it, leaves the spot empty until the next open: the next popup on the
 extension, the next unlock on mobile and desktop. Before this, closing one card showed the next

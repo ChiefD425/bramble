@@ -1,4 +1,10 @@
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { defineConfig } from "@playwright/test";
+
+/** One folder for the mailbox's data, wiped as the server starts: a fresh one per run, without a
+ * new folder every time Playwright loads this config. */
+const MAILBOX_DATA = path.join(tmpdir(), "bramble-e2e-mailbox");
 
 // Two-peer sync tests: the browser extension and the mobile SPA pairing over WebRTC through a
 // local signaling relay. Separate from playwright.config.ts because they need two servers up and
@@ -24,6 +30,18 @@ export default defineConfig({
 			// The attachments spec reads /stats to show file bytes never passed through it.
 			env: { RELAY_STATS: "1" },
 			reuseExistingServer: !process.env.CI,
+			stdout: "ignore",
+		},
+		{
+			// The mailbox, on a fresh data directory every run. Its own port and never reused, so a
+			// spec cannot reach some other server that happens to be listening there.
+			command: `node -e "require('node:fs').rmSync(process.argv[1], { recursive: true, force: true })" "${MAILBOX_DATA}" && node services/mailbox/src/node/bin.ts`,
+			url: "http://localhost:7401/health",
+			env: {
+				PORT: "7401",
+				DATA_DIR: MAILBOX_DATA,
+			},
+			reuseExistingServer: false,
 			stdout: "ignore",
 		},
 		{

@@ -19,6 +19,7 @@ import {
 	decodeEntriesPayload,
 	decodeRoster,
 	decodeVaultBlob,
+	type EntriesPayload,
 	encodeEntriesPayload,
 	encodeRoster,
 	ensureDeviceId,
@@ -30,6 +31,7 @@ import {
 	type StorageAdapter,
 	SYNC_LAST_SYNCED_KEY,
 } from "@core/index";
+import type { VaultSyncPort } from "@core/sync/apply-remote";
 import { blobArrived } from "@core/sync/blob-arrivals";
 import { answerBlobStatus } from "@core/sync/blob-status";
 import { activeDevices, addDevice, mayEnroll } from "@core/sync/roster";
@@ -41,7 +43,7 @@ import {
 } from "@core/sync/transport/blob-sync";
 import type { MeshSession } from "@core/sync/transport/peer-session";
 import { relayOrDefault } from "@core/sync/transport/relay-url";
-import { startRosterSync } from "@core/sync/transport/roster-sync";
+import { startRosterSync, verifyRosterEnvelope } from "@core/sync/transport/roster-sync";
 import { parseRegistry, VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
 import { desktopCrypto } from "../adapters/crypto";
 import { desktopFiles } from "../adapters/files";
@@ -79,11 +81,25 @@ interface GroupConfig {
  * returns undefined rather than guessing the first: guessing points sync at a vault the user is
  * not in, which is how a merge sealed under one vault's key landed in another's file.
  */
-async function activeVaultId(): Promise<string | undefined> {
+export async function activeVaultId(): Promise<string | undefined> {
 	const active = await desktopStorage.getMeta<string>(ACTIVE_VAULT_KEY);
 	if (active) return active;
 	const registry = parseRegistry(await desktopStorage.getMeta(VAULT_REGISTRY_KEY));
 	return registry.vaults.length === 1 ? registry.vaults[0]?.id : undefined;
+}
+
+/** The vault's sync group, if it is in one. */
+export function storedGroup(vaultId: string): Promise<GroupConfig | undefined> {
+	return desktopStorage.getMeta<GroupConfig>(syncKeyFor(GROUP_KEY, vaultId));
+}
+
+/** Ed25519 verify with a roster key, in the shell. */
+export async function rosterVerify(
+	sigKey: string,
+	message: string,
+	sigB64: string,
+): Promise<boolean> {
+	return (await desktopSyncCrypto.roster_verify(sigKey, message, sigB64)) === true;
 }
 
 /** The vault an enrollment should read and write, resolved once at invite time. */
@@ -241,6 +257,9 @@ answerBlobStatus(async (vaultId, hashes) =>
 let sessionGen = 0;
 /** Serialises merges, so two applies cannot interleave their read-modify-write of one blob. */
 let applyInFlight: Promise<unknown> = Promise.resolve();
+/** Entry versions refused at merge, per vault, shared by P2P and the mailbox. Cleared whenever
+ * sync stops, so a refusal that came of a transient state can't outlive the unlock it happened in. */
+const refusedByVault = new Map<string, Set<string>>();
 /** Peers rebroadcast every few seconds; stamp "last synced" at most every 30s. */
 let lastSyncStampAt = 0;
 
@@ -263,8 +282,7 @@ async function startRoster(): Promise<void> {
 	// the session and bumps the gen rather than letting a running one follow the active vault.
 	const blobStore = makeBlobStore(vaultId);
 	const gen = sessionGen;
-	// Entry versions this session refused at merge; per session, so a transient state can't outlive it.
-	const rejected = new Set<string>();
+	const rejected = refusedFor(vaultId);
 	sessionVaultId = vaultId;
 
 	const common = {
@@ -294,7 +312,7 @@ async function startRoster(): Promise<void> {
 		pushRemotePayload: async (json) => {
 			// Queue behind any merge already running: applyRemotePayload is a read-modify-write
 			// of the whole blob, so two in parallel would race and the loser's edits vanish.
-			const run = applyInFlight.then(async () => {
+			await queueApply(async () => {
 				// This merge's session was torn down or retargeted while it waited. Its blobStore
 				// still points at the old vault and the global VEK may now be another vault's, so
 				// writing here is precisely the corruption described at the top of this file. Drop
@@ -326,9 +344,6 @@ async function startRoster(): Promise<void> {
 					emit({ kind: "synced", at });
 				}
 			});
-			// Keep the chain alive after a failed merge, while still surfacing the failure here.
-			applyInFlight = run.catch(() => {});
-			await run;
 		},
 	} satisfies Parameters<typeof startRosterSync>[0];
 
@@ -397,8 +412,73 @@ export function stopRosterSync(): void {
 	blobSession?.stop();
 	blobSession = null;
 	sessionVaultId = null;
+	refusedByVault.clear();
 	// Invalidate any merge still queued: it captured the old gen and must not write.
 	sessionGen++;
+}
+
+/** Run `apply` after the earlier merges, P2P's and the mailbox's alike. A failed merge still
+ * reaches its caller, and the ones queued after it still run. */
+export function queueApply<T>(apply: () => Promise<T>): Promise<T> {
+	const run = applyInFlight.then(apply);
+	applyInFlight = run.catch(() => {});
+	return run;
+}
+
+/** The vault's refused entry versions, shared by P2P and the mailbox. */
+export function refusedFor(vaultId: string): Set<string> {
+	let refused = refusedByVault.get(vaultId);
+	if (!refused) {
+		refused = new Set<string>();
+		refusedByVault.set(vaultId, refused);
+	}
+	return refused;
+}
+
+/** The pieces the mailbox's vault port needs, over the same stores P2P merges into, pinned to
+ * `vaultId` as a P2P session is. */
+export function mailboxVaultDeps(vaultId: string): {
+	sync: VaultSyncPort;
+	readEntries(): Promise<EntriesPayload>;
+	readRoster(): Promise<RosterPayload>;
+	writeRoster(roster: RosterPayload): Promise<void>;
+	verifyRoster(rosterJson: string): Promise<string | null>;
+} {
+	const store = makeBlobStore(vaultId);
+	const groupMetaKey = syncKeyFor(GROUP_KEY, vaultId);
+	// Never an empty roster: reconciling against one would remove every other member.
+	const readRoster = async () => {
+		const group = await desktopStorage.getMeta<GroupConfig>(groupMetaKey);
+		if (!group?.groupKey) throw new Error("no sync group for this vault");
+		return group.roster;
+	};
+	return {
+		sync: createVaultSyncPort({
+			store,
+			crypto: desktopCrypto,
+			witnessRemote: async (stamps) => {
+				const clock = await getClock(vaultId);
+				for (const hlc of stamps) clock.witness(hlc);
+			},
+			onChanged: notifyExternalChange,
+		}),
+		readEntries: () => store.readEntriesPayload(),
+		readRoster,
+		// Merged again into what is stored now, as P2P's roster push does.
+		async writeRoster(roster) {
+			const group = await desktopStorage.getMeta<GroupConfig>(groupMetaKey);
+			if (!group) return;
+			await desktopStorage.setMeta(groupMetaKey, {
+				...group,
+				roster: mergeRemoteRoster(group.roster, roster),
+			});
+			emit({ kind: "roster" });
+		},
+		async verifyRoster(rosterJson) {
+			const local = await readRoster();
+			return verifyRosterEnvelope({ roster: local, wasm: desktopSyncCrypto }, rosterJson, local);
+		},
+	};
 }
 
 /**

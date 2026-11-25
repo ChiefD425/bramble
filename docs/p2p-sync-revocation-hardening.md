@@ -330,13 +330,21 @@ the compromised device's password slot, so no new surface.
 
 **Fields (additive).** `RosterEntry` gains optional `admissionKey` (base64 verify key, added to
 `canonicalRosterEntry` so it is covered by the device's self-signature, TOFU-anchored like `sigKey`)
-and `admission` (`{ by: <admitter id>, sig: <base64> }`, the admitter's signature over the admitted
-entry's canonical; absent for the initial enrolled set).
+and `admission` (`{ by: <admitter id>, sig: <base64>, stableSig?: <base64> }`, the admitter's
+signature over the admitted entry's canonical; absent for the initial enrolled set). `stableSig`
+(mailbox Plan 5f) signs `canonicalAdmission`, the entry's id, keys and `addedAt` without its stamp or
+its own `admissionKey`, so an admission still verifies after the device re-stamps its entry (each
+password invite does). Admitters sign both; either verifies, the stable form only on an entry its
+owner signed, since it leaves out that `admissionKey`. An admitter that shares a key with the entry it
+admits counts for nothing. A copy lacking `stableSig` is the same admission as one holding it, and an
+entry whose id, keys or `addedAt` changed has to verify again.
 
 **Flows.**
 - *Group creation:* the first device derives + publishes its `admissionKey` (it is the root, no `admission`).
 - *Add a device (the "sudo" moment):* the inviter re-enters the master password -> Argon2 -> KEK ->
   derives its admission key -> signs the joiner's entry -> attaches `admission` -> zeroizes. The
+  enrollment host signs before the bundle goes, and the bundle carries the admitted entry, so the
+  joiner's own copy and its later re-stamps hold the admission. The
   joiner derives + publishes its own `admissionKey` at join. New UX: a password prompt on "Add device".
 - *Verify (`verifyRemoteRoster`):* a brand-new id is admitted only if its `admission.sig` verifies
   against a *current, live* member's anchored `admissionKey`. Known ids: TOFU. Tombstoned: dead
@@ -372,9 +380,11 @@ model above says `admissionKey` is "TOFU-anchored like `sigKey`", but `verifyRem
 yet pin it: for a known id it pins `sigKey` only. A compromised member holds the device's `sigKey`
 **secret** (it sits in `chrome.storage.local` in the clear), so it can rewrite an existing member's
 entry to carry an attacker-controlled `admissionKey` (re-signed with the held sigKey), then admit a
-rogue device under it - bypassing admission WITHOUT the password, defeating the whole point. This is
-**inert in phase 1** (`rosterRequireAdmission = false`, admission not enforced), so it does NOT block
-the producer release, but it MUST be closed before the flip. The fix - anchor `admissionKey`
+rogue device under it - bypassing admission WITHOUT the password, defeating the whole point. This
+doesn't block the producer release, but it MUST be closed before the flip. Also before the flip: a
+device paired by a build that signed after sending the bundle holds an unadmitted copy of itself, and
+its re-stamps go out with no admission, so a device first seeing one would refuse it. Those need
+re-admitting or a grace path. The fix - anchor `admissionKey`
 first-seen and reject a later swap - collides with "password change re-derives `admissionKey`" (a
 legit rotation is indistinguishable from the attack using only the sigKey the attacker holds); the
 complete form is a **rotation chain** (a new `admissionKey` signed by the old admission key, which

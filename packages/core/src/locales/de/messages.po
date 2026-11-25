@@ -290,6 +290,10 @@ msgstr "{uncarried, plural, one {# Datei wurde nicht kopiert. Sie befindet sich 
 #~ msgid "{uncarried} files didn't copy. They are still in the old vault, which is kept until you delete it."
 #~ msgstr "{uncarried} Dateien wurden nicht kopiert. Sie befinden sich weiterhin im alten Tresor, der erhalten bleibt, bis Sie ihn löschen."
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "{used} of {quota} used"
+msgstr "{used} von {quota} verwendet"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #~ msgid "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
 #~ msgstr "{withNew, plural, one {# Anhang wird mit ihnen übernommen.} other {# Anhänge werden mit ihnen übernommen.}}"
@@ -298,6 +302,10 @@ msgstr "{uncarried, plural, one {# Datei wurde nicht kopiert. Sie befindet sich 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "<0>{0}</0> items ready to import"
 msgstr "<0>{0}</0> Elemente bereit zum Import"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "$2 a month, at least 6 months at a time."
+msgstr "$2 pro Monat, mindestens 6 Monate am Stück."
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "1 hour"
@@ -376,6 +384,10 @@ msgstr "Es wurde ein QR-Code gefunden, aber es ist kein Einrichtungscode für ei
 msgid "A security code is 3 or 4 digits."
 msgstr "Ein Sicherheitscode besteht aus 3 oder 4 Ziffern."
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "A token is at least 16 letters, digits, dashes or underscores"
+msgstr "Ein Token besteht aus mindestens 16 Buchstaben, Ziffern, Bindestrichen oder Unterstrichen"
+
 #: packages/core/src/app/screens/Settings/components/AboutSection.tsx
 #: packages/core/src/app/screens/Settings/Settings.tsx
 msgid "About"
@@ -384,6 +396,14 @@ msgstr "Über"
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Access key ID"
 msgstr "ID des Zugriffsschlüssels"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Access token (only for your own server)"
+msgstr "Zugriffstoken (nur für Ihren eigenen Server)"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Account number"
+msgstr "Kontonummer"
 
 #: packages/core/src/app/screens/VaultHome/SelectionBar.tsx
 msgid "Actions"
@@ -427,6 +447,10 @@ msgstr "Einen Tag hinzufügen"
 msgid "Add a vault"
 msgstr "Tresor hinzufügen"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Add an account number to start the mailbox"
+msgstr "Kontonummer hinzufügen, um das Postfach zu starten"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Add an encrypted .bramble backup or export to this vault. Entries you already have aren't added twice."
@@ -468,6 +492,10 @@ msgstr "Desktop-Tresor hinzufügen"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "Fügen Sie die Websites hinzu, die diese Anmeldung abdeckt. Lassen Sie das Feld leer, wenn es sich um eine Anmeldeinformation handelt, die nicht an eine Website gebunden ist."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Add time"
+msgstr "Zeit hinzufügen"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add URL"
@@ -518,6 +546,10 @@ msgstr "Erweitert"
 msgid "Aeroplane"
 msgstr "Flugzeug"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "After that, your devices sync only when they're online together."
+msgstr "Danach synchronisieren Ihre Geräte nur, wenn sie gleichzeitig online sind."
+
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Alias domain"
 msgstr "Alias-Domain"
@@ -567,6 +599,10 @@ msgstr "Passcode-Fallback erlauben"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Also lock the vault whenever your computer's screen locks, whatever the timeout."
 msgstr "Sperren Sie den Tresor auch, wenn der Bildschirm Ihres Computers gesperrt wird, unabhängig von der Zeitüberschreitung."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "An account number is 25 digits"
+msgstr "Eine Kontonummer besteht aus 25 Ziffern"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "An app password reaches every file in the account, not just this folder, and cannot be narrowed. For a backup that holds your whole vault history, a separate account used only for backups is worth the two minutes."
@@ -846,10 +882,6 @@ msgstr "Bramble konnte den Schlüsselspeicher dieses Geräts nicht sicher aktual
 msgid "Bramble hit an unexpected error. Your vault is safe — it stays encrypted on this device. Try reloading; if it keeps happening, reopen the app."
 msgstr "Bramble ist auf einen unerwarteten Fehler gestoßen. Ihr Tresor ist sicher – er bleibt auf diesem Gerät verschlüsselt. Versuchen Sie, die Seite neu zu laden; sollte dies weiterhin passieren, öffnen Sie die Anwendung erneut."
 
-#: packages/core/src/app/components/ReviewNudgeCard.tsx
-#~ msgid "Bramble is built by one person"
-#~ msgstr ""
-
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Bramble is free and open source. If it's useful to you, a tip helps keep it going. Scan a code with your wallet, or copy the address. Thank you."
 msgstr "Bramble ist kostenlos und Open Source. Falls es für Sie nützlich ist, hilft ein Trinkgeld, es am Laufen zu halten. Scannen Sie einen Code mit Ihrer Wallet oder kopieren Sie die Adresse. Vielen Dank."
@@ -873,6 +905,11 @@ msgstr "Bramble ist aktuell"
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Bramble is up to date."
 msgstr "Bramble ist auf dem neuesten Stand."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Bramble Mailbox"
+msgstr "Bramble Mailbox"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
@@ -925,6 +962,10 @@ msgstr "Bucket"
 msgid "Butterfly"
 msgstr "Schmetterling"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Buy more time"
+msgstr "Mehr Zeit kaufen"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Cactus"
 msgstr "Kaktus"
@@ -932,6 +973,10 @@ msgstr "Kaktus"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Cake"
 msgstr "Kuchen"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Can't reach the mailbox; trying again soon"
+msgstr "Postfach nicht erreichbar; neuer Versuch in Kürze"
 
 #: packages/core/src/app/screens/TotpSetup/TotpSetup.tsx
 msgid "Can't save this code"
@@ -984,6 +1029,10 @@ msgstr "Katze"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change"
 msgstr "Ändern"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Change account number"
+msgstr "Kontonummer ändern"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Change it on the site to keep your account safe."
@@ -1252,6 +1301,10 @@ msgstr "{name} verbinden"
 msgid "Connect a browser"
 msgstr "Browser verbinden"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Connect a device to enable the mailbox."
+msgstr "Verbinden Sie ein Gerät, um das Postfach zu aktivieren."
+
 #: packages/core/src/app/components/AliasGenerator.tsx
 msgid "Connect an alias provider to create addresses here."
 msgstr "Verbinden Sie einen Alias-Anbieter, um hier Adressen zu erstellen."
@@ -1336,6 +1389,7 @@ msgstr "Kopiert {copied}"
 #: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/components/PasswordGenerator.tsx
 #: packages/core/src/app/components/RecoveryCodeDisplay.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Copy"
@@ -1633,6 +1687,10 @@ msgid "Details"
 msgstr "Details"
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
+msgid "device"
+msgstr "Gerät"
+
+#: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Device name"
 msgstr "Gerätename"
 
@@ -1676,6 +1734,7 @@ msgid "Disconnect this device from sync before turning off the master password."
 msgstr "Trennen Sie dieses Gerät von der Synchronisierung, bevor Sie das Master-Passwort deaktivieren."
 
 #: packages/core/src/app/components/DefaultManagerCard.tsx
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #: packages/core/src/app/components/SupportCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
@@ -1783,10 +1842,6 @@ msgstr "Elefant"
 msgid "Email alias"
 msgstr "E-Mail-Alias"
 
-#: packages/core/src/app/screens/Settings/components/AliasSection.tsx
-#~ msgid "Email aliases"
-#~ msgstr ""
-
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Empty falls back to the standard set."
 msgstr "Bei leerem Feld wird der Standardsatz verwendet."
@@ -1811,6 +1866,10 @@ msgstr "Endpunkt"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Enter a new password"
 msgstr "Geben Sie ein neues Passwort ein"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Enter just the server's address, like https://mailbox.example.com"
+msgstr "Geben Sie nur die Serveradresse ein, z. B. https://mailbox.example.com"
 
 #. placeholder {0}: link.summary.name
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
@@ -1872,6 +1931,11 @@ msgstr "Geben Sie Ihre WebDAV-Adresse und ein App-Passwort für Ihr Konto ein."
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "eTLD+1 (default, matches all subdomains)"
 msgstr "eTLD+1 (Standard, passt auf alle Subdomains)"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Every device stops syncing through it."
+msgstr "Jedes Gerät stoppt die Synchronisierung darüber."
 
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "Every selected entry already has this tag."
@@ -2080,6 +2144,10 @@ msgstr "Starkes Passwort generieren"
 msgid "Generator"
 msgstr "Generator"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Get an account number"
+msgstr "Kontonummer erhalten"
+
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #~ msgid "Getting on with Bramble?"
 #~ msgstr "Kommen Sie mit Bramble zurecht?"
@@ -2139,6 +2207,10 @@ msgstr "Herz"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Hidden"
 msgstr "Verborgen"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Hide"
+msgstr "Ausblenden"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Hide authenticator key"
@@ -2617,6 +2689,30 @@ msgstr "Login für {0} gespeichert"
 #~ msgid "Look up a site"
 #~ msgstr "Website suchen"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox"
+msgstr "Postfach"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox check-in: {date}"
+msgstr "Postfach-Check-in: {date}"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox check-in: today"
+msgstr "Postfach-Check-in: heute"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox server"
+msgstr "Postfach-Server"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Mailbox time ended {date}"
+msgstr "Postfach-Zeit endete am {date}"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Mailbox time ends {date}"
+msgstr "Postfach-Zeit endet am {date}"
+
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 msgid "Make Bramble your default password manager?"
 msgstr "Möchten Sie Bramble als Standard-Passwortmanager festlegen?"
@@ -2685,6 +2781,10 @@ msgstr "Verschiebt die Einträge und Dateien von {browserName} in {desktopName}.
 msgid "Mushroom"
 msgstr "Pilz"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "My other devices already use it"
+msgstr "Meine anderen Geräte verwenden es bereits"
+
 #: packages/core/src/app/entry-modes/card.tsx
 #: packages/core/src/app/entry-modes/login.tsx
 #: packages/core/src/app/entry-modes/ssh-key.tsx
@@ -2741,10 +2841,6 @@ msgstr "Keine archivierten Einträge gefunden, die Ihrer Suche entsprechen."
 #~ msgid "No authenticator QR code found on the page. Make sure it's visible, then retry, or paste the setup key."
 #~ msgstr "Kein Authentifikator-QR-Code auf der Seite gefunden. Stellen Sie sicher, dass er sichtbar ist, und versuchen Sie es erneut oder fügen Sie den Einrichtungsschlüssel ein."
 
-#: packages/core/src/app/components/ReviewNudgeCard.tsx
-#~ msgid "No company and no marketing budget, so reviews are most of how anyone hears about it. If something is broken instead, the issue tracker is faster than a star rating."
-#~ msgstr ""
-
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "No importable items were found in this database."
 msgstr "Es wurden keine importierbaren Elemente in dieser Datenbank gefunden."
@@ -2768,6 +2864,10 @@ msgstr "Keine Logins gefährdet."
 #: packages/core/src/app/screens/TotpSetup/TotpSetup.tsx
 msgid "No logins match."
 msgstr "Keine passenden Logins."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "No paid time yet"
+msgstr "Noch keine bezahlte Zeit"
 
 #: packages/core/src/app/screens/VaultSetup/components/JoinCard.tsx
 msgid "No QR code detected. Try again, or paste the code."
@@ -2850,6 +2950,10 @@ msgstr "Synchronisierung nicht möglich: Dieses Gerät kann seinen Synchronisati
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "Synchronisierung nicht möglich: Ihre anderen Geräte erkennen dieses Gerät nicht mehr. Trennen Sie die Verbindung und treten Sie dann mit einem Code von einem anderen Gerät erneut bei."
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Not using the mailbox"
+msgstr "Postfach wird nicht verwendet"
+
 #: packages/core/src/app/entry-modes/card.tsx
 #: packages/core/src/app/entry-modes/login.tsx
 #: packages/core/src/app/entry-modes/ssh-key.tsx
@@ -2893,6 +2997,14 @@ msgstr "Oktopus"
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Off"
 msgstr "Aus"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+#~ msgid "Off here, the other devices carry on without this one."
+#~ msgstr ""
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Off on this device"
+msgstr "Auf diesem Gerät deaktiviert"
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
@@ -3040,6 +3152,18 @@ msgstr "Andere Anbieter"
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "Overview"
 msgstr "Übersicht"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid through {date}"
+msgstr "Bezahlt bis {date}"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid time ended {date}"
+msgstr "Bezahlte Zeit endete am {date}"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid time ends {date}"
+msgstr "Bezahlte Zeit endet am {date}"
 
 #: packages/core/src/app/screens/VaultSetup/components/JoinCard.tsx
 msgid "Pair with another device"
@@ -3247,6 +3371,10 @@ msgstr "Richten Sie Ihre Kamera auf den Code auf Ihrem anderen Gerät"
 #: packages/core/src/app/entry-modes/attachments.tsx
 msgid "Popout to window to attach files"
 msgstr "In ein Fenster auslagern, um Dateien anzuhängen"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Posting is paused for this account"
+msgstr "Das Posten ist für dieses Konto pausiert"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Press Enter / submit the form right after the credentials are filled in."
@@ -3596,6 +3724,7 @@ msgstr "Weihnachtsmann"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Save"
 msgstr "Speichern"
 
@@ -3856,6 +3985,10 @@ msgstr "Einstellungen"
 msgid "Settings sections"
 msgstr "Einstellungsbereiche"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Show"
+msgstr "Einblenden"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
 msgstr "Zeigt eine Karte zum Speichern/Aktualisieren in der Ecke der Seite an, wenn Sie sich mit Zugangsdaten anmelden, die Bramble nicht hat."
@@ -3921,6 +4054,10 @@ msgstr "Wert anzeigen"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Show your logins below sign-in fields in Safari. macOS keeps their usernames and sites outside your vault."
 msgstr "Zeigt Ihre Zugangsdaten unter Anmeldefeldern in Safari. macOS speichert deren Benutzernamen und Websites außerhalb Ihres Tresors."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Sign in"
+msgstr "Anmelden"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
@@ -4007,9 +4144,19 @@ msgstr "Der Tresor bleibt entsperrt, bis Sie ihn sperren oder die App geschlosse
 msgid "Still saving. This is taking longer than it should."
 msgstr "Wird noch gespeichert. Dies dauert länger als erwartet."
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Stop"
+msgstr "Stoppen"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Stop using the app"
 msgstr "App nicht mehr verwenden"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Stop using the mailbox"
+msgstr "Postfach nicht mehr verwenden"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Stops filling and unlocking through the desktop app on this browser. This vault keeps syncing with it, and nothing is deleted anywhere. To take this browser out of the vault entirely, remove it from the device list under Device sync."
@@ -4061,6 +4208,11 @@ msgstr "Zu verwendende Symbole"
 msgid "Sync"
 msgstr "Synchronisierung"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Sync even when your devices are never online at the same time. The server only holds encrypted changes, and deletes them once every device has them."
+msgstr "Synchronisierung auch dann, wenn Ihre Geräte nie gleichzeitig online sind. Der Server speichert nur verschlüsselte Änderungen und löscht sie, sobald jedes Gerät sie erhalten hat."
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Sync now"
 msgstr "Jetzt synchronisieren"
@@ -4077,6 +4229,11 @@ msgstr "Mit der Desktop-App synchronisieren"
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Synced · {0} devices"
 msgstr "Synchronisiert · {0} Geräte"
+
+#. placeholder {0}: formatAgo(record.at)
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Synced through the mailbox {0}"
+msgstr "Über das Postfach synchronisiert {0}"
 
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "System"
@@ -4207,10 +4364,6 @@ msgstr "Diese Übertragung enthielt keine importierbaren Daten."
 msgid "That transfer didn't go through."
 msgstr "Diese Übertragung ist fehlgeschlagen."
 
-#: packages/core/src/hooks/useVault.tsx
-#~ msgid "That version is no longer here. It may have synced away."
-#~ msgstr ""
-
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "That year is outside the range cards use."
 msgstr "Dieses Jahr liegt außerhalb des für Karten gültigen Bereichs."
@@ -4226,10 +4379,6 @@ msgstr "Der Browser wurde nicht verknüpft."
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 #~ msgid "The copy couldn't be confirmed, so the old vault is kept."
 #~ msgstr "Die Kopie konnte nicht bestätigt werden, daher wird der alte Tresor beibehalten."
-
-#: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
-#~ msgid "The desktop app answered."
-#~ msgstr ""
 
 #: packages/core/src/app/hooks/useDesktopLink.tsx
 msgid "The desktop app did not accept that code."
@@ -4284,6 +4433,19 @@ msgstr "Der Desktop-Tresor verfügt bereits über ein Backup-Ziel; das dieses Tr
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "The desktop's vault has its own email alias provider, so this vault's wasn't brought over."
 msgstr "Der Desktop-Tresor verfügt über einen eigenen E-Mail-Alias-Anbieter; der dieses Tresors wurde daher nicht übernommen."
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox doesn't recognize this account number"
+msgstr "Das Postfach erkennt diese Kontonummer nicht"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox is full"
+msgstr "Das Postfach ist voll"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox only delivers right now"
+msgstr "Das Postfach kann derzeit nur zustellen"
 
 #: packages/core/src/app/screens/Settings/components/HiddenVaultRow.tsx
 #~ msgid "The old vault"
@@ -4379,6 +4541,11 @@ msgstr "Sie sind jetzt in Ihrem Tresor. Die Übertragung erfolgte direkt zwische
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "This adds the desktop's vault to this browser as a separate one. Your existing vaults stay as they are."
 msgstr "Dadurch wird der Tresor der Desktop-App als separater Tresor zu diesem Browser hinzugefügt. Ihre vorhandenen Tresore bleiben unverändert."
+
+#. placeholder {0}: goesWith.get(d.id)
+#: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
+msgid "This also removes {0}, which uses the same keys."
+msgstr "Dadurch wird auch {0} entfernt, das dieselben Schlüssel verwendet."
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "This authenticator key is invalid and can't generate codes."
@@ -4482,6 +4649,10 @@ msgstr "Dieses Gerät kann derzeit keine Geräte hinzufügen: Ihre anderen Gerä
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "this device only"
 msgstr "Nur dieses Gerät"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "This device uses the mailbox for another vault. Turn it off there to use it here."
+msgstr "Dieses Gerät verwendet das Postfach für einen anderen Tresor. Deaktivieren Sie es dort, um es hier zu verwenden."
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "This domain and its subdomains"
@@ -4971,6 +5142,10 @@ msgstr "Passwort verwenden"
 #~ msgid "Use security key"
 #~ msgstr "Sicherheitsschlüssel verwenden"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Use the mailbox on this device"
+msgstr "Postfach auf diesem Gerät verwenden"
+
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
 msgid "Use the vault from the Bramble desktop app on this computer."
 msgstr "Nutzen Sie den Tresor aus der Bramble-Desktop-App auf diesem Computer."
@@ -4982,6 +5157,10 @@ msgstr "Diese verwenden"
 #: packages/core/src/app/components/ui/weak-password-notice.tsx
 msgid "Use this password anyway"
 msgstr "Dennoch dieses Passwort verwenden"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Use this server"
+msgstr "Diesen Server verwenden"
 
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "Use Touch ID or Windows Hello instead of typing your master password."
@@ -5099,6 +5278,10 @@ msgstr "Warten, bis {finishing} die Verknüpfung abgeschlossen hat…"
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Waiting for a device to join…"
 msgstr "Wartet darauf, dass ein Gerät beitritt…"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Waiting for another device to add this one"
+msgstr "Warten auf ein anderes Gerät, das dieses hinzufügt"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
@@ -5224,6 +5407,10 @@ msgstr "Sie entsperren diesen Tresor nur durch Antippen eines Schlüssels. Wenn 
 #~ msgid "You'll unlock this vault with your security key only. If you lose all your security keys, your recovery code is the only way back in. There's no master password to fall back on."
 #~ msgstr "Sie können diesen Tresor nur mit Ihrem Sicherheitsschlüssel entsperren. Wenn Sie alle Ihre Sicherheitsschlüssel verlieren, ist Ihr Wiederherstellungscode der einzige Weg zurück. Es gibt kein Master-Passwort als Rückfallebene."
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Your account stays. To delete it, use the account page."
+msgstr "Ihr Konto bleibt bestehen. Um es zu löschen, verwenden Sie die Kontoseite."
+
 #: packages/core/src/hooks/useVault.tsx
 msgid "Your attachments weren't sent. They're still here, and in your backups."
 msgstr "Ihre Anhänge wurden nicht gesendet. Sie sind weiterhin hier und in Ihren Backups."
@@ -5257,6 +5444,10 @@ msgstr "Ihr Browser kann beim Entsperren nach Zugriff auf die Tresordatei fragen
 msgid "Your device passcode can also unlock this vault."
 msgstr "Ihr Gerätepasscode kann diesen Tresor ebenfalls entsperren."
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Your devices sync only when they're online together."
+msgstr "Ihre Geräte synchronisieren sich nur, wenn sie gleichzeitig online sind."
+
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "Ihre Domain"
@@ -5276,6 +5467,10 @@ msgstr "Ihr anderes Gerät zeigt dieselben Symbole an. Bestätigen Sie dort nur,
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 msgid "Your other devices can no longer read this vault. Pair each of them again from Device sync."
 msgstr "Ihre anderen Geräte können diesen Tresor nicht mehr lesen. Koppeln Sie jedes davon erneut über die Gerätesynchronisierung."
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Your other devices keep using it. Off here, this device syncs only when it's online with them."
+msgstr "Ihre anderen Geräte verwenden es weiter. Wenn es hier deaktiviert ist, synchronisiert dieses Gerät nur, wenn es gleichzeitig mit ihnen online ist."
 
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 msgid "Your other devices stop being able to read this vault. They all share the key being replaced, so each one has to be paired again from Device sync."

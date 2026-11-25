@@ -12,7 +12,7 @@ import { heldVersions, nextCausal, nextVersion } from "@core/sync";
 import { normalizeEntryData } from "@core/vault/entry-normalize";
 import { stampedPlaintext } from "@core/vault/parts";
 import { withPasswordChangelog } from "@core/vault/password-changelog";
-import { type EncryptedEntry, encodeVaultBlob, type VaultBlob } from "@core/vault-format";
+import type { EncryptedEntry } from "@core/vault-format";
 import { type DedupeOutcome, effectivePort, hostnameMatches, registrableDomain } from "../dedupe";
 import { api } from "../platform-api";
 import { isExtensionSender } from "../sender";
@@ -30,12 +30,7 @@ import { appendNeverSaveSite, getNeverSaveSites, getOfferToSavePref, isMutedSite
 import { type MessageEnvelope, on } from "./router";
 import { refreshActiveVaultId, requireActiveVaultId, vaultLocked } from "./session";
 import { nextStamp } from "./sync-clock";
-import {
-	broadcastVaultChanged,
-	readAndDecodeVault,
-	reencryptOuterWithEntryChange,
-	writeVault,
-} from "./vault-io";
+import { broadcastVaultChanged, changeVaultEntries } from "./vault-io";
 
 // Session stash for an in-flight capture, keyed one per eTLD+1.
 export const CAPTURE_KEY_PREFIX = "capture.pending.";
@@ -141,7 +136,6 @@ async function commitCornerSave(
 	// active vault isn't the primary can't seal an entry under the active VEK into the primary's
 	// blob. See docs/multiple-vaults.md "Latent cross-vault callers".
 	const vaultId = requireActiveVaultId();
-	const blob = await readAndDecodeVault(vaultId);
 	const id = globalThis.crypto.randomUUID();
 	const hlc = await nextStamp();
 	const plaintext = stampedPlaintext(
@@ -165,17 +159,7 @@ async function commitCornerSave(
 		hlc,
 		...nextCausal({ hlc, bases: [], held: [] }),
 	};
-	const outer = await reencryptOuterWithEntryChange(
-		blob,
-		async (entries) => [...entries, newEnc],
-		vaultId,
-	);
-	const newBlob: VaultBlob = {
-		slots: blob.slots,
-		entriesIv: outer.entriesIv,
-		entriesCiphertext: outer.entriesCiphertext,
-	};
-	await writeVault(encodeVaultBlob(newBlob), vaultId);
+	await changeVaultEntries(vaultId, async (entries) => [...entries, newEnc]);
 
 	const username = editedUsername ?? capture.username;
 	await addLoginEntry({
@@ -204,70 +188,59 @@ async function commitCornerUpdate(capture: PendingCapture, chosenEntryId: string
 		throw new Error("update target is not offered on this origin");
 	}
 	const vaultId = requireActiveVaultId();
-	const blob = await readAndDecodeVault(vaultId);
-	const outer = await reencryptOuterWithEntryChange(
-		blob,
-		async (entries, payload) => {
-			const next: EncryptedEntry[] = [];
-			for (const enc of entries) {
-				if (enc.id !== chosenEntryId) {
-					next.push(enc);
-					continue;
-				}
-				const dec = await sendToOffscreen({
-					type: "CRYPTO_DECRYPT",
-					vaultId,
-					payload: {
-						ciphertext: enc.ciphertext,
-						iv: enc.iv,
-						wrappedDek: enc.wrappedDek,
-						dekIv: enc.dekIv,
-					},
-				});
-				if (!dec.ok || typeof dec.data !== "string") {
-					throw new Error(`decrypt entry failed: ${dec.error ?? "no data"}`);
-				}
-				const prev = normalizeEntryData(JSON.parse(dec.data));
-				const hlc = await nextStamp();
-				const held = heldVersions(payload, enc.id);
-				const v = nextVersion({ hlc, bases: [enc], held });
-				// As an edit in the app: the replaced password goes into the history.
-				const updated: EntryData = withPasswordChangelog(
-					{
-						...prev,
-						id: enc.id,
-						username,
-						password: capture.password,
-						// The old password's result; the detail view re-checks the new one when opened.
-						breach: undefined,
-						updatedAt: v.hlc.wall,
-					} as Entry,
-					{ ...prev, id: enc.id } as Entry,
-					v.hlc.wall,
-				);
-				const reenc = await sendToOffscreen({
-					type: "CRYPTO_ENCRYPT",
-					vaultId,
-					payload: {
-						plaintextJson: stampedPlaintext(enc.id, updated, { data: prev, version: enc }, v.hlc),
-					},
-				});
-				if (!reenc.ok || !reenc.data) {
-					throw new Error(`reencrypt entry failed: ${reenc.error ?? "no data"}`);
-				}
-				const fresh = reenc.data as Omit<EncryptedEntry, "id" | "hlc">;
-				next.push({ id: enc.id, ...fresh, hlc: v.hlc, ...v.causal });
+	await changeVaultEntries(vaultId, async (entries, payload) => {
+		const next: EncryptedEntry[] = [];
+		for (const enc of entries) {
+			if (enc.id !== chosenEntryId) {
+				next.push(enc);
+				continue;
 			}
-			return next;
-		},
-		vaultId,
-	);
-	const newBlob: VaultBlob = {
-		slots: blob.slots,
-		entriesIv: outer.entriesIv,
-		entriesCiphertext: outer.entriesCiphertext,
-	};
-	await writeVault(encodeVaultBlob(newBlob), vaultId);
+			const dec = await sendToOffscreen({
+				type: "CRYPTO_DECRYPT",
+				vaultId,
+				payload: {
+					ciphertext: enc.ciphertext,
+					iv: enc.iv,
+					wrappedDek: enc.wrappedDek,
+					dekIv: enc.dekIv,
+				},
+			});
+			if (!dec.ok || typeof dec.data !== "string") {
+				throw new Error(`decrypt entry failed: ${dec.error ?? "no data"}`);
+			}
+			const prev = normalizeEntryData(JSON.parse(dec.data));
+			const hlc = await nextStamp();
+			const held = heldVersions(payload, enc.id);
+			const v = nextVersion({ hlc, bases: [enc], held });
+			// As an edit in the app: the replaced password goes into the history.
+			const updated: EntryData = withPasswordChangelog(
+				{
+					...prev,
+					id: enc.id,
+					username,
+					password: capture.password,
+					// The old password's result; the detail view re-checks the new one when opened.
+					breach: undefined,
+					updatedAt: v.hlc.wall,
+				} as Entry,
+				{ ...prev, id: enc.id } as Entry,
+				v.hlc.wall,
+			);
+			const reenc = await sendToOffscreen({
+				type: "CRYPTO_ENCRYPT",
+				vaultId,
+				payload: {
+					plaintextJson: stampedPlaintext(enc.id, updated, { data: prev, version: enc }, v.hlc),
+				},
+			});
+			if (!reenc.ok || !reenc.data) {
+				throw new Error(`reencrypt entry failed: ${reenc.error ?? "no data"}`);
+			}
+			const fresh = reenc.data as Omit<EncryptedEntry, "id" | "hlc">;
+			next.push({ id: enc.id, ...fresh, hlc: v.hlc, ...v.causal });
+		}
+		return next;
+	});
 	updateLoginCredentials(chosenEntryId, username, capture.password);
 	await broadcastVaultChanged();
 }

@@ -24,6 +24,7 @@ import {
 } from "@core/sync";
 import { blobArrived } from "@core/sync/blob-arrivals";
 import { syncKeyFor } from "@core/sync/sync-keys";
+import { withVaultWriteLock } from "@core/vault/write-lock";
 import { encodeVaultBlob, type VaultBlob } from "@core/vault-format";
 import { api } from "../platform-api";
 import { OPENED_VAULT_KEY } from "../session-keys";
@@ -408,7 +409,7 @@ export function retargetSync(activeVaultId: string | null): void {
 
 // Read + decrypt the active vault's outer blob. Returns the blob (for its slots, carried
 // forward on write) alongside the decrypted payload (empty for a fresh vault).
-async function readLocalState(
+export async function readLocalState(
 	ctx: SyncVaultCtx,
 ): Promise<{ blob: VaultBlob; payload: EntriesPayload }> {
 	const blob = await readAndDecodeVault(ctx.vaultId);
@@ -452,7 +453,7 @@ function offscreenEntryCrypto(vaultId: string): CombineCrypto {
 // The host side of the merge seam: read/witness/re-seal happen here (storage + the
 // offscreen's VEK); applyRemotePayload owns the order. readLocal runs before
 // writeMerged, so the slots captured there are current.
-function makeVaultSyncPort(ctx: SyncVaultCtx): VaultSyncPort {
+export function makeVaultSyncPort(ctx: SyncVaultCtx): VaultSyncPort {
 	let slots: VaultBlob["slots"] = [];
 	return {
 		async readLocal() {
@@ -462,23 +463,28 @@ function makeVaultSyncPort(ctx: SyncVaultCtx): VaultSyncPort {
 		},
 		witnessRemote: (stamps) => witnessStamps(stamps),
 		async writeMerged(merged) {
-			// Into what's on disk now: a corner-prompt or passkey save doesn't wait for a merge, and a
-			// merge loses nothing by being applied again.
-			const current = await readLocalState(ctx);
-			slots = current.blob.slots;
-			const enc = await sendToOffscreen({
-				type: "CRYPTO_ENCRYPT_OUTER",
-				vaultId: ctx.vaultId,
-				payload: { plaintext: encodeEntriesPayload(mergeEntriesPayload(current.payload, merged)) },
+			// Into what's on disk now, under the vault write lock: a view's or a corner-prompt save
+			// can't land between this read and the write, and a merge loses nothing by being applied
+			// again.
+			await withVaultWriteLock(async () => {
+				const current = await readLocalState(ctx);
+				slots = current.blob.slots;
+				const enc = await sendToOffscreen({
+					type: "CRYPTO_ENCRYPT_OUTER",
+					vaultId: ctx.vaultId,
+					payload: {
+						plaintext: encodeEntriesPayload(mergeEntriesPayload(current.payload, merged)),
+					},
+				});
+				if (!enc.ok || !enc.data) throw new Error(enc.error ?? "outer encrypt failed");
+				const { iv, ciphertext } = enc.data as { iv: string; ciphertext: string };
+				const newBlob = encodeVaultBlob({
+					slots,
+					entriesIv: base64ToBytes(iv),
+					entriesCiphertext: base64ToBytes(ciphertext),
+				});
+				await writeVault(newBlob, ctx.vaultId);
 			});
-			if (!enc.ok || !enc.data) throw new Error(enc.error ?? "outer encrypt failed");
-			const { iv, ciphertext } = enc.data as { iv: string; ciphertext: string };
-			const newBlob = encodeVaultBlob({
-				slots,
-				entriesIv: base64ToBytes(iv),
-				entriesCiphertext: base64ToBytes(ciphertext),
-			});
-			await writeVault(newBlob, ctx.vaultId);
 			await broadcastVaultChanged();
 		},
 		async openable(entries) {
@@ -530,11 +536,20 @@ const applyChains = new Map<string, Promise<unknown>>();
 /** Entry versions a vault refused at merge, so a peer's rebroadcast isn't re-checked every tick. */
 const refusedByVault = new Map<string, Set<string>>();
 
-/** A peer's payload arrived: merge into the pinned vault. Returns whether it changed. */
-export async function syncApplyRemote(vaultId: string, payloadJson: string): Promise<boolean> {
-	const run = (applyChains.get(vaultId) ?? Promise.resolve()).then(() =>
-		applyRemoteNow(vaultId, payloadJson),
-	);
+/** The vault's refused versions, shared by P2P and the mailbox so neither re-checks the other's. */
+export function refusedFor(vaultId: string): Set<string> {
+	let refused = refusedByVault.get(vaultId);
+	if (!refused) {
+		refused = new Set<string>();
+		refusedByVault.set(vaultId, refused);
+	}
+	return refused;
+}
+
+/** Run `apply` after the vault's earlier merges: P2P's and the mailbox's share one queue, so
+ * neither's write can land between the other's read and write. */
+export function queueApply<T>(vaultId: string, apply: () => Promise<T>): Promise<T> {
+	const run = (applyChains.get(vaultId) ?? Promise.resolve()).then(apply);
 	applyChains.set(
 		vaultId,
 		run.catch(() => {}),
@@ -542,12 +557,16 @@ export async function syncApplyRemote(vaultId: string, payloadJson: string): Pro
 	return run;
 }
 
+/** A peer's payload arrived: merge into the pinned vault. Returns whether it changed. */
+export async function syncApplyRemote(vaultId: string, payloadJson: string): Promise<boolean> {
+	return queueApply(vaultId, () => applyRemoteNow(vaultId, payloadJson));
+}
+
 async function applyRemoteNow(vaultId: string, payloadJson: string): Promise<boolean> {
 	const ctx = await pinnedCtx(vaultId);
 	if (!ctx) return false;
 	const remote = decodeEntriesPayload(payloadJson);
-	const rejected = refusedByVault.get(ctx.vaultId) ?? new Set<string>();
-	refusedByVault.set(ctx.vaultId, rejected);
+	const rejected = refusedFor(ctx.vaultId);
 	const { changed } = await applyRemotePayload(makeVaultSyncPort(ctx), remote, { rejected });
 	// Every reconcile (changed or no-op) means "we're up to date with a peer". Peers rebroadcast
 	// every few seconds, so throttle the stamp to ~30s to avoid churn (each write wakes the Sync
@@ -571,7 +590,7 @@ export async function syncLocalRoster(vaultId: string): Promise<string> {
 }
 
 /** A peer's roster arrived: merge revocations/additions, persist, and nudge the popup. */
-async function syncApplyRoster(vaultId: string, rosterJson: string): Promise<void> {
+export async function syncApplyRoster(vaultId: string, rosterJson: string): Promise<void> {
 	const ctx = await pinnedCtx(vaultId);
 	if (!ctx) return;
 	const group = await getStoredGroup(ctx);

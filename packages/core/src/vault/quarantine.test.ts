@@ -3,7 +3,8 @@ import type { EntriesPayload } from "../sync/entries-payload";
 import type { Hlc } from "../sync/hlc";
 import type { EncryptedEntry } from "../vault-format";
 import type { EntriesBlobStore } from "./entries-blob";
-import { type QuarantinedEntry, quarantineEntries } from "./quarantine";
+import { appendQuarantine, type QuarantinedEntry, quarantineEntries } from "./quarantine";
+import { withVaultWriteLock } from "./write-lock";
 
 const hlc = (wall: number, node = "n"): Hlc => ({ wall, counter: 0, node });
 const env = (id: string, wall = 1): EncryptedEntry => ({
@@ -126,5 +127,112 @@ describe("quarantineEntries", () => {
 		]);
 		expect(f.disk().entries).toEqual([]);
 		expect(f.kept()).toEqual([1, "x", null, { ...env("stray"), quarantinedAt: 5 }]);
+	});
+});
+
+describe("appendQuarantine", () => {
+	const message = (messageId: string) => ({
+		mailboxMessage: "Ym9keQ==",
+		mailboxId: "M".repeat(43),
+		messageId,
+		sender: "S",
+		reason: "unopenable" as const,
+	});
+
+	it("appends refused entries without rewriting the vault", async () => {
+		const f = fakes({ entries: [env("kept")], tombstones: [] });
+		await appendQuarantine({ storage: f.storage, vaultId: "v", now: 7 }, { entries: [env("x")] });
+		expect(f.kept()).toEqual([{ ...env("x"), quarantinedAt: 7 }]);
+		expect(f.disk().entries.map((e) => e.id)).toEqual(["kept"]);
+	});
+
+	it("keeps a whole message with its reason, once per message id", async () => {
+		const f = fakes({ entries: [], tombstones: [] });
+		const deps = { storage: f.storage, vaultId: "v", now: 9 };
+		await appendQuarantine(deps, { messages: [message("I".repeat(22))] });
+		await appendQuarantine(deps, { messages: [message("I".repeat(22))] });
+		expect(f.kept()).toEqual([{ ...message("I".repeat(22)), quarantinedAt: 9 }]);
+	});
+
+	it("carries an unreadable store forward when appending", async () => {
+		const f = fakes({ entries: [], tombstones: [] });
+		f.setRaw("not json");
+		await appendQuarantine({ storage: f.storage, vaultId: "v", now: 3 }, { entries: [env("x")] });
+		expect(f.kept()).toEqual([
+			{ unreadableStore: "not json", quarantinedAt: 3 },
+			{ ...env("x"), quarantinedAt: 3 },
+		]);
+	});
+});
+
+describe("setting aside under the vault write lock", () => {
+	/** Holds the first call until released, and says when it got there. */
+	function hold() {
+		let release = () => {};
+		const released = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let arrive = () => {};
+		const reached = new Promise<void>((resolve) => {
+			arrive = resolve;
+		});
+		let first = true;
+		const wait = async () => {
+			if (!first) return;
+			first = false;
+			arrive();
+			await released;
+		};
+		return { reached, release, wait };
+	}
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
+
+	it("a save landing while the vault is rewritten is kept", async () => {
+		const f = fakes({ entries: [env("mine"), env("stray")], tombstones: [] });
+		const gate = hold();
+		const store: EntriesBlobStore = {
+			...f.store,
+			readEntriesPayload: async () => {
+				const payload = f.disk();
+				await gate.wait();
+				return payload;
+			},
+		};
+		const setting = quarantineEntries({ storage: f.storage, store, vaultId: "v", now: 1 }, [
+			env("stray"),
+		]);
+		await gate.reached;
+		const saving = withVaultWriteLock(async () => {
+			f.setDisk({ ...f.disk(), entries: [...f.disk().entries, env("saved")] });
+		});
+		await tick();
+		gate.release();
+		await Promise.all([setting, saving]);
+		expect(f.disk().entries.map((e) => e.id)).toEqual(["mine", "saved"]);
+	});
+
+	it("a record added while entries are being set aside is kept", async () => {
+		const f = fakes({ entries: [env("stray")], tombstones: [] });
+		const gate = hold();
+		const storage = {
+			...f.storage,
+			readQuarantine: async () => {
+				const raw = await f.storage.readQuarantine();
+				await gate.wait();
+				return raw;
+			},
+		};
+		const setting = quarantineEntries({ storage, store: f.store, vaultId: "v", now: 1 }, [
+			env("stray"),
+		]);
+		await gate.reached;
+		const appending = appendQuarantine(
+			{ storage, vaultId: "v", now: 1 },
+			{ entries: [env("refused")] },
+		);
+		await tick();
+		gate.release();
+		await Promise.all([setting, appending]);
+		expect(f.kept().map((q) => q.id)).toEqual(["stray", "refused"]);
 	});
 });

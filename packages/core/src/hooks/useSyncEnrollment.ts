@@ -5,6 +5,7 @@ import { usePlatform } from "../context/PlatformContext";
 import {
 	activeDevices,
 	addDevice,
+	admitEntry,
 	canonicalRosterEntry,
 	decodePairingCode,
 	type EntriesPayload,
@@ -76,13 +77,11 @@ async function admissionSign(
 	admit: AdmissionContext | null,
 	entry: RosterEntry,
 ): Promise<RosterEntry> {
-	if (!admit || !shell.syncAdmissionSign) return entry;
-	const sig = await shell.syncAdmissionSign(
-		admit.password,
-		admit.saltB64,
-		canonicalRosterEntry(entry),
+	const sign = shell.syncAdmissionSign;
+	if (!admit || !sign) return entry;
+	return admitEntry(entry, admit.adminId, (message) =>
+		sign(admit.password, admit.saltB64, message),
 	);
-	return { ...entry, admission: { by: admit.adminId, sig } };
 }
 
 /** Shared vault internals the enrollment ops need from VaultProvider. */
@@ -312,7 +311,7 @@ export function useSyncEnrollment(deps: SyncEnrollmentDeps): SyncEnrollment {
 					return; // ignore a malformed enrolled-event payload
 				}
 				void (async () => {
-					const admitted = await admissionSign(shell, admit, entry);
+					const admitted = entry.admission ? entry : await admissionSign(shell, admit, entry);
 					const cur = await storage.getMeta<{ groupKey: string; roster: RosterPayload }>(
 						syncKey("sync.group"),
 					);

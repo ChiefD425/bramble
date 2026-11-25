@@ -4,7 +4,11 @@
 // which owns the native port and the stored keys; no key material or code is handled here.
 // See background/desktop-link.ts.
 
-import type { DesktopLinkAdapter, DesktopLinkStatus } from "@core/adapters/desktop-link";
+import type {
+	DesktopLinkAdapter,
+	DesktopLinkStatus,
+	DesktopVaultSummary,
+} from "@core/adapters/desktop-link";
 import type { PairingSas } from "@core/sync/pairing-sas";
 import { api, disconnectReason } from "./platform-api";
 
@@ -269,10 +273,7 @@ const adapter: DesktopLinkAdapter = {
 		withNativeProxy((via) => dispatch<string | null>("DESKTOP_LINK_SYNC_KEY", { via })),
 	vaultSummary: () =>
 		withNativeProxy((via) =>
-			dispatch<{ name: string; empty: boolean; entries: number; backupTargets?: boolean } | null>(
-				"DESKTOP_LINK_VAULT_SUMMARY",
-				{ via },
-			),
+			dispatch<DesktopVaultSummary | null>("DESKTOP_LINK_VAULT_SUMMARY", { via }),
 		),
 	unlink: () => dispatch<{ remaining: number }>("DESKTOP_LINK_UNLINK"),
 	forgetVault: async (vaultId) => {

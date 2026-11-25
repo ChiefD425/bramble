@@ -29,6 +29,14 @@ async function openWindow(context: BrowserContext, extensionId: string, { deaf =
 				add((message, sender, respond) =>
 					message?.type === "VAULT_CHANGED_EXTERNAL" ? false : listener(message, sender, respond),
 				);
+			const stored = chrome.storage.onChanged;
+			const addStored = stored.addListener.bind(stored);
+			stored.addListener = (listener) =>
+				addStored((changes, area) => {
+					if (!Object.keys(changes).some((key) => key.startsWith("vault-blob-b64"))) {
+						listener(changes, area);
+					}
+				});
 		});
 	}
 	await openPopup(page, extensionId);

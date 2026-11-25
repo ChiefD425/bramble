@@ -49,8 +49,17 @@ function emptyVaultBytes(): Uint8Array {
 // that round-trips through the real encode/decode, so the persist primitive is
 // exercised end to end. The clock is a real HybridClock with a frozen wall time,
 // so stamps differ only by their monotonic counter.
-export function harness(now: () => number = () => 1000, node = "device-a") {
-	return harnessOn({ bytes: emptyVaultBytes() }, now, node);
+/** One vault's bytes, which several harnesses can share as writers of the same vault. */
+export function vaultDisk(): { bytes: Uint8Array } {
+	return { bytes: emptyVaultBytes() };
+}
+
+export function harness(
+	now: () => number = () => 1000,
+	node = "device-a",
+	disk: { bytes: Uint8Array } = vaultDisk(),
+) {
+	return harnessOn(disk, now, node);
 }
 
 /**

@@ -16,7 +16,7 @@ import type {
 	RosterPayload,
 	WireRecoverySlot,
 } from "@core/index";
-import { canonicalRosterEntry, RosterEntrySchema } from "@core/sync/roster";
+import { admitEntry, RosterEntrySchema } from "@core/sync/roster";
 import { startEnroll } from "@core/sync/transport/enroll-host";
 import type { MeshSession } from "@core/sync/transport/peer-session";
 import { listen } from "@tauri-apps/api/event";
@@ -41,41 +41,21 @@ interface Admission {
 }
 
 /**
- * Admission-sign a freshly joined device and add it to this vault's roster, in the process that
- * ran the enrollment rather than in the window that started it.
+ * Add a freshly joined device, already admission-signed by the host if it could be, to this vault's
+ * roster, in the process that ran the enrollment rather than in the window that started it.
  *
  * The window can be closed the moment the code is handed over, and on desktop closing it does not
  * end the process, so the UI's own copy of this write is the half that can go missing. Losing it
  * leaves the joiner rejected as "not in roster" when it comes back for ongoing sync, which reads
- * as a pairing that worked and then silently didn't. Idempotent with the UI write: Ed25519 is
- * deterministic over the same canonical entry, and the roster merge is a union.
+ * as a pairing that worked and then silently didn't. Idempotent with the UI write: the roster merge
+ * is a union.
  *
  * Failure is reported, not thrown: the enrollment itself succeeded, and the UI may still land its
  * own write. See docs/p2p-sync-revocation-hardening.md.
  */
-async function admitJoiner(
-	vaultId: string,
-	admission: Admission | undefined,
-	entryJson: string,
-): Promise<void> {
+async function addJoiner(vaultId: string, entryJson: string): Promise<void> {
 	try {
-		const entry = RosterEntrySchema.parse(JSON.parse(entryJson));
-		// No admission material means this device cannot admit (security-key-only, or no password
-		// re-entered). The joiner still goes in the roster, just unsigned.
-		const admitted = admission
-			? {
-					...entry,
-					admission: {
-						by: admission.adminId,
-						sig: await syncAdmissionSign(
-							admission.password,
-							admission.saltB64,
-							canonicalRosterEntry(entry),
-						),
-					},
-				}
-			: entry;
-		await addToLocalRoster(vaultId, admitted);
+		await addToLocalRoster(vaultId, RosterEntrySchema.parse(JSON.parse(entryJson)));
 	} catch (e) {
 		report(`sync: could not add the new device to the roster (${(e as Error).message})`);
 	}
@@ -149,12 +129,19 @@ export async function startEnrollInvite(opts: {
 	session?.stop();
 	// A new invite supersedes any prompt left over from the last one.
 	settleApproval(false);
+	const { admission } = opts;
 
 	/** Start the copy: over the link with no second check for a browser that linked by emoji, or
 	 * over the relay behind the emoji prompt for a phone. */
 	const begin = async (overLink: boolean, boundPeer?: string) => {
 		session = await startEnroll("inviter", {
 			vekB64,
+			admit: admission
+				? (entry) =>
+						admitEntry(entry, admission.adminId, (message) =>
+							syncAdmissionSign(admission.password, admission.saltB64, message),
+						)
+				: undefined,
 			devicePubB64: publicKey,
 			devicePrivB64: privateKey,
 			peerSource: overLink ? linkPeerSourceFor("enroll", () => boundPeer) : undefined,
@@ -179,7 +166,7 @@ export async function startEnrollInvite(opts: {
 			// two makes its read see this one rather than racing it.
 			onEnrolled: (entryJson) => {
 				void (async () => {
-					if (vaultId) await admitJoiner(vaultId, opts.admission, entryJson);
+					if (vaultId) await addJoiner(vaultId, entryJson);
 					emit({ kind: "enrolled", entryJson });
 					// Sync starts on unlock, and only for a vault already in a group. A first pairing
 					// makes the group, so start it now that the new device is in the roster.

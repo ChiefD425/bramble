@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // worker cannot hold one open for a large upload. What has to hold: the body reaches the host's
 // fetch intact, by the right route for its size, and nothing staged for it is left behind.
 
+const { polledBodies } = vi.hoisted(() => ({ polledBodies: [] as string[] }));
 vi.mock("./offscreen-client", async () => {
 	const host = await import("../http-host");
 	return {
@@ -13,7 +14,9 @@ vi.mock("./offscreen-client", async () => {
 				return { ok: true, data: await host.startHttpJob(msg.payload as never) };
 			}
 			if (msg.type === "HTTP_JOB_POLL") {
-				return { ok: true, data: host.pollHttpJob((msg.payload as { id: string }).id) };
+				const state = host.pollHttpJob((msg.payload as { id: string }).id);
+				if (state.done && "body" in state) polledBodies.push(state.body);
+				return { ok: true, data: state };
 			}
 			return { ok: false, error: "unexpected" };
 		},
@@ -99,6 +102,38 @@ describe("hostHttp", () => {
 		fetchRecorder();
 		await expect(hostHttp.send({ method: "GET", url: "https://dav.example/" })).rejects.toThrow(
 			/lost/,
+		);
+	});
+});
+
+describe("the mailbox's blob mover", () => {
+	it("lands a download in the vault's blob store, never crossing back as a message", async () => {
+		const bytes = new Uint8Array(3 * 1024 * 1024).fill(7);
+		const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) =>
+			b.toString(16).padStart(2, "0"),
+		).join("");
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response(bytes, { status: 200 })),
+		);
+		const { hostBlobMover } = await import("./host-http");
+		const store = idb.idbBlobStore("mailbox-v1");
+		const request = { method: "GET" as const, url: "https://m.example/b", headers: {} };
+		expect(await hostBlobMover("mailbox-v1", store).download(hash, request)).toBe("stored");
+		expect(await store.has(hash)).toBe(true);
+		expect(polledBodies.at(-1)).toBe("");
+	});
+
+	it("answers missing for a 404", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response('{"error":"not_found"}', { status: 404 })),
+		);
+		const { hostBlobMover } = await import("./host-http");
+		const store = idb.idbBlobStore("mailbox-v2");
+		const request = { method: "GET" as const, url: "https://m.example/b", headers: {} };
+		expect(await hostBlobMover("mailbox-v2", store).download("a".repeat(64), request)).toBe(
+			"missing",
 		);
 	});
 });

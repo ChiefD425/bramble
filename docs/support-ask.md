@@ -17,9 +17,10 @@ Code: `packages/core/src/app/support-ask.ts` (the schedule), `app/hooks/useSuppo
 - **After Donate, 90 days.** Bramble can't tell whether a donation went through, but someone who
   just went to give shouldn't be asked again in two weeks.
 - **Only on an open with no other card.** It is one of the vault list's cards
-  (docs/whats-new.md): after the update notice and What's new, ahead of the review ask and the
-  default manager offer, so a card someone leaves open can't keep it away for good. Answering it
-  leaves the spot empty until the next open, and iOS's own review prompt waits while it is up.
+  (docs/whats-new.md): after the update notice, What's new and the mailbox's paid time, ahead of
+  the review ask and the default manager offer, so a card someone leaves open can't keep it away
+  for good. Answering it leaves the spot empty until the next open, and iOS's own review prompt
+  waits while it is up.
 - **Off** with **Remind me every two weeks** in Settings → About → Support.
 
 ## Where

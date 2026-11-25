@@ -17,7 +17,7 @@ import { HttpError, param, signedJson } from "./auth.ts";
 import { blobKey } from "./bodies.ts";
 import { deleteUndelivered } from "./cleanup.ts";
 import { mailboxParam, requireMember } from "./mailboxes.ts";
-import { checkQuota } from "./messages.ts";
+import { checkQuota, ROW_BYTES } from "./messages.ts";
 import { blobDeliveries, blobs, blobWants, members } from "./schema.ts";
 import { chunk, rowsPerInsert } from "./sql.ts";
 import { DAY_MS } from "./time.ts";
@@ -92,7 +92,7 @@ export function blobRoutes(deps: AppDeps) {
 		}
 		if ((await countOf(where)) === 0)
 			return c.json({ stored: false, recipients: 0 } satisfies PostResponse);
-		await checkQuota(deps, mailboxId, declared);
+		await checkQuota(deps, mailboxId, declared + ROW_BYTES);
 
 		// Body, then row, then deliveries, as for messages.
 		const size = await storeUpload(
@@ -143,6 +143,18 @@ export function blobRoutes(deps: AppDeps) {
 		const { id: mailboxId } = c.req.valid("param");
 		const caller = c.var.sigKey;
 		await requireMember(deps, mailboxId, caller, "active");
+		// Metadata like any other post: a collect-only mailbox takes no new rows, and each one counts.
+		// A list that doesn't grow is always taken, so collecting keeps working.
+		const fresh = new Set(c.req.valid("json").hashes).size;
+		const [held] = await db
+			.select({ n: count() })
+			.from(blobWants)
+			.where(and(eq(blobWants.mailboxId, mailboxId), eq(blobWants.member, caller)));
+		const adding = Math.max(0, fresh - (held?.n ?? 0));
+		if (adding > 0 && !(await deps.entitlement.canPost(mailboxId))) {
+			throw new HttpError(402, "collect_only");
+		}
+		await checkQuota(deps, mailboxId, adding * ROW_BYTES);
 		await db
 			.delete(blobWants)
 			.where(and(eq(blobWants.mailboxId, mailboxId), eq(blobWants.member, caller)));

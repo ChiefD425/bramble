@@ -1,0 +1,90 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	// The hosted mailbox (docs/mailbox-service.md, "Storage on the hosted service"): the same app as
+	// the self-hosted server, over D1 (metadata) and R2 (every body). See README.md for deploying.
+	"name": "bramble-mailbox",
+	"main": "src/worker/index.ts",
+	"compatibility_date": "2026-10-26",
+	// The address the apps and the website use, and no other.
+	"routes": [{ "pattern": "mailbox.bramble.sh", "custom_domain": true }],
+	"workers_dev": false,
+	"preview_urls": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "bramble-mailbox",
+			"database_id": "3621c1aa-3235-49e2-9b4b-038e437bd486",
+			"migrations_dir": "drizzle"
+		}
+	],
+	// In the EU jurisdiction, as the D1 database is (owner, 2026-10-31): `wrangler r2 bucket create
+	// bramble-mailbox-bodies --jurisdiction eu`. A jurisdiction is fixed when a bucket is created.
+	"r2_buckets": [
+		{ "binding": "BODIES", "bucket_name": "bramble-mailbox-bodies", "jurisdiction": "eu" }
+	],
+	// Thresholds live here, not in the code. A sync round asks a mailbox a few times, and a long
+	// absence's catch-up asks once per waiting message, so the mailbox limit is generous. Status is
+	// asked by the apps now and then.
+	"ratelimits": [
+		{ "name": "MAILBOX_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } },
+		{ "name": "ACCOUNT_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+	],
+	// The retention sweep, as the Node server runs it hourly.
+	"triggers": { "crons": ["17 * * * *"] },
+	// 32 random bytes, base64: keys the hash an account number is stored as. `wrangler secret put`.
+	"secrets": { "required": ["ACCOUNT_KEY"] },
+	"vars": {
+		"RETENTION_MAX_DAYS": "365",
+		"ACCOUNT_QUOTA_BYTES": "1000000000",
+		// One vault's group is one mailbox; a new group is a new one, kept until it expires.
+		"ACCOUNT_MAX_MAILBOXES": "20"
+	},
+	"observability": {
+		"enabled": true,
+		// No request metadata: an invocation log records the URL, which carries the mailbox id.
+		"logs": { "invocation_logs": false },
+		// Traces record request attributes too.
+		"traces": { "enabled": false }
+	},
+	"upload_source_maps": true,
+	// A second, separate mailbox for testing against the Stripe sandbox: its own address, database,
+	// bucket and ACCOUNT_KEY, so nothing bought with a test card reaches a real account.
+	// `wrangler deploy --env sandbox`; a plain deploy is the hosted mailbox above. Bindings, vars and
+	// secrets aren't inherited, so those are spelled out; the cron and observability are.
+	"env": {
+		"sandbox": {
+			"name": "bramble-mailbox-sandbox",
+			"routes": [{ "pattern": "mailbox-sandbox.bramble.sh", "custom_domain": true }],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "bramble-mailbox-sandbox",
+					"database_id": "4420c4db-18bc-489c-a90a-3b3daa90eadb",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "BODIES",
+					"bucket_name": "bramble-mailbox-sandbox-bodies",
+					"jurisdiction": "eu"
+				}
+			],
+			// Counters of their own: a namespace is shared by every Worker that names it.
+			"ratelimits": [
+				{
+					"name": "MAILBOX_LIMIT",
+					"namespace_id": "1101",
+					"simple": { "limit": 600, "period": 60 }
+				},
+				{ "name": "ACCOUNT_LIMIT", "namespace_id": "1102", "simple": { "limit": 60, "period": 60 } }
+			],
+			"secrets": { "required": ["ACCOUNT_KEY"] },
+			"vars": {
+				"RETENTION_MAX_DAYS": "365",
+				"ACCOUNT_QUOTA_BYTES": "1000000000",
+				"ACCOUNT_MAX_MAILBOXES": "20"
+			}
+		}
+	}
+}

@@ -308,6 +308,7 @@ pub fn run() {
             files::files_publish_staged,
             files::files_discard_staged,
             files::files_delete_vault,
+            files::files_download_blob,
             autostart::autostart_is_enabled,
             autostart::autostart_set_enabled,
             biometric::biometric_status,
@@ -405,6 +406,7 @@ pub fn run() {
             stream::stream_finish,
             stream::stream_abort,
             net::http_send,
+            net::http_stream_open,
             #[cfg(target_os = "linux")]
             native_webrtc::webrtc_create_peer,
             #[cfg(target_os = "linux")]

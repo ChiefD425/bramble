@@ -1,10 +1,12 @@
 /** @vitest-environment happy-dom */
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { CardSlotProvider } from "../hooks/useCardSlot";
+import type { MailboxExpiry } from "../hooks/useMailboxExpiry";
+import { MailboxExpiryCard } from "./MailboxExpiryCard";
 import { VaultListCard, type VaultListCards } from "./VaultListCard";
 
 beforeAll(() => {
@@ -13,6 +15,8 @@ beforeAll(() => {
 });
 
 afterEach(cleanup);
+
+const ENDS = Date.UTC(2026, 11, 8, 12);
 
 /** Every card on offer at once, each going away once acted on, as their hooks' state does. */
 function Cards({ only }: { only?: (keyof VaultListCards)[] }) {
@@ -31,6 +35,15 @@ function Cards({ only }: { only?: (keyof VaultListCards)[] }) {
 							notes: { version: "1.42.0", headline: "Headline.", items: ["One."] },
 							url: "https://bramble.sh/whats-new/chromium/1.42.0",
 							onClose: end("whatsNew"),
+						}
+					: null,
+				mailboxExpiry: offer("mailboxExpiry")
+					? {
+							stage: "ending",
+							paidThrough: ENDS,
+							buyUrl: "https://bramble.sh/account",
+							onClose: end("mailboxExpiry"),
+							onStop: async () => end("mailboxExpiry")(),
 						}
 					: null,
 				supportAsk: offer("supportAsk")
@@ -69,6 +82,7 @@ function mount(only?: (keyof VaultListCards)[]) {
 const showing = () => ({
 	update: !!screen.queryByText(/is available/),
 	whatsNew: !!screen.queryByText(/What's new in/),
+	mailbox: !!screen.queryByText(/Mailbox time end/),
 	support: !!screen.queryByText("Support Bramble"),
 	review: !!screen.queryByText(/Say something nice/),
 	defaultManager: !!screen.queryByText(/default password manager/),
@@ -80,6 +94,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: true,
 			whatsNew: false,
+			mailbox: false,
 			support: false,
 			review: false,
 			defaultManager: false,
@@ -89,6 +104,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: true,
+			mailbox: false,
 			support: false,
 			review: false,
 			defaultManager: false,
@@ -98,6 +114,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: false,
+			mailbox: false,
 			support: false,
 			review: true,
 			defaultManager: false,
@@ -113,6 +130,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: false,
+			mailbox: false,
 			support: false,
 			review: false,
 			defaultManager: false,
@@ -148,6 +166,7 @@ describe("VaultListCard", () => {
 								url: "https://bramble.sh/whats-new/chromium/1.42.0",
 								onClose,
 							},
+							mailboxExpiry: null,
 							supportAsk: null,
 							reviewNudge: null,
 							defaultManager: null,
@@ -173,6 +192,7 @@ describe("VaultListCard", () => {
 		expect(showing()).toEqual({
 			update: false,
 			whatsNew: false,
+			mailbox: false,
 			support: true,
 			review: false,
 			defaultManager: false,
@@ -191,5 +211,77 @@ describe("VaultListCard", () => {
 		fireEvent.click(screen.getByRole("link", { name: /Donate/ }));
 		expect(showing().review).toBe(false);
 		expect(showing().support).toBe(false);
+	});
+
+	it("puts the mailbox's paid time after what's new and ahead of the donation card", () => {
+		mount(["mailboxExpiry", "supportAsk", "reviewNudge"]);
+		expect(showing()).toEqual({
+			update: false,
+			whatsNew: false,
+			mailbox: true,
+			support: false,
+			review: false,
+			defaultManager: false,
+		});
+		cleanup();
+		mount(["whatsNew", "mailboxExpiry"]);
+		expect(showing().mailbox).toBe(false);
+	});
+
+	it("leaves the spot empty once the mailbox card is closed, followed or stopped", async () => {
+		mount(["mailboxExpiry", "supportAsk"]);
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+		expect(showing().support).toBe(false);
+		cleanup();
+		mount(["mailboxExpiry", "supportAsk"]);
+		fireEvent.click(screen.getByRole("link", { name: /Buy more time/ }));
+		expect(showing().support).toBe(false);
+		cleanup();
+		mount(["mailboxExpiry", "supportAsk"]);
+		fireEvent.click(screen.getByRole("button", { name: "Stop using the mailbox" }));
+		expect(screen.getByText("Every device stops syncing through it.")).toBeTruthy();
+		expect(screen.queryByRole("link", { name: /Buy more time/ })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+		await waitFor(() => expect(showing().mailbox).toBe(false));
+		expect(showing().support).toBe(false);
+	});
+});
+
+describe("the mailbox card", () => {
+	const expiry = (over: Partial<MailboxExpiry>): MailboxExpiry => ({
+		stage: "ending",
+		paidThrough: ENDS,
+		buyUrl: "https://bramble.sh/account#123",
+		onClose: () => {},
+		onStop: async () => {},
+		...over,
+	});
+	const show = (e: MailboxExpiry) =>
+		render(
+			<I18nProvider i18n={i18n}>
+				<MailboxExpiryCard expiry={e} onBuy={() => {}} />
+			</I18nProvider>,
+		);
+
+	it("gives the date and where to buy more", () => {
+		show(expiry({}));
+		expect(screen.getByText("Mailbox time ends Dec 8, 2026")).toBeTruthy();
+		expect(screen.getByRole("link", { name: /Buy more time/ }).getAttribute("href")).toBe(
+			"https://bramble.sh/account#123",
+		);
+	});
+
+	it("can't be closed once the time has ended", () => {
+		show(expiry({ stage: "ended", onClose: undefined }));
+		expect(screen.getByText("Mailbox time ended Dec 8, 2026")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Stop using the mailbox" })).toBeTruthy();
+	});
+
+	it("states the date and nothing more where buying isn't offered", () => {
+		show(expiry({ buyUrl: null }));
+		expect(screen.queryByRole("link")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Stop using the mailbox" }));
+		expect(screen.queryByText(/account page/)).toBeNull();
 	});
 });

@@ -4,8 +4,8 @@
 //! not an API that sends no CORS headers at all. So a request to a third party is sent from here,
 //! where there is no origin to refuse and no browser to enforce one.
 //!
-//! Every request this process makes goes through `send`, so the two rules hold once rather than
-//! per caller. Both are the same ones `@core/adapters/http` documents for the JS side:
+//! Every request this process makes goes through `request` (`send` reads its reply whole), so the
+//! two rules hold once rather than per caller. Both are the same ones `@core/adapters/http` documents for the JS side:
 //!
 //! - **No ambient cookies.** The credential is the header the caller set and nothing else. The
 //!   `cookies` feature is deliberately absent from the reqwest dependency, so there is no cookie
@@ -74,24 +74,7 @@ pub async fn send_body(
     body: reqwest::Body,
     timeout: Duration,
 ) -> Res<HttpReply> {
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .connect_timeout(CONNECT_TIMEOUT)
-        .timeout(timeout)
-        .build()
-        .map_err(|e| format!("http client: {e}"))?;
-    let mut req = client.request(
-        reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| format!("http method: {e}"))?,
-        url,
-    );
-    for (k, v) in headers {
-        req = req.header(k, v);
-    }
-    let res = req
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| format!("request failed: {e}"))?;
+    let res = request(method, url, headers, body, timeout).await?;
     let status = res.status().as_u16();
     let headers = res
         .headers()
@@ -108,6 +91,52 @@ pub async fn send_body(
         body,
         headers,
     })
+}
+
+/// Send one request under the rules above and hand back the response unread, for a caller that
+/// streams the reply somewhere rather than holding it.
+pub async fn request(
+    method: &str,
+    url: reqwest::Url,
+    headers: Vec<(String, String)>,
+    body: reqwest::Body,
+    timeout: Duration,
+) -> Res<reqwest::Response> {
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(timeout)
+        .build()
+        .map_err(|e| format!("http client: {e}"))?;
+    let mut req = client.request(
+        reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| format!("http method: {e}"))?,
+        url,
+    );
+    for (k, v) in headers {
+        req = req.header(k, v);
+    }
+    req.body(body)
+        .send()
+        .await
+        .map_err(|e| format!("request failed: {e}"))
+}
+
+/// Open a request whose body the webview then streams in (`stream_write`, `stream_finish`), for one
+/// too large to cross the IPC whole: a mailbox attachment, already signed by the caller. The
+/// declared length makes a body that comes up short fail rather than land as whole.
+#[tauri::command]
+pub fn http_stream_open(
+    window: tauri::Window,
+    method: String,
+    url: String,
+    headers: HashMap<String, String>,
+    size: u64,
+) -> Res<u32> {
+    if window.label() != crate::lifetime::MAIN {
+        return Err("outbound requests run from the main window only".into());
+    }
+    let url = reqwest::Url::parse(&url).map_err(|e| format!("http url: {e}"))?;
+    Ok(crate::stream::open_http(method, url, headers.into_iter().collect(), size))
 }
 
 /// One request for the webview, with the caller's own credentials in `headers`.

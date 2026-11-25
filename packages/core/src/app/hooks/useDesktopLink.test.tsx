@@ -169,6 +169,10 @@ const platform = {
 			if (h.metaWriteFails) throw new Error("storage full");
 			h.meta.set(k, v);
 		},
+		removeMeta: async (k: string) => {
+			h.steps.push(`leave:${k}`);
+			h.meta.delete(k);
+		},
 		readQuarantine: async (id: string) => (h.meta.get(`quarantine:${id}`) as string) ?? null,
 		readVaultBlob: async () => {
 			if (h.blobFails) throw new Error("no blob");
@@ -199,6 +203,7 @@ const platform = {
 			return () => {};
 		},
 		syncDevicePublicKey: async () => "me",
+		stopSyncSpike: async () => {},
 	},
 	files: {
 		forVault: () => ({
@@ -283,7 +288,12 @@ describe("useDesktopLink", () => {
 		// The setup screen moves on only on this, so a join that worked must say so.
 		expect(done).toBe(true);
 		expect(h.joins).toEqual([
-			["invite", { kind: "password", password: "pw" }, undefined, { viaLink: true }],
+			[
+				"invite",
+				{ kind: "password", password: "pw" },
+				undefined,
+				{ viaLink: true, openIfHeld: true },
+			],
 		]);
 	});
 
@@ -1299,7 +1309,7 @@ describe("an older desktop app, linked with the code", () => {
 		await act(async () => {
 			await result.current.accept("pw");
 		});
-		expect(h.joins[0]?.[3]).toEqual({ viaLink: false });
+		expect(h.joins[0]?.[3]).toEqual({ viaLink: false, openIfHeld: true });
 	});
 
 	it("offers Try again when it sends no vault, as an emoji link does", async () => {
@@ -1334,6 +1344,8 @@ describe("a pairing, start to end", () => {
 		h.afterJoin = null;
 		h.attaches = true;
 		h.invite = "invite";
+		h.summary = { name: "Home", empty: false, entries: 380 };
+		h.steps = [];
 	};
 
 	it("attaches the link to the vault the join opened", async () => {
@@ -1377,6 +1389,41 @@ describe("a pairing, start to end", () => {
 		} finally {
 			h.meta.delete(syncKeyFor("sync.group", "v1"));
 		}
+	});
+
+	it("joins anew when the desktop's group removed this browser", async () => {
+		// It still holds the group, since peers ignore a removed device. Saying it already shares
+		// the vault was false, and opening it changed nothing.
+		reset();
+		h.vaults = [{ id: "v1", label: "", createdAt: 1 }];
+		const key = syncKeyFor("sync.group", "v1");
+		h.meta.set(key, { groupKey: "GROUP" });
+		h.summary = { name: "Home", empty: false, entries: 380, removedKeys: ["me"] };
+		const result = await linkedFrom("settings");
+		expect(result.current.outcome).not.toBe("switch");
+		expect(result.current.sharedIsOpen).toBe(false);
+		expect(h.meta.has(key)).toBe(true); // nothing changes until the user goes ahead
+
+		await act(async () => {
+			await result.current.accept("pw", { choice: "separate" });
+		});
+		expect(h.steps.slice(0, 2)).toEqual([`leave:${key}`, "join"]);
+	});
+
+	it("still shares the vault when the removed key is another device's", async () => {
+		reset();
+		h.vaults = [{ id: "v1", label: "", createdAt: 1 }];
+		const key = syncKeyFor("sync.group", "v1");
+		h.meta.set(key, { groupKey: "GROUP" });
+		h.summary = { name: "Home", empty: false, entries: 380, removedKeys: ["someone-else"] };
+		h.joinOpens = "v1";
+		const result = await linkedFrom("settings");
+		expect(result.current.outcome).toBe("switch");
+		await act(async () => {
+			await result.current.accept("pw");
+		});
+		expect(h.meta.has(key)).toBe(true);
+		h.meta.delete(key);
 	});
 
 	it("says which vault it opens when another one already syncs with the desktop", async () => {

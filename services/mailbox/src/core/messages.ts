@@ -13,10 +13,11 @@ import {
 	type PostResponse,
 	ReplacesBodySchema,
 } from "@vault/core/src/sync/mailbox/protocol.ts";
-import { and, asc, count, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, ne, notExists, type SQL, sql } from "drizzle-orm";
+import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { AppDeps, Env } from "./app.ts";
+import type { AppDeps, Db, Env } from "./app.ts";
 import { HttpError, param, query, signedJson } from "./auth.ts";
 import { messageKey } from "./bodies.ts";
 import { type Candidates, deleteUndelivered } from "./cleanup.ts";
@@ -38,20 +39,32 @@ import { declaredLength, storeUpload } from "./upload.ts";
 const REPLACES_JSON_BYTES = 64 * 1024;
 const ACK_JSON_BYTES = 256 * 1024;
 
-export async function usedBytes(deps: AppDeps, mailboxId: string): Promise<number> {
-	const total = sql<number>`coalesce(sum(size), 0)`;
-	const m = await deps.db
-		.select({ total })
-		.from(messages)
-		.where(eq(messages.mailboxId, mailboxId))
+/** What each stored message, blob and want costs against a quota beyond its body: rows aren't free. */
+export const ROW_BYTES = 4096;
+
+/** The bytes the mailboxes `which` picks hold: bodies, plus ROW_BYTES for every row. */
+export async function heldBytes(
+	db: Db,
+	which: (mailboxId: AnySQLiteColumn) => SQL,
+): Promise<number> {
+	const sized = sql<number>`coalesce(sum(size), 0) + count(*) * ${ROW_BYTES}`;
+	const m = await db.select({ total: sized }).from(messages).where(which(messages.mailboxId)).get();
+	const b = await db.select({ total: sized }).from(blobs).where(which(blobs.mailboxId)).get();
+	const w = await db
+		.select({ total: sql<number>`count(*) * ${ROW_BYTES}` })
+		.from(blobWants)
+		.where(which(blobWants.mailboxId))
 		.get();
-	const b = await deps.db.select({ total }).from(blobs).where(eq(blobs.mailboxId, mailboxId)).get();
-	return Number(m?.total ?? 0) + Number(b?.total ?? 0);
+	return Number(m?.total ?? 0) + Number(b?.total ?? 0) + Number(w?.total ?? 0);
 }
 
+/** The bytes one mailbox holds: its pending messages, its blobs and its wants. */
+export const usedBytes = (db: Db, mailboxId: string): Promise<number> =>
+	heldBytes(db, (column) => eq(column, mailboxId));
+
 export async function checkQuota(deps: AppDeps, mailboxId: string, adding: number): Promise<void> {
-	const quota = deps.config.quotaBytes;
-	if (quota !== null && (await usedBytes(deps, mailboxId)) + adding > quota) {
+	const { usedBytes, quotaBytes } = await deps.entitlement.usage(mailboxId);
+	if (quotaBytes !== null && usedBytes + adding > quotaBytes) {
 		throw new HttpError(507, "quota_exceeded");
 	}
 }
@@ -127,7 +140,7 @@ export function messageRoutes(deps: AppDeps) {
 		}
 		if ((await countOf(where)) === 0)
 			return c.json({ stored: false, recipients: 0 } satisfies PostResponse);
-		await checkQuota(deps, mailboxId, declared);
+		await checkQuota(deps, mailboxId, declared + ROW_BYTES);
 
 		// Body, then row, then deliveries: a crash leaves an orphan or an undelivered row the sweep
 		// removes, never a delivery without a body.
@@ -295,8 +308,7 @@ export function messageRoutes(deps: AppDeps) {
 			wantedMore: wanted.length > INBOX_PAGE,
 			more: rows.length > INBOX_PAGE || blobRows.length > INBOX_PAGE,
 			retentionDays,
-			usedBytes: await usedBytes(deps, mailboxId),
-			quotaBytes: deps.config.quotaBytes,
+			...(await deps.entitlement.usage(mailboxId)),
 			serverTime: now,
 		};
 		return c.json(response);

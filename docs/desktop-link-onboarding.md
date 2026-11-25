@@ -117,6 +117,7 @@ After the link is up, both sides work out what each one holds, then:
 | Not empty | Empty | Combine into the desktop's vault, without asking: the desktop has nothing to lose, and keeping them separate would only add an empty vault. Same rules and notes as **Combine into one** below. |
 | Not empty | Not empty | Ask: **Combine into one** or **Keep them separate**. Neither is preselected. |
 | Already shares the desktop's vault | | Switch to it. This exists today (`outcome === "switch"`). |
+| Open vault holds that group, but the group removed this browser (the app's `removedKeys`) | | Not shared any more, so the rows above apply. That vault leaves the group when the user goes ahead. Another vault is caught on the link after opening it: keys are per vault, and only the open one's can be read. |
 
 **Decided by the user:** case 3 asks, and offers today's behavior as one of the two answers.
 
@@ -429,8 +430,8 @@ same way.
   is decided by the desktop's lists, never by the extension.
 - **The extension syncs only its open vault** (`retargetSync` on every active-vault change in
   `background/session.ts`), and each of its vaults already has its own sync identity (`syncKeyFor`).
-- **A browser profile cannot hold two copies of a vault.** Joining a group the browser already has
-  opens that vault instead (`startJoin`'s dedup), and linking from a vault outside the desktop's
+- **A browser profile cannot hold two copies of a vault.** Linking to a group the browser already has
+  opens that vault instead, a pasted code for it is refused (`startJoin`'s dedup), and linking from a vault outside the desktop's
   group while another browser vault is in it already ends at "You already share this vault"
   (outcome `switch`).
 - **The native-messaging permission is per browser profile**, granted once for every vault.

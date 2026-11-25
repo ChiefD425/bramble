@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
 	listeners: new Set<(message: unknown) => void>(),
+	stored: new Set<(changes: Record<string, unknown>, area: string) => void>(),
 	sent: [] as unknown[],
 	rejects: false,
 }));
@@ -18,7 +19,15 @@ vi.mock("./platform-api", () => ({
 				if (h.rejects) throw new Error("Receiving end does not exist.");
 			},
 		},
-		storage: { session: { onChanged: { addListener: () => {}, removeListener: () => {} } } },
+		storage: {
+			session: { onChanged: { addListener: () => {}, removeListener: () => {} } },
+			onChanged: {
+				addListener: (fn: (changes: Record<string, unknown>, area: string) => void) =>
+					h.stored.add(fn),
+				removeListener: (fn: (changes: Record<string, unknown>, area: string) => void) =>
+					h.stored.delete(fn),
+			},
+		},
 	},
 }));
 
@@ -32,6 +41,7 @@ const VAULT_A = extensionCrypto.withVault?.("a");
 describe("windows telling each other a vault changed", () => {
 	beforeEach(() => {
 		h.listeners.clear();
+		h.stored.clear();
 		h.sent = [];
 		h.rejects = false;
 	});
@@ -54,6 +64,18 @@ describe("windows telling each other a vault changed", () => {
 		hear({ type: "VAULT_CHANGED_EXTERNAL", vaultId: "a" });
 		hear({ type: "VAULT_CHANGED_EXTERNAL" });
 		expect(reload).toHaveBeenCalledTimes(2);
+	});
+
+	it("reloads when its own vault's blob changes in storage, and not for another's", () => {
+		const reload = vi.fn();
+		VAULT_A?.onExternalChange(reload);
+		const write = (key: string) => {
+			for (const fn of h.stored) fn({ [key]: { newValue: "x" } }, "local");
+		};
+		write("vault-blob-b64:b");
+		expect(reload).not.toHaveBeenCalled();
+		write("vault-blob-b64:a");
+		expect(reload).toHaveBeenCalledOnce();
 	});
 
 	it("doesn't reload for another vault's save", () => {

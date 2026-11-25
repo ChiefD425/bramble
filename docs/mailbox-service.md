@@ -1,7 +1,11 @@
 # Mailbox: store-and-forward sync (planned)
 
-Status: the server (Plan 1, `services/mailbox`) and the client crypto (Plan 2) are built; no client
-syncs through a mailbox yet.
+Status: on `feat/mailbox-service`: the server (Plan 1), the client crypto (Plan 2), the client sync
+engine (Plan 3), and the wiring of the browser extension (Plan 4a), the mobile app (Plan 4b) and
+the desktop app (Plan 4c), the hosted mailbox on Cloudflare (Plan 5a), and accounts on the website
+and in the apps (Plan 5c). Billing (Plan 5b) is built in its own private repo. The apps offer
+Bramble's hosted mailbox at `mailbox.bramble.sh` as well as a server of one's own. The hosted
+mailbox, billing and the account page run and are tested locally; nothing is deployed.
 
 Sync today needs two devices online and unlocked at the same moment (see
 [p2p-sync.md](p2p-sync.md), "Deferred"). The mailbox removes that: a device drops its sealed
@@ -83,18 +87,23 @@ Any of these is a failure even if everything else works:
 | No mailed cash or reseller codes for now | owner |
 | Payment-to-account link kept 120 days | owner |
 | ...stored as a keyed hash, not the charge id | design call |
-| Refunds only inside a short window, and a refund removes the time | owner |
+| Refunds only inside a short window, less the days since buying, and a refund removes the rest of the time | owner |
 | ...the window is 14 days | design call |
 | A dispute freezes the account to collect-only | owner |
 | 3D Secure not forced (Stripe's default) | owner |
 | Anonymous proof of work instead of Turnstile | owner |
 | ...ALTCHA alone, no Anubis | owner |
 | $2 per month, 1 GB of held data per account | owner |
-| Sold in 6- and 12-month blocks only | owner |
+| Sold by the month, at least 6 and at most 36 at a time | owner |
 | No free trial | owner |
 | Purchases on the website only; no in-app purchase or purchase flow in the iOS app | owner |
-| The billing Worker is public | owner |
-| ...in this monorepo, not its own repo | design call |
+| ...and accounts are created there too: no app creates an account number | owner |
+| The hosted services answer at `mailbox.bramble.sh` and `billing.bramble.sh`, so moving them off Cloudflare is a DNS change | owner |
+| Hosted on Cloudflare, with D1 and R2 in the EU jurisdiction (fixed when each is created) | owner |
+| BTCPay (crypto payments) runs on the owner's netcup server | owner |
+| Billing keeps purchase times to the millisecond | owner |
+| The billing Worker is closed source, in its own private repo | owner |
+| ...reaching accounts only through the mailbox's `Accounts` RPC | design call |
 | Server code lives in `services/mailbox` as `bramble-mailbox-server`, beside the relay in `services/nostr-relay` | owner |
 | `services/mailbox` is AGPL-3.0-only; the rest stays GPL-3.0-only | owner |
 | The operating company is a Canadian corporation | owner (fact) |
@@ -179,6 +188,22 @@ The server sets a message's **recipients** at post time: every active member exc
 (or, for a targeted snapshot, the members it names). A member deactivated or removed later has its
 pending deliveries dropped.
 
+**As built** (`sync/mailbox/plaintext.ts`, `delta.ts`), a message seals one of three plaintexts,
+each with `v: 1`:
+
+- `delta`: the sender's `epoch` (random, new whenever its mailbox state starts afresh), a `seq`,
+  and the changed groups with the whole roster. A delta over 12 MiB is split; each part is a delta
+  with its own `seq`. A roster change alone is posted as a delta with no entries.
+- `snapshot`: the whole state, in `parts` if large, with `seq` set to the sender's last delta
+  number, which it covers through. `answers` repeats the request it answers, and `covers` says how
+  far the answerer had the sender it answers for (its `epoch` and the number it has without a gap).
+- `snapshot_request`: `of` names the sender whose gap it asks about, or `null` for a catch-up.
+
+A delta's groups are cut against what the sender last posted: one per entry id (its versions, its
+tombstone, its live files and their cascade marks), one per file no entry claims, one per setting.
+A group is compared by a hash over its records' causal keys, so a tombstone gaining history under
+an unchanged stamp still counts as changed.
+
 ### Acknowledgement and deletion
 
 A recipient acknowledges a message only once its merge is durably written to that device's
@@ -231,6 +256,24 @@ showing them.
 A message that fails to verify or open is kept in local quarantine (never destroyed, as in
 [sync-vault-pinning-and-quarantine.md](sync-vault-pinning-and-quarantine.md)), acknowledged so
 it does not sit on the server, and treated as a gap.
+
+As built (`sync/mailbox/receive.ts`, `sequence.ts`):
+
+- **Where the numbering starts.** A sender first seen, or seen under a new epoch, starts just
+  below the lowest number in that page: the catch-up covers what came before. Numbers are
+  recorded per page, lowest first, because the server lists messages posted in the same
+  millisecond in id order.
+- **What else counts as a gap.** A body the server lost (a row whose body answers 404, or one too
+  large for any sender to have posted) is
+  acknowledged and treated as a gap, and so is an expiry marker.
+- **Healing for a sender that is gone.** A request goes to that sender first. If it reaches
+  nobody, it goes to everyone, and another member's answer heals the gone sender's gap as far as
+  its `covers` reaches. A gap no answer reaches stays open and is asked about once a day, until the
+  sender comes back or leaves the roster; a server can't close one by inventing an answer.
+- **Rate limits.** At most one request per sender, and one answer per requester and sender asked
+  about, per hour.
+- **Who gets an answer.** A snapshot request is answered only for a sender active in the
+  answering device's roster.
 
 ### Retention
 
@@ -344,7 +387,19 @@ need not be online). A roster entry with no `sigKey` cannot be eligible until th
 
 **What revocation does.** A revoked device is removed from the eligible list, which also
 deactivates it, and it cannot make itself eligible again even though it still holds the VEK. That
-matches P2P, where a revoked key cannot complete the roster handshake. The residual is also the
+matches P2P, where a revoked key cannot complete the roster handshake. Revoking a device also
+revokes its keys: a roster entry carrying one is dead unless an admission that verified brought it
+back, so a revoked device can't return under a new id. An admission also signs the entry's identity
+and keys without its stamp, so a device re-added in a password vault stays admitted on every device,
+after it re-stamps its own entry too; a device that predates this checks only the stamped form and
+drops a re-stamped entry until it updates. A device can't admit an entry carrying its own keys.
+- Revocations made before revocation by key recorded only the id.
+- Pairing needs a master password, so a vault without one turns it on first.
+- A removed device still holds the group, because peers just stop answering it. Pairing it again
+  takes a Disconnect there first: a code for a group it holds is refused, and says so. A browser
+  linking to the desktop app that removed it hears that from the app and starts over by itself.
+
+The residual is also the
 same: with no VEK rotation, a revoked device keeps what it already has, and if it ever obtained
 mailbox ciphertext (say from a server breach) it could open it. VEK rotation closes both.
 
@@ -397,7 +452,7 @@ and rate limits use a salted hash that rotates, as the ICE guard does
 ### Modules
 
 The server is one package, `services/mailbox` (`bramble-mailbox-server`), beside the relay in
-`services/nostr-relay`. It has four parts, which the builder lays out inside it:
+`services/nostr-relay`. It has three parts, which the builder lays out inside it:
 
 ```
 core      protocol, request auth, handlers over MailboxStore + BlobStore + Entitlement
@@ -405,16 +460,15 @@ core      protocol, request auth, handlers over MailboxStore + BlobStore + Entit
           adapter
 worker    hosted: D1 + R2 + a cron trigger; Entitlement = accounts
 node      self-host: Node + SQLite + disk or S3, Docker; Entitlement = none or a token
-billing   hosted only: accounts, checkout, Stripe and BTCPay webhooks, the tax ledger
 ```
 
 - The **Drizzle schema** in the SQLite dialect serves both D1 and the Node build's SQLite, so the
   storage seam is one interface with two thin adapters.
-- **Billing is its own Worker**, with its own Wrangler config, even though it ships from the same
-  package. It holds the Stripe and BTCPay secrets and the link key, and talks to the mailbox
-  Worker over a service binding with one narrow call (add or remove paid time, freeze or
-  unfreeze). The mailbox Worker never sees payment data. A self-hoster never deploys it, and the
-  Node build must not bundle it.
+- **Billing is a separate Worker** in a private repo, not part of this package: accounts behind
+  ALTCHA, checkout, the Stripe and BTCPay webhooks, the tax ledger. It holds the Stripe and BTCPay
+  secrets and the link key, and talks to the mailbox Worker over a service binding through the
+  `Accounts` RPC (open, resolve, credit, freeze), the only contract between them. The mailbox
+  Worker never sees payment data, and a self-hoster never needs billing.
 - **Where it lives.** In this monorepo, as a pnpm workspace entry, deployed by its own workflow
   as the website is. One change can then move both ends of the wire (the client in
   `packages/core` and the server) in one commit, and the server can import the protocol types the
@@ -428,17 +482,53 @@ billing   hosted only: accounts, checkout, Stripe and BTCPay webhooks, the tax l
   the other (section 13 of both). The shared protocol stays in `packages/core` under GPL-3.0-only,
   so no client becomes AGPL. The package carries its own `LICENSE` (the AGPL text) and `license`
   field. (Not legal advice.)
-- **Billing is public too** (owner). The privacy claims that matter most live there: the
-  account number never reaching Stripe, the 14-day and 120-day purges, a ledger with no account.
-  They are only checkable if the code is, which is the same reason the relay is public. Nothing
-  in it is secret except its environment: keys, webhook secrets, and the rate-limit and fraud
-  thresholds, which stay in configuration so publishing the code doesn't hand them to an
-  attacker.
+- **Billing is closed source** (owner, reversing an earlier call to publish it). It is how the
+  hosted service is sold, which neither a client nor a self-hoster needs, and publishing it would
+  hand a competitor the business along with the software. The cost: the payment privacy claims
+  (the account number never reaching Stripe, the 14-day and 120-day purges, a ledger with no
+  account) rest on this document and the privacy page, not on code anyone can read. Everything
+  that touches vault data, the accounts the RPC changes included, stays in the AGPL mailbox.
 - **The signalling relay stays separate** (`services/nostr-relay`). A self-hoster can run the
   mailbox without it, or the reverse.
 
 ### Storage on the hosted service
 
+**As built** (Plan 5a, `services/mailbox/src/worker`):
+
+- **The same app.** The shared Hono app runs unchanged over D1 (through Drizzle) and an R2 body
+  store. R2 checks each body against its SHA-256 and stores nothing on a mismatch. The store hands
+  R2 a `FixedLengthStream` of the declared size, which R2 needs, and which refuses a body that
+  comes out short or long.
+- **Accounts** come in through `Entitlement`, which admits a new mailbox for an account, gates
+  posting on a paid, unfrozen account, and counts quota across the account's mailboxes.
+  - A number is 25 digits in groups of 5, stored as an HMAC under the `ACCOUNT_KEY` secret.
+  - Status is `GET /v1/accounts/status` with the number in `x-bramble-account`.
+  - An active member moves a mailbox with `PUT /v1/mailboxes/:id/account`.
+- **Billing's way in** is the `Accounts` RPC entrypoint (open, resolve, credit, freeze). Billing
+  keeps the account id, never the number.
+  - Its shape is stated as `AccountsRpc` and held by a type test, since billing lives in another
+    repo and nothing here would fail if the RPC drifted.
+  - An error crossing it carries only the innermost message, never Drizzle's, which quotes the
+    query's values.
+- **The sweep** runs on an hourly cron. Its orphan pass asks D1 about a mailbox's run of keys at
+  a time.
+- **Limits and logs.**
+  - Workers Rate Limiting bindings limit each mailbox and each account's status, with thresholds
+    in `wrangler.jsonc`.
+  - Unexpected errors log only the database's own message, never Drizzle's, which quotes the
+    parameters.
+  - Invocation logs and traces are off.
+
+- **Data in the EU.** The D1 database and the R2 bucket are created in the EU jurisdiction, which
+  can't change later. The Worker's code still runs near each user; only the data rests in the EU,
+  so a query from elsewhere crosses an ocean, which background sync doesn't notice.
+- **The sweep is bounded.** A run counts its D1 queries: the expiry steps stop at 600 and the
+  orphan pass at 300 of its own, under the 1,000 a Worker invocation may make, and the rest waits
+  for the next hourly run. Each expiry step has its own share of the 600 (expired messages 240,
+  expired blobs 120, old markers 1, abandoned mailboxes 120, leftovers 119), and one that needs
+  less passes the rest on, so a backlog in one step can't stop the others. Bodies are deleted up to 1,000 at a time. The orphan pass lists at most
+  10,000 keys and records its place in the `sweep_state` table after each mailbox it checks, so a
+  run cut short carries on from there.
 - **D1 holds metadata only, R2 holds every body** (messages, snapshots, blobs). D1 caps a row at
   2 MB and a database at 10 GB on the paid plan, so bodies cannot live in rows.
 - **One query at a time per database.** A D1 database is single-threaded, and a `batch()` counts
@@ -486,6 +576,17 @@ bramble-mailbox/v1\n<METHOD>\n<path and query>\n<time>\n<content sha256>
 
 A clock outside the window gets `401 stale_time` with `serverTime`, so the client can correct and
 retry. A private server also wants `x-bramble-token`.
+
+Three rules the clients rely on:
+
+- **Origin URLs only.** A server URL must be an origin (path `/`), because a signature covers
+  the path as the server sees it.
+- **Canonical keys only.** A key is accepted only in its canonical base64 spelling, so one key
+  cannot be listed twice.
+- **Replays heal themselves.** A request replayed inside the window, such as an old deactivation
+  or an `add` after a `remove`, is undone by the clients rather than refused. Every member
+  reconciles the list against its roster at least daily and whenever the roster changes, and a
+  device the inbox calls inactive activates again.
 
 Message and blob bodies travel raw (`application/octet-stream`, with a `content-length`), never
 inside JSON: the server streams them into storage against the signed content hash without
@@ -560,7 +661,8 @@ new account is collect-only until its first payment lands.
 
 **Price and quota.** $2 per month. Each account may hold 1 GB at once, across all its mailboxes:
 pending messages, snapshots and blobs, each blob counted once per mailbox however many devices
-still need it. Since everything is deleted on delivery, steady use sits far below that; the
+still need it. Every stored message, blob and want also counts 4 KiB on top of its size, so
+metadata can't grow for free; a mailbox that may not post can't add wants either. Since everything is deleted on delivery, steady use sits far below that; the
 quota is what bounds a long-absent device or a burst of large attachments.
 
 Otherwise the mailbox is **collect-only**: fetching, acknowledging and deletion keep working;
@@ -569,12 +671,15 @@ deleted early because of payment. The app warns before `paid_through` arrives.
 
 ### Cards: Stripe
 
-- **Prepaid, one-time purchases** of 6 months ($12) or 12 months ($24), nothing shorter. No
+- **Prepaid, one-time purchases** at $2 a month, for any whole number of months from 6 to 36. One
+  Stripe Price of $2, with the months as the quantity, and the page chooses them so billing knows
+  what it sold. A purchase buys the longest span of that many calendar months (6 is 184 days, 12 is
+  366, 36 is 1096). Three years is the longest the service commits to at once. No
   Stripe subscriptions and no auto-renew. Subscription-mode Checkout requires a Stripe Customer
   record; one-time payments do not. Mullvad dropped recurring card payments for the same reason.
 - **Why no single month.** Stripe's card pricing is a percentage plus a fixed amount per charge
   (about 30 cents; confirm on Stripe's Canadian pricing page), which would have taken close to a
-  fifth of a $2 purchase. At 6 and 12 months it is a few percent. A lost dispute's fee is still
+  fifth of a $2 purchase. From 6 months it is a few percent. A lost dispute's fee is still
   worth months of the plan.
 - **Stripe never sees the account number.** Checkout gets a random reference
   (`client_reference_id`). When the webhook confirms payment, billing maps the reference to the
@@ -586,9 +691,13 @@ deleted early because of payment. The app warns before `paid_through` arrives.
 
   The database alone cannot join to Stripe's records, and Stripe's records alone cannot reach an
   account.
-- **Refunds.** Inside 14 days, on a request authenticated by the account number. A refund
-  removes the time it bought. None after the window, said plainly at checkout. The EU's 14-day
-  withdrawal right for digital services fits inside it (the accountant should confirm).
+- **Refunds.** Inside 14 days, on a request authenticated by the account number, and pro-rated: the
+  buyer pays for every day started since buying, the first from the moment of buying, and gets the
+  rest back, tax included, in proportion. The days not paid for come off the account. A full refund
+  would make a buy, use, refund loop free, and limiting refunds per account wouldn't stop it, because
+  accounts are free and anonymous. None after the window, said plainly at checkout. The EU's 14-day
+  withdrawal right for digital services fits inside it, and allows charging for what was already
+  provided if the buyer agreed to start at once (the accountant should confirm that wording).
 - **Disputes.** `charge.dispute.created` freezes the account to collect-only. A won dispute
   unfreezes it; a lost one removes the purchased time. A dispute arriving after the 120-day link
   is gone cannot be matched and is absorbed. Most disputes arrive within about 120 days, but some
@@ -624,7 +733,7 @@ Worker and hands off to Stripe or BTCPay). No app sells anything in-app.
 - **iOS** shows no price, no purchase button and no link to the checkout, in any storefront, and
   it does not create account numbers. It can enter an existing one, and it shows the account
   number, paid-through date and quota used. An expiry notice states the date and nothing more: no
-  "renew", no pointer to the website.
+  "renew", no pointer to the website. That holds for the vault list's paid-time card too.
 
   The App Review Guidelines, read 2026-10-27, cut both ways:
 
@@ -653,6 +762,34 @@ Worker and hands off to Stripe or BTCPay). No app sells anything in-app.
   **fragment**, which browsers never send to a server, so it cannot land in a log. The page reads
   it and posts it in a request body.
 
+**As built** (Plan 5c):
+
+- **The account page**, `bramble.sh/account` (`website/src/pages/account`,
+  `website/src/scripts/account`):
+  - "Create an account" solves an ALTCHA challenge in the browser (`altcha-lib`, its WebCrypto
+    PBKDF2), opens the account through billing, and shows the number once.
+  - A number arrives from an app as `#n=` and its 25 digits, or is typed in. The fragment then
+    leaves the address bar. A number from a link that the tab doesn't already know is shown in
+    full and used only once the visitor says it's theirs, since anyone can send a link. No page
+    of the site may be framed (`website/public/_headers`).
+  - The page shows the account's paid time and storage from the mailbox, starts a Stripe checkout
+    for 6 to 36 months, and lists the purchases still refundable, refunding the one chosen after
+    asking.
+  - "Delete account" asks first, warning about any purchase still refundable, since deleting refunds
+    nothing. It removes the account, its mailboxes and all they hold, and billing's links to its
+    payments; the ledger stays, holding no account. A later dispute on it is absorbed. Devices on it
+    see `account_unknown`, and device-to-device sync carries on. "Sign out" only forgets the number
+    in this tab.
+  - `/account/paid` waits up to 30 s for the webhook's time to land.
+  - The number lives only in the tab's `sessionStorage` (`bramble.account`, and
+    `bramble.paidThrough` from before checkout), never a URL, a cookie or `localStorage`.
+  - Billing and the mailbox are `https://billing.bramble.sh` and `https://mailbox.bramble.sh`.
+    `PUBLIC_BILLING_URL` and `PUBLIC_MAILBOX_URL` point a local run at local Workers.
+- **The apps.** The price, "Get an account number" and "Add time" sit behind the capability
+  `mailboxPurchase`, which is off on iOS only. "Add time" opens `accountPageUrl(number)`.
+- **iOS** signs in with a number ("Sign in") and shows the number masked, the paid time, the
+  storage used and, from 14 days out, "Paid time ends {date}". Nothing else.
+
 ## Clients
 
 - **Where the code runs.** On the extension, mailbox HTTP runs in the background (fetch with
@@ -680,7 +817,97 @@ Worker and hands off to Stripe or BTCPay). No app sells anything in-app.
 - **Version skew.** An older device ignores the mailbox settings. It stays eligible and never
   activates, so nothing is addressed to it; it keeps syncing over P2P, and its changes reach the
   mailbox through any active device that merges them, because a delta carries everything new in
-  the sender's state. Nothing in the pairing code or the enrollment bundle changes.
+  the sender's state. Nothing in the pairing code or the enrollment bundle changes. A device that
+  receives a newer client's message (a newer sealed-format byte, plaintext `v` or `kind`) holds
+  it, neither acknowledged nor quarantined, until it updates or the message expires.
+
+**As built on the extension** (Plan 4a, `clients/extension/src/background/mailbox*.ts`):
+
+- **Where it runs.** The engine runs in the background for the opened, unlocked active vault,
+  following the same gate P2P uses. API calls use `fetch`; attachments go through the crypto
+  host's HTTP jobs, which outlive the service worker's limits.
+- **When a round runs.** On unlock, 3 s after a local change, on a 5-minute alarm, and on "Sync
+  now".
+- **Settings.**
+  - The choice is the synced setting `pref.mailbox` (`{ kind: "hosted" }` or
+    `{ kind: "custom", url, token? }`), and the per-device opt-out is `pref.mailboxOff:<vaultId>`.
+  - The status of the last round is `mailbox.status:<vaultId>`, which the Sync tab's Mailbox card
+    and the devices list's check-ins read.
+  - The hosted kind exists but is off (`mailboxHosted` capability) until the hosted service
+    ships, so the card opens with its server field under Advanced.
+- **Verifying.** Signatures and roster entries are verified in the crypto host (`SYNC_SIG_VERIFY`,
+  `SYNC_ROSTER_VERIFY`), the same check P2P applies.
+
+**As built on mobile** (Plan 4b, `clients/mobile/src/sync/mailbox.ts`, `blob-mover.ts`): the same
+driver (now `core/sync/mailbox/driver.ts`), the same settings and status keys. Since Plan 4c the
+wiring itself is core's `createInProcessMailbox` (`core/sync/mailbox/in-process.ts`), which mobile
+and desktop bind to their own pieces.
+
+- **Where it runs.** In-process, for the unlocked active vault, through the native HTTP transport
+  (`fetch` in the web build, which the server's CORS allows). Merges share the sync manager's one
+  queue with P2P's, and a lock or a vault switch stops the mailbox before the key can move.
+- **Attachments.** Never through the bridge: `NativeHttp.download` streams a blob into a staging
+  file and answers its SHA-256, and the blob is adopted only if that matches its address. Uploads
+  send the blob's own file. The web build has no native file crypto, so it moves blobs through
+  JS and cannot open attachments.
+- **When a round runs.** On unlock, on resume, 3 s after a write to the vault or a change to its
+  group or this device's opt-out, every 5 minutes while open, and on "Sync now". The timer shares
+  the 3 s quiet window, so a resume landing on a tick is one round. There is no background refresh
+  yet: with the default "Immediately" auto-lock, leaving the app stops the mailbox.
+
+**As built on desktop** (Plan 4c, `clients/desktop/src/sync/mailbox.ts`, `blob-mover.ts`): the same
+in-process wiring, for the unlocked active vault.
+
+- **Ticks from the shell.** The 5-minute cue is the Rust ticker the backup schedule uses
+  (`backup://tick`): closing the window only hides it, and a hidden webview's timers are throttled.
+  So rounds keep running from the tray while the vault stays unlocked, except on Wayland, where
+  closing destroys the window (as it stops backups there too). Bringing the window back asks for
+  a round, as a resume does on mobile.
+- **Attachments never enter the webview.** `files_download_blob` streams a blob into the vault's
+  folder as `.landing-<hash>`, hashing as it writes, and publishes it only on a match. Any other
+  outcome removes it, and a body past `MAX_BLOB_BYTES` is abandoned. Uploads stream the stored blob
+  through the shell's upload sink (`http_stream_open`) in raw chunks with a declared length.
+
+**The hosted account, as built** (Plan 5c), the same on every app:
+
+- **The setting.** The number is its own synced setting, `pref.mailboxAccount` ("12345 67890
+  ..."), apart from `pref.mailbox`, so turning the mailbox on with one tap never erases it.
+  - Both are read through `readMailboxSettings`.
+  - Only the hosted mailbox is ever sent the number: in `x-bramble-account` when it creates the
+    mailbox, when it moves it to another account (`PUT /v1/mailboxes/:id/account`), and when it
+    reads the account's status.
+- **The engine.**
+  - The first device creates the mailbox under the group's account.
+  - A changed number moves it on the next round, from any active device.
+  - The state keeps only a SHA-256 of the number's digits (`MailboxState.account`).
+  - A mailbox that can't be created yet says why as the round's status: `account_required` (no
+    number) or `account_unknown`.
+- **The status record.** After a round, at most every 5 minutes, the driver reads the account's
+  paid time and storage into the record's `account`, or marks it unknown. The record is kept only
+  for that vault and number, and a failed read keeps the last one.
+- **The card.**
+  - Before a group has a mailbox, it offers Bramble's with an account-number field, or "My other
+    devices already use it".
+  - Once on, it shows the number masked, the paid time, "{used} of {quota} used" in decimal units,
+    and the expiry notice from 14 days out.
+- **The paid-time card.** Running out is quiet: devices online together still sync directly, so
+  nothing visibly breaks while the mailbox stops carrying anything. The vault list therefore
+  carries a card in its one spot (docs/whats-new.md), after the update notice and What's new.
+  There is no email to warn by.
+  - From 14 days out: "Mailbox time ends {date}", with Buy more time and Stop using the mailbox.
+    Closing it holds on this device until 3 days out, when it comes back once. Buying more time
+    moves the date, so an earlier close no longer counts.
+  - Once the time has ended: "Mailbox time ended {date}", and it can't be closed. It goes when
+    time is bought or the group stops using the mailbox.
+  - Stop using the mailbox asks first, then turns the mailbox off for the whole group, as the
+    Mailbox card's button does, which ends the card on every device. The account and any time
+    left on it stay.
+  - None on a device with the mailbox off, for a frozen account (the Mailbox card says why), for
+    a server of one's own, or before the first payment.
+  - On iOS, the date and Stop only (see "Buying from the apps").
+- **The addresses.** `HOSTED_MAILBOX_URL` and `ACCOUNT_PAGE_URL` live in `protocol.ts`, beside
+  the number's rules (`parseAccountNumber`, `accountPageUrl`, `accountFromFragment`), which the
+  server, the apps and the website share.
 
 ## Self-hosting
 

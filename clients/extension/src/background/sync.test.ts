@@ -557,6 +557,32 @@ describe("combining siblings in the background (release B2)", () => {
 	});
 });
 
+describe("one merge at a time per vault", () => {
+	it("queueApply runs one apply per vault at a time, as P2P's does", async () => {
+		stubChrome();
+		const { queueApply } = await loadSync();
+		const order: string[] = [];
+		let release = () => {};
+		const first = queueApply("v", async () => {
+			order.push("first:start");
+			await new Promise<void>((r) => {
+				release = r;
+			});
+			order.push("first:end");
+		});
+		const second = queueApply("v", async () => {
+			order.push("second");
+		});
+		await queueApply("w", async () => {
+			order.push("other");
+		});
+		expect(order).toEqual(["first:start", "other"]);
+		release();
+		await Promise.all([first, second]);
+		expect(order).toEqual(["first:start", "other", "first:end", "second"]);
+	});
+});
+
 // A device in a sync group must never mint a new identity: a fresh key would make it a stranger to
 // every peer, with no way back short of re-pairing.
 describe("sync identity for a vault in a group", () => {

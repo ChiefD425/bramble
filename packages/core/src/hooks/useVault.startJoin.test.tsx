@@ -142,9 +142,31 @@ describe("what a join resolves with", () => {
 
 		let opened: unknown;
 		await act(async () => {
-			opened = await getActions().startJoin(CODE, { kind: "password", password: "pw" });
+			opened = await getActions().startJoin(CODE, { kind: "password", password: "pw" }, undefined, {
+				openIfHeld: true,
+			});
 		});
 		expect(opened).toBe("v-home");
+	});
+
+	it("is a refusal when a code names a group this device already holds", async () => {
+		// Peers ignore a removed device, so it still holds the group. Opening that vault read as a
+		// pairing that worked, while the device stayed out and the inviter waited.
+		const { platform, storage } = makePlatform();
+		const meta: Record<string, unknown> = {
+			[VAULT_REGISTRY_KEY]: { vaults: [{ id: "v-home", label: "", createdAt: 1 }] },
+			"sync.group:v-home": { groupKey: "Z3JvdXA=" },
+		};
+		storage.getMeta.mockImplementation((async (k: string) => meta[k]) as never);
+		const getActions = mountVaultActions(platform);
+		await act(async () => {});
+
+		await act(async () => {
+			await expect(
+				getActions().startJoin(CODE, { kind: "password", password: "pw" }),
+			).rejects.toThrow(/already in that sync group.*disconnect/i);
+		});
+		expect(createdLabels(storage)).toEqual([]);
 	});
 });
 

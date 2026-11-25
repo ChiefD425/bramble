@@ -406,6 +406,9 @@ pub struct VaultSummary {
     pub name: String,
     pub empty: bool,
     pub entries: u64,
+    /// Keys that vault's group removed. Opaque here: the browser checks its own against them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub removed_keys: Option<Vec<String>>,
     /// Absent from a window that predates it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup_targets: Option<bool>,
@@ -2658,8 +2661,26 @@ mod tests {
             name: "Home".into(),
             empty: false,
             entries: 380,
+            removed_keys: None,
             backup_targets: Some(true),
         }
+    }
+
+    #[test]
+    fn the_summary_names_removed_keys_only_when_the_desktop_has_some() {
+        let with_keys = VaultSummary {
+            removed_keys: Some(vec!["k".into()]),
+            ..summary()
+        };
+        let json = serde_json::to_value(&with_keys).unwrap();
+        assert_eq!(json["removedKeys"][0], "k", "{json}");
+        let json = serde_json::to_value(summary()).unwrap();
+        assert!(json.get("removedKeys").is_none(), "{json}");
+        // The window that publishes it may predate the field.
+        let old: VaultSummary =
+            serde_json::from_value(serde_json::json!({ "name": "H", "empty": true, "entries": 0 }))
+                .unwrap();
+        assert!(old.removed_keys.is_none());
     }
 
     #[test]

@@ -7,19 +7,12 @@ import {
 	popupUrl,
 	selectVault,
 } from "../extension/helpers";
-import { createVault, expect, gotoSync, type Peer, PW, RELAY_URL, test } from "./fixtures";
+import { createVault, expect, gotoSync, type Peer, PW, test, useLocalRelay } from "./fixtures";
 
 // A vault opened while a synced one is still unlocked must never receive the synced vault's peer
 // entries: one sealed under another vault's key fails that vault's unlock with "aead::Error".
 
 const LOCAL_RELAY_HOST = "localhost:7400";
-
-/** Point this peer's sync at the local relay, via the Advanced panel a user would use. */
-async function useLocalRelay(page: Page): Promise<void> {
-	await page.getByRole("button", { name: /Advanced/i }).click();
-	await page.getByLabel(/Nostr relay URL/i).fill(RELAY_URL);
-	await page.getByLabel(/TURN \/ ICE servers URL/i).fill("");
-}
 
 /** Run the inviter flow and return the pairing code. */
 async function invite(page: Page): Promise<string> {

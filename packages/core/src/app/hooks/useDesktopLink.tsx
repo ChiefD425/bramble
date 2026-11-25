@@ -3,6 +3,7 @@
 
 import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { DesktopVaultSummary } from "../../adapters/desktop-link";
 import { isAliasConfig, sameAliasConfig } from "../../aliases/config";
 import { type BackupTargetConfig, backupTargetsKeyFor } from "../../backup/config";
 import { type Platform, usePlatform } from "../../context/PlatformContext";
@@ -109,14 +110,6 @@ async function countQuarantined(
 	}
 }
 
-export interface DesktopVaultSummary {
-	name: string;
-	empty: boolean;
-	entries: number;
-	/** Whether the app has a backup target for this vault. Absent from an older app. */
-	backupTargets?: boolean;
-}
-
 export function useDesktopLink({
 	from,
 	onLinked,
@@ -150,6 +143,8 @@ export function useDesktopLink({
 	const [outcome, setOutcome] = useState<LinkOutcome | null>(null);
 	/** The vault that already syncs with the desktop's is the open one: linking stays in it. */
 	const [sharedIsOpen, setSharedIsOpen] = useState(false);
+	/** The vault whose group removed this browser: the join starts over without it. */
+	const removedFrom = useRef<string | null>(null);
 	/** The desktop sent no vault after a link: Try again claims again. */
 	const [claimFailed, setClaimFailed] = useState(false);
 	/** A link this screen made that has not attached to a vault yet, let go if the screen goes. */
@@ -196,8 +191,7 @@ export function useDesktopLink({
 			} catch {
 				// An undecodable code fails later with something specific; do not guess here.
 			}
-			const sharesGroup = shared !== null;
-			setSharedIsOpen(sharesGroup && shared === activeId);
+			let removed = false;
 			let browser: LinkSide = "none";
 			if (vaults.length > 0 && activeId) {
 				// From the disk: a login saved in another window never reaches this one's memory.
@@ -216,7 +210,13 @@ export function useDesktopLink({
 				setOtherDevices(
 					(group?.roster?.devices ?? []).filter((d) => d.publicKey !== own).map((d) => d.label),
 				);
+				// Peers ignore a removed device, so it still holds the group. Only the open vault's
+				// key can be read here; another vault is caught on the link after opening it.
+				removed = shared === activeId && !!own && !!desktop?.removedKeys?.includes(own);
 			}
+			removedFrom.current = removed ? shared : null;
+			const sharesGroup = shared !== null && !removed;
+			setSharedIsOpen(sharesGroup && shared === activeId);
 			// An app that will not say is treated as holding something: asking is the safe side.
 			const desktopSide = desktop?.empty === true ? "empty" : "full";
 			return linkOutcome({ from, browser, desktop: desktopSide, sharesGroup });
@@ -419,8 +419,13 @@ export function useDesktopLink({
 								crypto.withVault?.(oldId) ?? crypto,
 							)
 						: { targets: [], unreadable: 0 };
+				if (removedFrom.current) {
+					await shell.stopSyncSpike();
+					await storage.removeMeta(syncKeyFor("sync.group", removedFrom.current));
+				}
 				const opened = await startJoin(invite, { kind: "password", password }, undefined, {
 					viaLink: linkedBy === "emoji",
+					openIfHeld: true,
 				});
 				joined = true;
 				setInvite(null);
@@ -550,6 +555,7 @@ export function useDesktopLink({
 			startJoin,
 			vaultSwitchedFrom,
 			storage,
+			shell,
 			onLinked,
 			t,
 		],

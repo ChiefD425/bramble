@@ -1,0 +1,45 @@
+---
+import Footer from "@/components/Footer.astro";
+import Header from "@/components/Header.astro";
+import { Button } from "@/components/starwind/button";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout
+	title="Payment received"
+	description="Your Bramble Mailbox payment."
+	path="/account/paid"
+	flag="account"
+>
+	<Header />
+	<main class="mx-auto max-w-2xl space-y-6 px-4 py-16 sm:px-6 sm:py-20">
+		<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Your Bramble Mailbox account</h1>
+		<p data-paid="message" class="text-lg">Checking your account…</p>
+		<div data-paid="account" hidden class="space-y-3 rounded-md border p-4">
+			<p class="text-sm text-muted-foreground">Your account number</p>
+			<p data-paid="number" class="font-mono text-2xl tracking-wide"></p>
+			<Button data-paid="copy" type="button" size="sm" variant="outline">Copy</Button>
+		</div>
+		<div data-paid="first" hidden class="space-y-3">
+			<h2 class="text-xl font-semibold">What to do next</h2>
+			<ol class="list-decimal space-y-2 pl-5">
+				<li>
+					Save this number somewhere safe. It is the only way into this account, and it can't be
+					recovered.
+				</li>
+				<li>In Bramble, open Settings, then Sync. Under Mailbox, enter the number and choose Sign in.</li>
+				<li>Your other devices pick it up the next time they sync with that one.</li>
+			</ol>
+		</div>
+		<p data-paid="again" hidden>
+			Your devices pick up the new time on their next sync. There's nothing to change in Bramble.
+		</p>
+		<a href="/account/" class="block text-sm underline">Back to your account</a>
+	</main>
+	<Footer />
+</Layout>
+
+<script>
+	import { waitForTime } from "@/scripts/account/paid";
+	void waitForTime();
+</script>

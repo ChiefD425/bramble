@@ -1,0 +1,16 @@
+{
+	// The Worker (src/worker) on Workers types from `wrangler types`, with the shared core and the
+	// test devices it uses. The Node server and its tests stay on tsconfig.json.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"types": ["node", "@cloudflare/vitest-plugin/types"]
+	},
+	"include": [
+		"worker-configuration.d.ts",
+		"src/env.d.ts",
+		"src/worker/**/*",
+		"src/core/**/*",
+		"src/test/device.ts"
+	],
+	"exclude": ["src/core/**/*.test.ts"]
+}

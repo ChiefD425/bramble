@@ -50,6 +50,7 @@ import type {
 } from "./crypto/messages";
 import { dropHandoff, putHandoff, readHandoff } from "./files/idb";
 import { api } from "./platform-api";
+import { isOwnVaultWrite, isVaultBlobKey } from "./storage";
 
 // Backstop a stalled offscreen round-trip (e.g. a cold-start createDocument that
 // never resolves) so the UI surfaces a retryable error instead of hanging forever.
@@ -142,8 +143,25 @@ function makeCrypto(vaultId?: string): CryptoAdapter {
 				if (message.vaultId && vaultId && message.vaultId !== vaultId) return;
 				callback();
 			};
+			// Another view's save, or the worker's: storage tells every context of every write, and
+			// this one skips its own.
+			const stored = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+				if (area !== "local") return;
+				for (const [key, change] of Object.entries(changes)) {
+					if (!isVaultBlobKey(key) || change.newValue === undefined) continue;
+					// As above: another vault's blob is nothing to this window.
+					if (vaultId && key.includes(":") && !key.endsWith(`:${vaultId}`)) continue;
+					if (isOwnVaultWrite(key, change.newValue)) continue;
+					callback();
+					return;
+				}
+			};
 			api.runtime.onMessage.addListener(handler);
-			return () => api.runtime.onMessage.removeListener(handler);
+			api.storage.onChanged.addListener(stored);
+			return () => {
+				api.runtime.onMessage.removeListener(handler);
+				api.storage.onChanged.removeListener(stored);
+			};
 		},
 
 		// Reaches every other extension page, never this one. Rejects with no other page open.

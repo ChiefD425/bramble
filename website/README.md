@@ -7,6 +7,23 @@ It uses the exact same design tokens as the browser extension and mobile apps,
 imported from the shared [`@vault/theme`](../packages/theme) package, so the site
 is visually identical to the product.
 
+## Feature flags
+
+`?ff=name` on any page turns a flag on for that browser tab, so a feature can be tried on the live
+site with nobody else seeing it. `?ff=a,b` sets several, and `?ff=` clears them. The tab keeps them
+until it closes, which is what carries a tester through Stripe and back.
+
+The names are in `src/flags.ts`, separate from `packages/core/src/flags.ts`, which is baked into the
+apps. `flag="name"` on a page's `Layout` hides that page: without the flag a visitor lands on the home
+page, as they do for any unknown URL, and it asks not to be indexed. To launch, remove the prop and
+the name.
+
+The sandbox build (`pnpm deploy:sandbox`, against the sandbox billing and mailbox Workers) shows
+flagged pages without the flag, since the sandbox apps link straight to them.
+
+This keeps a page out of sight, not out of reach: the markup is public and the name can be guessed.
+Nothing secret goes behind a flag.
+
 ## Pages
 
 - `/`: landing page (`src/pages/index.astro`)

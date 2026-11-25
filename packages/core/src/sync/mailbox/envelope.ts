@@ -10,6 +10,8 @@ import { sha256Hex } from "./protocol";
 const SIG_LEN = 64;
 /** A version byte, a 12-byte nonce and a 16-byte tag: the shortest message the core seals. */
 const MIN_SEALED = 1 + 12 + 16;
+/** The sealed format's version byte this client reads. */
+const SEAL_VERSION = 1;
 /** The core's refusals of the sealed bytes themselves (`core-rust/src/mailbox.rs`). */
 const REFUSALS = ["mailbox open failed", "not a sealed mailbox message", "plaintext is not utf-8"];
 
@@ -23,7 +25,8 @@ export interface MailboxCryptoPort {
 	verify(sigKey: string, message: string, sigB64: string): Promise<boolean>;
 }
 
-export type MailboxOpenReason = "malformed" | "bad_signature" | "unopenable";
+/** `unsupported` is a newer client's seal: hold it, never quarantine it. */
+export type MailboxOpenReason = "malformed" | "bad_signature" | "unopenable" | "unsupported";
 
 export class MailboxOpenError extends Error {
 	readonly reason: MailboxOpenReason;
@@ -81,6 +84,7 @@ export async function openMessage(
 	if (!(await port.verify(r.sender, text, bytesToBase64(sig)))) {
 		throw new MailboxOpenError("bad_signature");
 	}
+	if (sealed[0] !== SEAL_VERSION) throw new MailboxOpenError("unsupported");
 	if ((await port.mailboxId(r.groupKeyB64)) !== r.mailboxId) {
 		throw new Error("this vault's key does not derive this mailbox");
 	}

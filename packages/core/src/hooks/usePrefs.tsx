@@ -18,6 +18,14 @@ import { DEFAULT_SEARCH, isSortKey, type SortKey } from "../app/screens/VaultHom
 import { normalizeSupportAskState, type SupportAskState } from "../app/support-ask";
 import { normalizeWhatsNewState, PREF_WHATS_NEW, type WhatsNewState } from "../app/whats-new";
 import { usePlatform } from "../context/PlatformContext";
+import {
+	MAILBOX_ACCOUNT_PREF_KEY,
+	MAILBOX_OFF_PREF_KEY,
+	MAILBOX_PREF_KEY,
+	type MailboxConfig,
+	MailboxConfigSchema,
+} from "../sync/mailbox/config";
+import { parseAccountNumber } from "../sync/mailbox/protocol";
 import { syncKeyFor } from "../sync/sync-keys";
 import {
 	DEFAULT_GENERATOR_SETTINGS,
@@ -157,6 +165,12 @@ export interface Prefs {
 	aliasProvider: AliasConfig | null;
 	// Usage counters and ask history behind the store-review nudge.
 	reviewNudge: ReviewNudgeState;
+	// The group's mailbox, or null when it syncs without one.
+	mailbox: MailboxConfig | null;
+	// This device opted out of the group's mailbox for this vault.
+	mailboxOff: boolean;
+	// The hosted mailbox's account number, formatted, or null.
+	mailboxAccount: string | null;
 	// Mobile: check bramble.sh for a newer version.
 	updateCheck: boolean;
 	// Mobile: the last check's result and the version the notice was closed for.
@@ -191,6 +205,9 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	generator: PREF_GENERATOR,
 	aliasProvider: PREF_ALIAS_PROVIDER,
 	reviewNudge: PREF_REVIEW_NUDGE,
+	mailbox: MAILBOX_PREF_KEY,
+	mailboxOff: MAILBOX_OFF_PREF_KEY,
+	mailboxAccount: MAILBOX_ACCOUNT_PREF_KEY,
 	updateCheck: PREF_UPDATE_CHECK,
 	appUpdate: PREF_APP_UPDATE,
 	whatsNew: PREF_WHATS_NEW,
@@ -246,6 +263,12 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	// Device: which store this install came from is a fact about the app on this machine, and the
 	// counters are of sessions on it. Syncing it would have a phone's usage spend a browser's asks.
 	reviewNudge: "device",
+	// Synced: one device switching the mailbox on switches on every device it reaches.
+	mailbox: "synced",
+	// Synced too: every device in the group pays from the same account.
+	mailboxAccount: "synced",
+	// Vault: switching it off on one device is that device's choice for that vault alone.
+	mailboxOff: "vault",
 	// Device: they describe this install's version, not the vault.
 	updateCheck: "device",
 	appUpdate: "device",
@@ -276,6 +299,11 @@ const SYNCED_NORMALIZE: Partial<Record<keyof Prefs, (raw: unknown) => unknown>> 
 	// A shaped object with a secret in it, written by a peer that may be on another build: only
 	// something that still parses as a config is taken, and anything else reads as "none".
 	aliasProvider: (raw) => (isAliasConfig(raw) ? raw : null),
+	mailboxAccount: (raw) => (typeof raw === "string" ? parseAccountNumber(raw) : null),
+	mailbox: (raw) => {
+		const parsed = MailboxConfigSchema.safeParse(raw);
+		return parsed.success ? parsed.data : null;
+	},
 };
 
 /** Coerce a synced value, falling back to the default when it is unusable. */
@@ -313,6 +341,9 @@ const DEFAULT_PREFS: Prefs = {
 	defaultManagerPromptDismissed: DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED,
 	generator: DEFAULT_GENERATOR_SETTINGS,
 	aliasProvider: null,
+	mailbox: null,
+	mailboxOff: false,
+	mailboxAccount: null,
 	// Evaluated at module load, so the placeholder shown for the few ms before the read lands
 	// describes an install with no history rather than one dating from the epoch, which would
 	// read as old enough to ask immediately.
@@ -420,7 +451,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w, x, y] =
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w, x, y, z] =
 				await Promise.all([
 					storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
 					storage.getMeta<boolean>(PREF_BREACH_CHECK),
@@ -447,6 +478,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 					),
 					storage.getMeta<unknown>(PREF_GENERATOR),
 					storage.getMeta<unknown>(PREF_REVIEW_NUDGE),
+					// New with the mailbox, so there is no flat legacy key to adopt.
+					readVaultPref<boolean>(storage, MAILBOX_OFF_PREF_KEY, keyFor("mailboxOff"), false),
 					storage.getMeta<boolean>(PREF_DEFAULT_MANAGER_PROMPT_DISMISSED),
 					storage.getMeta<boolean>(PREF_PASSKEY_CONFIRM_ONCE),
 					storage.getMeta<boolean>(PREF_UPDATE_CHECK),
@@ -474,12 +507,12 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				neverSaveSites: Array.isArray(f) ? f : DEFAULT_NEVER_SAVE_SITES,
 				biometricAutoPrompt: typeof g === "boolean" ? g : DEFAULT_BIOMETRIC_AUTO_PROMPT,
 				autofillQuickType: typeof h === "boolean" ? h : DEFAULT_AUTOFILL_QUICKTYPE,
-				copyTotpOnFill: typeof v === "boolean" ? v : DEFAULT_COPY_TOTP_ON_FILL,
+				copyTotpOnFill: typeof w === "boolean" ? w : DEFAULT_COPY_TOTP_ON_FILL,
 				passkeyProviderEnabled: typeof i === "boolean" ? i : DEFAULT_PASSKEY_PROVIDER,
-				passkeyConfirmOncePerUnlock: typeof q === "boolean" ? q : DEFAULT_PASSKEY_CONFIRM_ONCE,
+				passkeyConfirmOncePerUnlock: typeof r === "boolean" ? r : DEFAULT_PASSKEY_CONFIRM_ONCE,
 				lockOnScreenLock: typeof j === "boolean" ? j : DEFAULT_LOCK_ON_SCREEN_LOCK,
 				statsCollapsed: typeof k === "boolean" ? k : DEFAULT_STATS_COLLAPSED,
-				vaultSort: isSortKey(u) ? u : DEFAULT_SEARCH.sort,
+				vaultSort: isSortKey(v) ? v : DEFAULT_SEARCH.sort,
 				autostartPromptDismissed: typeof l === "boolean" ? l : DEFAULT_AUTOSTART_PROMPT_DISMISSED,
 				biometricPasscodeFallback: typeof m === "boolean" ? m : DEFAULT_BIOMETRIC_PASSCODE_FALLBACK,
 				// Field by field: a stored object written by an older or hand-edited build is not
@@ -488,15 +521,16 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				// Same treatment, and for a sharper reason: a junk `installedAt` here is the
 				// difference between asking after a fortnight and asking on day one.
 				reviewNudge: normalizeReviewNudgeState(o, now),
+				mailboxOff: typeof p === "boolean" ? p : false,
 				defaultManagerPromptDismissed:
-					typeof p === "boolean" ? p : DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED,
-				updateCheck: typeof r === "boolean" ? r : DEFAULT_UPDATE_CHECK,
-				appUpdate: normalizeAppUpdateState(s),
+					typeof q === "boolean" ? q : DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED,
+				updateCheck: typeof s === "boolean" ? s : DEFAULT_UPDATE_CHECK,
+				appUpdate: normalizeAppUpdateState(u),
 				// Re-read when the first vault arrives, which is when a fresh install records its version
 				// (markFreshInstall): `vaults.length` is in this effect's dependencies.
-				whatsNew: normalizeWhatsNewState(w),
-				supportAsk: normalizeSupportAskState(x, now),
-				supportAskEnabled: typeof y === "boolean" ? y : true,
+				whatsNew: normalizeWhatsNewState(x),
+				supportAsk: normalizeSupportAskState(y, now),
+				supportAskEnabled: typeof z === "boolean" ? z : true,
 			}));
 			setLoaded(true);
 		})();

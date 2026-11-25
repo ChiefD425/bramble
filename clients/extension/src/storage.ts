@@ -38,6 +38,14 @@ export function isVaultBlobKey(key: string): boolean {
 	return key === VAULT_BLOB_KEY || key.startsWith(`${VAULT_BLOB_KEY}:`);
 }
 
+/** The last value this context wrote to each vault blob key, so a view can tell its own save
+ * apart from another view's, or the worker's, in storage's change events. */
+const ownWrites = new Map<string, string>();
+
+export function isOwnVaultWrite(key: string, value: unknown): boolean {
+	return ownWrites.get(key) === value;
+}
+
 // --- Legacy File System Access migration ---
 // Pre-migration vaults lived in a real file (an FSA handle in IndexedDB), which required a
 // user gesture to (re)grant permission on every service-worker restart - hostile UX under
@@ -272,7 +280,9 @@ export const extensionStorage: StorageAdapter = {
 		if (targetId == null) throw new Error("writeVaultBlob: no vault id, and no vault registered");
 		const key = blobKeyFor(targetId);
 		await snapshotBlob(key, backupKeyFor(targetId));
-		await api.storage.local.set({ [key]: bytesToBase64(blob) });
+		const value = bytesToBase64(blob);
+		ownWrites.set(key, value);
+		await api.storage.local.set({ [key]: value });
 	},
 
 	/** Restore the last pre-write backup over the live vault. Returns false when no backup exists. */

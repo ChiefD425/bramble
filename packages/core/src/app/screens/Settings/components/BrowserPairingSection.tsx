@@ -9,6 +9,8 @@ import { useVault, useVaultActions } from "../../../../hooks/useVault";
 import { useVaultRegistry } from "../../../../hooks/useVaultRegistry";
 import { linkSas } from "../../../../sync/link-sas";
 import type { PairingSas } from "../../../../sync/pairing-sas";
+import { type RosterPayload, removedKeys } from "../../../../sync/roster";
+import { syncKeyFor } from "../../../../sync/sync-keys";
 import { relayOrDefault } from "../../../../sync/transport/relay-url";
 import { formatDate } from "../../../../util/format-date";
 import { isVaultEmpty, readVaultContents } from "../../../../vault/vault-empty";
@@ -216,11 +218,15 @@ export function BrowserPairingSection() {
 		if (!pairing.setVaultSummary || !activeId) return;
 		const index = vaults.findIndex((v) => v.id === activeId);
 		const contents = await readVaultContents(storage, activeId, entries.length, files.length);
+		const group = await storage.getMeta<{ roster?: RosterPayload }>(
+			syncKeyFor("sync.group", activeId),
+		);
 		const targets = await storage.getMeta<unknown[]>(backupTargetsKeyFor(activeId));
 		await pairing.setVaultSummary({
 			name: displayLabel(vaults[index] ?? { label: "" }, Math.max(0, index)),
 			empty: isVaultEmpty(contents),
 			entries: entries.length,
+			...(group?.roster?.revokedKeys ? { removedKeys: removedKeys(group.roster) } : {}),
 			backupTargets: (targets?.length ?? 0) > 0,
 		});
 	};

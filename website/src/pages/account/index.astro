@@ -1,0 +1,177 @@
+---
+import Footer from "@/components/Footer.astro";
+import Header from "@/components/Header.astro";
+import { Button } from "@/components/starwind/button";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout
+	title="Your Bramble Mailbox account"
+	description="Open a Bramble Mailbox account and add paid time."
+	path="/account"
+	flag="account"
+>
+	<Header />
+	<main class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-20">
+		<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Your Bramble Mailbox account</h1>
+		<p class="mt-3 text-muted-foreground">Manage your account</p>
+
+		<p
+			data-account="error"
+			role="alert"
+			hidden
+			class="mt-6 rounded-md border border-error bg-error/7 px-4 py-3 text-sm"
+		>
+		</p>
+
+		<p data-account="notice" role="status" hidden class="mt-6 text-sm">Account deleted.</p>
+
+		<section data-account="start" class="mt-10 space-y-10">
+			<div class="space-y-3">
+				<h2 class="text-xl font-semibold">New here?</h2>
+				<p class="text-muted-foreground">
+					Create an account, add time, then add the number in Bramble.
+				</p>
+				<Button data-account="create" type="button">Create an account</Button>
+				<p data-account="checking" hidden class="text-sm text-muted-foreground">
+					Checking this browser…
+				</p>
+			</div>
+			<form data-account="number-form" class="space-y-3" novalidate>
+				<h2 class="text-xl font-semibold">I have an account number</h2>
+				<label for="account-number" class="block text-sm font-medium">Account number</label>
+				<input
+					id="account-number"
+					data-account="number-input"
+					inputmode="numeric"
+					autocomplete="off"
+					spellcheck="false"
+					class="w-full rounded-md border bg-background px-3 py-2 font-mono"
+				/>
+				<p data-account="number-error" hidden class="text-sm text-error">
+					An account number is 25 digits
+				</p>
+				<Button type="submit" variant="outline">Continue</Button>
+			</form>
+		</section>
+
+		<section data-account="confirm" hidden class="mt-10 space-y-4">
+			<h2 class="text-xl font-semibold">Is this your account number?</h2>
+			<p data-account="confirm-number" class="font-mono text-2xl tracking-wide"></p>
+			<p class="text-muted-foreground">It should match the one in Bramble: Settings, Sync, Mailbox.</p>
+			<div class="flex gap-2">
+				<Button data-account="confirm-yes" type="button">Yes, it's mine</Button>
+				<Button data-account="confirm-no" type="button" variant="outline">No</Button>
+			</div>
+		</section>
+
+		<section data-account="account" hidden class="mt-10 space-y-10">
+			<div class="space-y-3 rounded-md border p-4">
+				<p class="text-sm text-muted-foreground">Your account number</p>
+				<p data-account="number" class="font-mono text-2xl tracking-wide"></p>
+				<div class="flex gap-2">
+					<Button data-account="show" type="button" size="sm" variant="outline">Show</Button>
+					<Button data-account="copy" type="button" size="sm" variant="outline">Copy</Button>
+				</div>
+				<div data-account="created" hidden class="space-y-2">
+					<p class="text-sm">
+						Save this number somewhere safe. It is the only way into this account, and it can't be
+						recovered.
+					</p>
+					<p class="text-sm">Then add it in Bramble: Settings, Sync, Mailbox.</p>
+				</div>
+				<div class="space-y-1">
+					<p data-account="paid" class="text-lg font-medium"></p>
+					<p data-account="used" class="text-sm text-muted-foreground"></p>
+				</div>
+			</div>
+
+			<div class="space-y-3">
+				<h2 class="text-xl font-semibold">Add time</h2>
+				<div class="flex flex-wrap items-end gap-3">
+					<div class="space-y-1">
+						<label for="months" class="block text-sm font-medium">Months</label>
+						<input
+							id="months"
+							data-account="months"
+							type="number"
+							inputmode="numeric"
+							min="6"
+							max="36"
+							step="1"
+							value="6"
+							class="w-24 rounded-md border bg-background px-3 py-2"
+						/>
+					</div>
+					<Button data-months="6" type="button" variant="outline">6</Button>
+					<Button data-months="12" type="button" variant="outline">12</Button>
+					<Button data-months="24" type="button" variant="outline">24</Button>
+					<Button data-months="36" type="button" variant="outline">36</Button>
+				</div>
+				<p data-account="months-error" hidden class="text-sm text-error">Choose 6 to 36 months.</p>
+				<Button data-account="buy" type="button">Add 6 months, $12</Button>
+				<p class="text-sm text-muted-foreground">
+					$2 a month. Prices in US dollars. Tax is added at checkout where it applies. Refunds within 14 days of a
+					purchase, less the days since you bought it, none after.
+				</p>
+			</div>
+
+			<div class="space-y-3">
+				<h2 class="text-xl font-semibold">Purchases you can refund</h2>
+				<p data-account="refund-message" hidden class="text-sm"></p>
+				<p data-account="no-purchases" hidden class="text-sm text-muted-foreground">
+					Nothing to refund. Purchases can be refunded for 14 days.
+				</p>
+				<ul data-account="purchases" class="space-y-2"></ul>
+				<template data-account="purchase-row">
+					<li>
+						<div class="flex flex-wrap items-center gap-3">
+							<span data-row="label" class="font-mono text-sm"></span>
+							<Button data-row="refund" type="button" size="sm" variant="outline">Refund</Button>
+							<span data-row="confirm" hidden>
+								<span class="inline-flex flex-wrap items-center gap-2">
+									<span data-row="question" class="text-sm"></span>
+									<Button data-row="yes" type="button" size="sm" variant="error">Yes, refund</Button>
+									<Button data-row="keep" type="button" size="sm" variant="ghost">Keep it</Button>
+								</span>
+							</span>
+						</div>
+					</li>
+				</template>
+			</div>
+
+			<div class="space-y-3">
+				<div class="flex flex-wrap items-center gap-2">
+					<Button data-account="sign-out" type="button" variant="ghost" size="sm">Sign out</Button>
+					<Button data-account="delete" type="button" variant="ghost" size="sm">Delete account</Button>
+				</div>
+				<div
+					data-account="delete-confirm"
+					hidden
+					class="space-y-3 rounded-md border border-error bg-error/7 px-4 py-3 text-sm"
+				>
+					<p>
+						Delete this account? Paid time is lost and this can't be undone. Your vault isn't
+						affected, but your devices stop syncing through the mailbox.
+					</p>
+					<p data-account="delete-refund-note" hidden>
+						Deleting doesn't refund anything. Refund the purchases above first if you want the money
+						back.
+					</p>
+					<div class="flex flex-wrap items-center gap-2">
+						<Button data-account="delete-yes" type="button" size="sm" variant="error">
+							Yes, delete
+						</Button>
+						<Button data-account="delete-keep" type="button" size="sm" variant="ghost">Keep it</Button>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+	<Footer />
+</Layout>
+
+<script>
+	import { start } from "@/scripts/account/page";
+	start();
+</script>

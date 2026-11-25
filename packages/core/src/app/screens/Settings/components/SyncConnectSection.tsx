@@ -9,6 +9,7 @@ import { useVault, useVaultActions } from "../../../../hooks/useVault";
 import { useVaultRegistry } from "../../../../hooks/useVaultRegistry";
 import {
 	activeDevices,
+	alsoRemoved,
 	decodePairingCode,
 	type RosterEntry,
 	type RosterPayload,
@@ -25,6 +26,7 @@ import { Modal } from "../../../components/ui/modal";
 import { PasswordField } from "../../../components/ui/password-field";
 import { TextField } from "../../../components/ui/text-field";
 import { useDeviceNames } from "../../../hooks/useDeviceNames";
+import { MailboxCheckIn, MailboxSection, useMailboxCheckIns } from "./MailboxSection";
 import { Row, Section } from "./primitives";
 import { deviceNamer, fullStamp, shortKey, shortStamp } from "./sync-log";
 
@@ -120,6 +122,7 @@ export function SyncConnectSection() {
 	const [removingId, setRemovingId] = useState<string | null>(null);
 	// Names are synced settings, so any device can name any device. See useDeviceNames.
 	const { nameOf, rename, canRename } = useDeviceNames();
+	const checkIns = useMailboxCheckIns();
 	const [renamingId, setRenamingId] = useState<string | null>(null);
 	// Master-password gate before adding a device: the re-entered password admission-signs the new
 	// device (Item A). A vault without one may not pair. See docs/p2p-sync-revocation-hardening.md.
@@ -317,6 +320,13 @@ export function SyncConnectSection() {
 	);
 
 	const devices = group ? activeDevices(group.roster) : [];
+	// Removing a device revokes its keys, so another entry of the same device goes with it.
+	const goesWith = new Map(
+		devices.map((d) => [
+			d.id,
+			(group ? alsoRemoved(group.roster, d.id) : []).map((o) => nameOf(o) || t`device`).join(", "),
+		]),
+	);
 	const others = myPub ? devices.filter((d) => d.publicKey !== myPub) : devices;
 	const inGroup = group != null;
 	const paired = others.length > 0;
@@ -409,498 +419,520 @@ export function SyncConnectSection() {
 		});
 
 	return (
-		<Section icon={<Wifi className="w-4 h-4 text-primary" />} title={t`Device sync`}>
-			{/* Live transport status log (offer sent / answer applied / ice connected /
+		<>
+			<Section icon={<Wifi className="w-4 h-4 text-primary" />} title={t`Device sync`}>
+				{/* Live transport status log (offer sent / answer applied / ice connected /
 			    channel open) — surfaces enrollment + sync diagnostics in the dev panel. */}
-			{log.length > 0 && (
-				<div className="relative">
-					<div
-						ref={logRef}
-						data-selectable
-						className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background/50 p-2 pr-9 text-xs font-mono space-y-0.5"
-					>
-						{log.map((line, i) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: append-only status log
-							<div key={i} className="text-muted-foreground break-words">
-								<span className="text-muted-foreground/60">{shortStamp(line.at, now)}</span>{" "}
-								<span>{nameInLog(line.text)}</span>
-							</div>
-						))}
-					</div>
-					<Button
-						variant="ghost"
-						size="none"
-						onClick={copyLog}
-						className="absolute top-1 right-1 p-1.5 rounded-md"
-						aria-label={t`Copy log`}
-					>
-						{logCopied ? (
-							<Check className="w-3.5 h-3.5 text-primary" />
-						) : (
-							<Copy className="w-3.5 h-3.5" />
-						)}
-					</Button>
-				</div>
-			)}
-
-			{/* Paired / in-a-group: show the synced devices + disconnect. */}
-			{inGroup ? (
-				<>
-					<div className="flex items-center gap-2">
-						<span
-							className={`inline-block w-2 h-2 rounded-full ${paired && !notSyncing ? "bg-emerald-500" : "bg-amber-500"}`}
-							aria-hidden
-						/>
-						<span className="text-sm font-medium">
-							{keyUnreadable ? (
-								<Trans>
-									Not syncing: this device can't read its sync key right now. Lock and unlock to try
-									again. If it keeps happening, disconnect and join again with a code from another
-									device.
-								</Trans>
-							) : unrecognized ? (
-								<Trans>
-									Not syncing: your other devices no longer recognize this one. Disconnect, then
-									join again with a code from another device.
-								</Trans>
-							) : paired ? (
-								<Trans>Synced · {devices.length} devices</Trans>
+				{log.length > 0 && (
+					<div className="relative">
+						<div
+							ref={logRef}
+							data-selectable
+							className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background/50 p-2 pr-9 text-xs font-mono space-y-0.5"
+						>
+							{log.map((line, i) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: append-only status log
+								<div key={i} className="text-muted-foreground break-words">
+									<span className="text-muted-foreground/60">{shortStamp(line.at, now)}</span>{" "}
+									<span>{nameInLog(line.text)}</span>
+								</div>
+							))}
+						</div>
+						<Button
+							variant="ghost"
+							size="none"
+							onClick={copyLog}
+							className="absolute top-1 right-1 p-1.5 rounded-md"
+							aria-label={t`Copy log`}
+						>
+							{logCopied ? (
+								<Check className="w-3.5 h-3.5 text-primary" />
 							) : (
-								<Trans>Waiting for a device to join…</Trans>
+								<Copy className="w-3.5 h-3.5" />
 							)}
-						</span>
-						{paired && !notSyncing && shell.syncNow && (
-							<Button
-								variant="secondary"
-								size="sm"
-								onClick={syncNow}
-								disabled={syncingNow}
-								className="ml-auto shrink-0 gap-1.5"
-							>
-								<RefreshCw className={`w-3.5 h-3.5 ${syncingNow ? "animate-spin" : ""}`} />{" "}
-								<Trans>Sync now</Trans>
-							</Button>
-						)}
+						</Button>
 					</div>
+				)}
 
-					{lastSynced && (
-						<p className="-mt-2 text-xs text-muted-foreground">
-							<Trans>Last synced {formatAgo(lastSynced)}</Trans>
-						</p>
-					)}
-
-					{unsigned.length > 0 && (
-						<p className="-mt-2 text-xs text-warning">
-							<Plural
-								value={unsigned.length}
-								one="# device has not signed its roster entry yet. Each device signs itself the next time Bramble opens on it; until then the others cannot tell it from an impostor."
-								other="# devices have not signed their roster entries yet. Each device signs itself the next time Bramble opens on it; until then the others cannot tell them from an impostor."
+				{/* Paired / in-a-group: show the synced devices + disconnect. */}
+				{inGroup ? (
+					<>
+						<div className="flex items-center gap-2">
+							<span
+								className={`inline-block w-2 h-2 rounded-full ${paired && !notSyncing ? "bg-emerald-500" : "bg-amber-500"}`}
+								aria-hidden
 							/>
-						</p>
-					)}
+							<span className="text-sm font-medium">
+								{keyUnreadable ? (
+									<Trans>
+										Not syncing: this device can't read its sync key right now. Lock and unlock to
+										try again. If it keeps happening, disconnect and join again with a code from
+										another device.
+									</Trans>
+								) : unrecognized ? (
+									<Trans>
+										Not syncing: your other devices no longer recognize this one. Disconnect, then
+										join again with a code from another device.
+									</Trans>
+								) : paired ? (
+									<Trans>Synced · {devices.length} devices</Trans>
+								) : (
+									<Trans>Waiting for a device to join…</Trans>
+								)}
+							</span>
+							{paired && !notSyncing && shell.syncNow && (
+								<Button
+									variant="secondary"
+									size="sm"
+									onClick={syncNow}
+									disabled={syncingNow}
+									className="ml-auto shrink-0 gap-1.5"
+								>
+									<RefreshCw className={`w-3.5 h-3.5 ${syncingNow ? "animate-spin" : ""}`} />{" "}
+									<Trans>Sync now</Trans>
+								</Button>
+							)}
+						</div>
 
-					<div className="rounded-lg border border-border divide-y divide-border/60">
-						{sortedDevices.map((d: RosterEntry) => (
-							<div key={d.publicKey} className="flex items-center justify-between gap-2 px-3 py-2">
-								<div className="min-w-0 flex-1">
-									{renamingId === d.id ? (
-										<DeviceNameField
-											initial={nameOf(d)}
-											onDone={(name) => {
-												setRenamingId(null);
-												if (name !== null && name !== nameOf(d)) void renameDevice(d.id, name);
-											}}
-										/>
-									) : (
-										<div className="text-sm flex items-center gap-2">
-											<span className="truncate">{nameOf(d) || t`Unnamed device`}</span>
-											{canRename && (
+						{lastSynced && (
+							<p className="-mt-2 text-xs text-muted-foreground">
+								<Trans>Last synced {formatAgo(lastSynced)}</Trans>
+							</p>
+						)}
+
+						{unsigned.length > 0 && (
+							<p className="-mt-2 text-xs text-warning">
+								<Plural
+									value={unsigned.length}
+									one="# device has not signed its roster entry yet. Each device signs itself the next time Bramble opens on it; until then the others cannot tell it from an impostor."
+									other="# devices have not signed their roster entries yet. Each device signs itself the next time Bramble opens on it; until then the others cannot tell them from an impostor."
+								/>
+							</p>
+						)}
+
+						<div className="rounded-lg border border-border divide-y divide-border/60">
+							{sortedDevices.map((d: RosterEntry) => (
+								<div
+									key={d.publicKey}
+									className="flex items-center justify-between gap-2 px-3 py-2"
+								>
+									<div className="min-w-0 flex-1">
+										{renamingId === d.id ? (
+											<DeviceNameField
+												initial={nameOf(d)}
+												onDone={(name) => {
+													setRenamingId(null);
+													if (name !== null && name !== nameOf(d)) void renameDevice(d.id, name);
+												}}
+											/>
+										) : (
+											<div className="text-sm flex items-center gap-2">
+												<span className="truncate">{nameOf(d) || t`Unnamed device`}</span>
+												{canRename && (
+													<Button
+														variant="link"
+														size="none"
+														onClick={() => setRenamingId(d.id)}
+														aria-label={t`Rename ${nameOf(d) || "device"}`}
+														className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+													>
+														<Pencil className="w-3 h-3" />
+													</Button>
+												)}
+												{d.publicKey === myPub && (
+													<span className="shrink-0 text-[10px] uppercase tracking-wide text-primary/80 border border-primary/40 rounded px-1 py-px">
+														<Trans>This device</Trans>
+													</span>
+												)}
+												{!d.sigKey && (
+													<span className="shrink-0 text-[10px] uppercase tracking-wide text-warning border border-amber-500/40 rounded px-1 py-px">
+														<Trans>Unsigned</Trans>
+													</span>
+												)}
+											</div>
+										)}
+										<div className="text-xs text-muted-foreground font-mono">
+											<Trans>
+												{shortKey(d.publicKey)} · added {addedOn(d.addedAt)}
+											</Trans>
+										</div>
+										<MailboxCheckIn member={d.sigKey ? checkIns?.get(d.sigKey) : undefined} />
+									</div>
+									{d.publicKey !== myPub && (
+										<InlineConfirm
+											className="shrink-0"
+											armed={removingId === d.id}
+											onArmedChange={(armed) => setRemovingId(armed ? d.id : null)}
+											confirmLabel={<Trans>Remove</Trans>}
+											onConfirm={() => remove(d)}
+											prompt={
+												goesWith.get(d.id) ? (
+													<Trans>
+														This also removes {goesWith.get(d.id)}, which uses the same keys.
+													</Trans>
+												) : undefined
+											}
+											trigger={(arm) => (
 												<Button
 													variant="link"
 													size="none"
-													onClick={() => setRenamingId(d.id)}
-													aria-label={t`Rename ${nameOf(d) || "device"}`}
-													className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+													onClick={arm}
+													aria-label={t`Remove ${nameOf(d) || "device"}`}
+													className="shrink-0 p-1 hover:text-destructive transition-colors"
 												>
-													<Pencil className="w-3 h-3" />
+													<Trash2 className="w-4 h-4" />
 												</Button>
 											)}
-											{d.publicKey === myPub && (
-												<span className="shrink-0 text-[10px] uppercase tracking-wide text-primary/80 border border-primary/40 rounded px-1 py-px">
-													<Trans>This device</Trans>
-												</span>
-											)}
-											{!d.sigKey && (
-												<span className="shrink-0 text-[10px] uppercase tracking-wide text-warning border border-amber-500/40 rounded px-1 py-px">
-													<Trans>Unsigned</Trans>
-												</span>
-											)}
-										</div>
+										/>
 									)}
-									<div className="text-xs text-muted-foreground font-mono">
-										<Trans>
-											{shortKey(d.publicKey)} · added {addedOn(d.addedAt)}
-										</Trans>
-									</div>
 								</div>
-								{d.publicKey !== myPub && (
-									<InlineConfirm
-										className="shrink-0"
-										armed={removingId === d.id}
-										onArmedChange={(armed) => setRemovingId(armed ? d.id : null)}
-										confirmLabel={<Trans>Remove</Trans>}
-										onConfirm={() => remove(d)}
-										trigger={(arm) => (
-											<Button
-												variant="link"
-												size="none"
-												onClick={arm}
-												aria-label={t`Remove ${nameOf(d) || "device"}`}
-												className="shrink-0 p-1 hover:text-destructive transition-colors"
-											>
-												<Trash2 className="w-4 h-4" />
-											</Button>
-										)}
-									/>
-								)}
-							</div>
-						))}
-					</div>
-
-					{!paired && (
-						<p className="text-xs text-muted-foreground">
-							<Trans>Open Bramble on your other device and scan the code, or paste it there.</Trans>
-						</p>
-					)}
-
-					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={beginAddDevice}
-							disabled={notSyncing}
-							className="gap-1.5"
-						>
-							<Plus className="w-3.5 h-3.5" /> <Trans>Add another device</Trans>
-						</Button>
-						<InlineConfirm
-							variant="destructiveOutline"
-							armed={confirmDisconnect}
-							onArmedChange={setConfirmDisconnect}
-							confirmLabel={<Trans>Confirm disconnect</Trans>}
-							onConfirm={disconnect}
-							trigger={(arm) => (
-								<Button
-									variant="secondary"
-									size="sm"
-									onClick={arm}
-									className="gap-1.5 text-muted-foreground"
-								>
-									<Unplug className="w-3.5 h-3.5" /> <Trans>Disconnect</Trans>
-								</Button>
-							)}
-						/>
-					</div>
-					{confirmDisconnect && (
-						<p className="text-xs text-muted-foreground">
-							<Trans>
-								Stops syncing this device and keeps it offline-only. Your entries stay here; your
-								other devices aren't affected.
-							</Trans>
-						</p>
-					)}
-				</>
-			) : (
-				// Not in a group yet: onboarding (create a group, or join an existing one).
-				<>
-					<Row
-						icon={<Wifi className="w-4 h-4 text-primary" />}
-						title={t`Add a device`}
-						subtitle={t`Generate a one-time pairing code and listen for a device to join. No vault secrets in the code.`}
-					>
-						<Button variant="secondary" size="sm" onClick={beginAddDevice}>
-							<Trans>Add a device</Trans>
-						</Button>
-					</Row>
-
-					{/* Joining another group when a vault already exists means adding a parallel vault,
-					    which only per-vault-sync hosts (the extension) support; on single-active mobile
-					    the join path is the first-run setup, so don't point there from here. */}
-					{canPerVaultSync && (
-						<p className="ml-12 text-xs text-muted-foreground">
-							<Trans>
-								Have a pairing code from another device? Add a vault and choose "Join a device" to
-								sync its vault onto this one. Once enrolled, devices sync automatically in the
-								background while unlocked, no button or window needed.
-							</Trans>
-						</p>
-					)}
-				</>
-			)}
-
-			<Modal open={pwRequiredOpen} onClose={() => setPwRequiredOpen(false)} className="max-w-sm">
-				<div className="p-5 space-y-4">
-					<h2 className="text-base font-medium">
-						<Trans>Adding a device needs a master password</Trans>
-					</h2>
-					<p className="text-xs text-muted-foreground">
-						<Trans>
-							Pairing gives the new device your vault, so it has to be authorized with your master
-							password. Turn one on in Security, then come back to add the device.
-						</Trans>
-					</p>
-					<div className="flex justify-end gap-2">
-						<Button variant="secondary" size="sm" onClick={() => setPwRequiredOpen(false)}>
-							<Trans>Cancel</Trans>
-						</Button>
-						<Button
-							variant="primary"
-							size="sm"
-							onClick={() => {
-								setPwRequiredOpen(false);
-								void navigate({ to: "/settings", search: { tab: "security" } });
-							}}
-						>
-							<Trans>Turn on master password</Trans>
-						</Button>
-					</div>
-				</div>
-			</Modal>
-
-			<Modal
-				open={pwGateOpen}
-				onClose={() => {
-					setPwGateOpen(false);
-					setGatePassword("");
-				}}
-				className="max-w-sm"
-			>
-				<form
-					className="p-5 space-y-4"
-					onSubmit={(e) => {
-						e.preventDefault();
-						void confirmGate();
-					}}
-				>
-					<h2 className="text-base font-medium">
-						<Trans>Confirm it's you</Trans>
-					</h2>
-					<p className="text-xs text-muted-foreground">
-						<Trans>
-							Enter your master password to authorize the new device. This proves the request came
-							from you, not just a device that was already unlocked.
-						</Trans>
-					</p>
-					<PasswordField
-						label={t`Master password`}
-						value={gatePassword}
-						autoFocus
-						onChange={(e) => {
-							setGatePassword(e.target.value);
-							setGateError(null);
-						}}
-						error={gateError ?? undefined}
-					/>
-					<div className="flex justify-end gap-2">
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() => {
-								setPwGateOpen(false);
-								setGatePassword("");
-							}}
-						>
-							<Trans>Cancel</Trans>
-						</Button>
-						<Button
-							type="submit"
-							variant="secondary"
-							size="sm"
-							disabled={!gatePassword || gateBusy}
-						>
-							<Trans>Continue</Trans>
-						</Button>
-					</div>
-				</form>
-			</Modal>
-
-			<Modal
-				open={pairingCode !== null}
-				onClose={closeInvite}
-				backdropClassName="bg-black/90"
-				className="max-w-lg"
-			>
-				{pairingCode !== null && (
-					<div className="p-5 space-y-4">
-						<div className="flex items-center justify-between">
-							<h2 className="text-base font-medium">
-								<Trans>Add a device</Trans>
-							</h2>
-							<Button
-								variant="link"
-								size="none"
-								onClick={closeInvite}
-								aria-label={t`Close`}
-								className="transition-colors"
-							>
-								<X className="w-4 h-4" />
-							</Button>
+							))}
 						</div>
-						{inviteError !== null ? (
-							// A device tried and it didn't work. The invite is spent, so the code must go: a
-							// QR that can no longer pair is worse than none, because it just gets scanned again.
-							<>
-								<p className="text-sm">
-									<Trans>Pairing didn't complete.</Trans>
-								</p>
-								<p className="text-xs text-muted-foreground">{inviteError}</p>
-								<Button
-									variant="secondary"
-									size="sm"
-									onClick={() => {
-										setPairingCode(null);
-										beginAddDevice();
-									}}
-								>
-									<Trans>Generate a new code</Trans>
-								</Button>
-							</>
-						) : inviteExpired ? (
-							// Expired: hide the code outright rather than leaving a dead one on screen to be
-							// photographed. The invite is already dead on the host side (its own timer).
-							<>
-								<p className="text-sm">
-									<Trans>This code has expired.</Trans>
-								</p>
-								<p className="text-xs text-muted-foreground">
-									<Trans>
-										Codes are short-lived on purpose. Generate a new one when your other device is
-										ready to scan it.
-									</Trans>
-								</p>
-								<Button
-									variant="secondary"
-									size="sm"
-									onClick={() => {
-										setPairingCode(null);
-										beginAddDevice();
-									}}
-								>
-									<Trans>Generate a new code</Trans>
-								</Button>
-							</>
-						) : (
-							<>
-								<p className="text-xs text-muted-foreground">
-									<Trans>
-										Scan this on your other device, or copy the code below. Keep it private: anyone
-										who sees it while this window is open could try to join. You'll confirm a
-										matching number on both devices before anything is sent.
-									</Trans>
-								</p>
-								{/* A failed attempt that did NOT spend the code, so it sits alongside rather
-								    than replacing it. */}
-								{attemptNote !== null && <p className="text-xs text-warning">{attemptNote}</p>}
-								<div className="rounded-xl bg-white p-4">
-									<QRCodeSVG
-										value={pairingCode}
-										size={320}
-										marginSize={2}
-										className="h-auto w-full"
-									/>
-								</div>
-								<div className="flex gap-2">
-									<input
-										readOnly
-										value={pairingCode}
-										onFocus={(e) => e.currentTarget.select()}
-										className={`${inputClass} flex-1`}
-									/>
-									<Button
-										variant="secondary"
-										size="sm"
-										onClick={() => void navigator.clipboard?.writeText(pairingCode)}
-									>
-										<Trans>Copy</Trans>
-									</Button>
-								</div>
-								{secondsLeft !== null && (
-									<p className="text-xs text-muted-foreground text-center">
-										<Trans>
-											Expires in {mmss(secondsLeft)} · keep this window open until pairing finishes
-										</Trans>
-									</p>
-								)}
-							</>
-						)}
-					</div>
-				)}
-			</Modal>
 
-			{/* The approval gate. Stacked over the pairing modal, since the QR is still up when the
-			    joiner arrives. Not dismissable by backdrop: an accidental click must not be able to
-			    answer for the user, and closing it IS a refusal (the host treats it as one). */}
-			<Modal open={approval !== null} onClose={() => answerApproval(false)} className="max-w-md">
-				{approval !== null && (
-					<div className="p-5 space-y-4">
-						<h2 className="text-base font-medium">
-							<Trans>Is this your device?</Trans>
-						</h2>
-						<p className="text-xs text-muted-foreground">
-							<Trans>
-								A device has connected with your pairing code. Check that it is showing these exact
-								symbols, then approve. Your vault has not been sent yet.
-							</Trans>
-						</p>
-						<SasDisplay digits={approval.sas} emoji={approval.sasEmoji} />
-						{approval.label && (
-							// The label is chosen by whoever is joining, so it is context, not evidence. Said
-							// plainly here rather than left to be read as confirmation.
-							<p className="text-center text-xs text-muted-foreground">
+						{!paired && (
+							<p className="text-xs text-muted-foreground">
 								<Trans>
-									It calls itself "{approval.label}". Only the symbols above prove who it is.
+									Open Bramble on your other device and scan the code, or paste it there.
 								</Trans>
 							</p>
 						)}
-						<div className="flex justify-end gap-2">
-							<Button variant="destructiveOutline" size="sm" onClick={() => answerApproval(false)}>
-								<Trans>Reject</Trans>
+
+						<div className="flex flex-wrap items-center gap-2">
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={beginAddDevice}
+								disabled={notSyncing}
+								className="gap-1.5"
+							>
+								<Plus className="w-3.5 h-3.5" /> <Trans>Add another device</Trans>
 							</Button>
-							<Button variant="secondary" size="sm" onClick={() => answerApproval(true)}>
-								<Trans>They match, approve</Trans>
+							<InlineConfirm
+								variant="destructiveOutline"
+								armed={confirmDisconnect}
+								onArmedChange={setConfirmDisconnect}
+								confirmLabel={<Trans>Confirm disconnect</Trans>}
+								onConfirm={disconnect}
+								trigger={(arm) => (
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={arm}
+										className="gap-1.5 text-muted-foreground"
+									>
+										<Unplug className="w-3.5 h-3.5" /> <Trans>Disconnect</Trans>
+									</Button>
+								)}
+							/>
+						</div>
+						{confirmDisconnect && (
+							<p className="text-xs text-muted-foreground">
+								<Trans>
+									Stops syncing this device and keeps it offline-only. Your entries stay here; your
+									other devices aren't affected.
+								</Trans>
+							</p>
+						)}
+					</>
+				) : (
+					// Not in a group yet: onboarding (create a group, or join an existing one).
+					<>
+						<Row
+							icon={<Wifi className="w-4 h-4 text-primary" />}
+							title={t`Add a device`}
+							subtitle={t`Generate a one-time pairing code and listen for a device to join. No vault secrets in the code.`}
+						>
+							<Button variant="secondary" size="sm" onClick={beginAddDevice}>
+								<Trans>Add a device</Trans>
+							</Button>
+						</Row>
+
+						{/* Joining another group when a vault already exists means adding a parallel vault,
+					    which only per-vault-sync hosts (the extension) support; on single-active mobile
+					    the join path is the first-run setup, so don't point there from here. */}
+						{canPerVaultSync && (
+							<p className="ml-12 text-xs text-muted-foreground">
+								<Trans>
+									Have a pairing code from another device? Add a vault and choose "Join a device" to
+									sync its vault onto this one. Once enrolled, devices sync automatically in the
+									background while unlocked, no button or window needed.
+								</Trans>
+							</p>
+						)}
+					</>
+				)}
+
+				<Modal open={pwRequiredOpen} onClose={() => setPwRequiredOpen(false)} className="max-w-sm">
+					<div className="p-5 space-y-4">
+						<h2 className="text-base font-medium">
+							<Trans>Adding a device needs a master password</Trans>
+						</h2>
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								Pairing gives the new device your vault, so it has to be authorized with your master
+								password. Turn one on in Security, then come back to add the device.
+							</Trans>
+						</p>
+						<div className="flex justify-end gap-2">
+							<Button variant="secondary" size="sm" onClick={() => setPwRequiredOpen(false)}>
+								<Trans>Cancel</Trans>
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={() => {
+									setPwRequiredOpen(false);
+									void navigate({ to: "/settings", search: { tab: "security" } });
+								}}
+							>
+								<Trans>Turn on master password</Trans>
 							</Button>
 						</div>
 					</div>
-				)}
-			</Modal>
+				</Modal>
 
-			<AdvancedDisclosure className="space-y-5">
-				<div className="space-y-1.5">
-					<TextField
-						label={t`Nostr relay URL`}
-						value={relayUrl}
-						onChange={(e) => onRelayChange(e.target.value)}
-					/>
-					<p className="text-xs text-muted-foreground">
-						<Trans>
-							The signaling relay that introduces devices. Defaults to the hosted relay; point it at
-							your own or any public Nostr relay.
-						</Trans>
-					</p>
-				</div>
-				<div className="space-y-1.5">
-					<TextField
-						label={t`TURN / ICE servers URL`}
-						value={iceUrl}
-						onChange={(e) => onIceChange(e.target.value)}
-					/>
-					<p className="text-xs text-muted-foreground">
-						<Trans>
-							An endpoint that returns your own ICE servers as JSON. Defaults to the relay's.
-						</Trans>
-					</p>
-				</div>
-			</AdvancedDisclosure>
-		</Section>
+				<Modal
+					open={pwGateOpen}
+					onClose={() => {
+						setPwGateOpen(false);
+						setGatePassword("");
+					}}
+					className="max-w-sm"
+				>
+					<form
+						className="p-5 space-y-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							void confirmGate();
+						}}
+					>
+						<h2 className="text-base font-medium">
+							<Trans>Confirm it's you</Trans>
+						</h2>
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								Enter your master password to authorize the new device. This proves the request came
+								from you, not just a device that was already unlocked.
+							</Trans>
+						</p>
+						<PasswordField
+							label={t`Master password`}
+							value={gatePassword}
+							autoFocus
+							onChange={(e) => {
+								setGatePassword(e.target.value);
+								setGateError(null);
+							}}
+							error={gateError ?? undefined}
+						/>
+						<div className="flex justify-end gap-2">
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={() => {
+									setPwGateOpen(false);
+									setGatePassword("");
+								}}
+							>
+								<Trans>Cancel</Trans>
+							</Button>
+							<Button
+								type="submit"
+								variant="secondary"
+								size="sm"
+								disabled={!gatePassword || gateBusy}
+							>
+								<Trans>Continue</Trans>
+							</Button>
+						</div>
+					</form>
+				</Modal>
+
+				<Modal
+					open={pairingCode !== null}
+					onClose={closeInvite}
+					backdropClassName="bg-black/90"
+					className="max-w-lg"
+				>
+					{pairingCode !== null && (
+						<div className="p-5 space-y-4">
+							<div className="flex items-center justify-between">
+								<h2 className="text-base font-medium">
+									<Trans>Add a device</Trans>
+								</h2>
+								<Button
+									variant="link"
+									size="none"
+									onClick={closeInvite}
+									aria-label={t`Close`}
+									className="transition-colors"
+								>
+									<X className="w-4 h-4" />
+								</Button>
+							</div>
+							{inviteError !== null ? (
+								// A device tried and it didn't work. The invite is spent, so the code must go: a
+								// QR that can no longer pair is worse than none, because it just gets scanned again.
+								<>
+									<p className="text-sm">
+										<Trans>Pairing didn't complete.</Trans>
+									</p>
+									<p className="text-xs text-muted-foreground">{inviteError}</p>
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() => {
+											setPairingCode(null);
+											beginAddDevice();
+										}}
+									>
+										<Trans>Generate a new code</Trans>
+									</Button>
+								</>
+							) : inviteExpired ? (
+								// Expired: hide the code outright rather than leaving a dead one on screen to be
+								// photographed. The invite is already dead on the host side (its own timer).
+								<>
+									<p className="text-sm">
+										<Trans>This code has expired.</Trans>
+									</p>
+									<p className="text-xs text-muted-foreground">
+										<Trans>
+											Codes are short-lived on purpose. Generate a new one when your other device is
+											ready to scan it.
+										</Trans>
+									</p>
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() => {
+											setPairingCode(null);
+											beginAddDevice();
+										}}
+									>
+										<Trans>Generate a new code</Trans>
+									</Button>
+								</>
+							) : (
+								<>
+									<p className="text-xs text-muted-foreground">
+										<Trans>
+											Scan this on your other device, or copy the code below. Keep it private:
+											anyone who sees it while this window is open could try to join. You'll confirm
+											a matching number on both devices before anything is sent.
+										</Trans>
+									</p>
+									{/* A failed attempt that did NOT spend the code, so it sits alongside rather
+								    than replacing it. */}
+									{attemptNote !== null && <p className="text-xs text-warning">{attemptNote}</p>}
+									<div className="rounded-xl bg-white p-4">
+										<QRCodeSVG
+											value={pairingCode}
+											size={320}
+											marginSize={2}
+											className="h-auto w-full"
+										/>
+									</div>
+									<div className="flex gap-2">
+										<input
+											readOnly
+											value={pairingCode}
+											onFocus={(e) => e.currentTarget.select()}
+											className={`${inputClass} flex-1`}
+										/>
+										<Button
+											variant="secondary"
+											size="sm"
+											onClick={() => void navigator.clipboard?.writeText(pairingCode)}
+										>
+											<Trans>Copy</Trans>
+										</Button>
+									</div>
+									{secondsLeft !== null && (
+										<p className="text-xs text-muted-foreground text-center">
+											<Trans>
+												Expires in {mmss(secondsLeft)} · keep this window open until pairing
+												finishes
+											</Trans>
+										</p>
+									)}
+								</>
+							)}
+						</div>
+					)}
+				</Modal>
+
+				{/* The approval gate. Stacked over the pairing modal, since the QR is still up when the
+			    joiner arrives. Not dismissable by backdrop: an accidental click must not be able to
+			    answer for the user, and closing it IS a refusal (the host treats it as one). */}
+				<Modal open={approval !== null} onClose={() => answerApproval(false)} className="max-w-md">
+					{approval !== null && (
+						<div className="p-5 space-y-4">
+							<h2 className="text-base font-medium">
+								<Trans>Is this your device?</Trans>
+							</h2>
+							<p className="text-xs text-muted-foreground">
+								<Trans>
+									A device has connected with your pairing code. Check that it is showing these
+									exact symbols, then approve. Your vault has not been sent yet.
+								</Trans>
+							</p>
+							<SasDisplay digits={approval.sas} emoji={approval.sasEmoji} />
+							{approval.label && (
+								// The label is chosen by whoever is joining, so it is context, not evidence. Said
+								// plainly here rather than left to be read as confirmation.
+								<p className="text-center text-xs text-muted-foreground">
+									<Trans>
+										It calls itself "{approval.label}". Only the symbols above prove who it is.
+									</Trans>
+								</p>
+							)}
+							<div className="flex justify-end gap-2">
+								<Button
+									variant="destructiveOutline"
+									size="sm"
+									onClick={() => answerApproval(false)}
+								>
+									<Trans>Reject</Trans>
+								</Button>
+								<Button variant="secondary" size="sm" onClick={() => answerApproval(true)}>
+									<Trans>They match, approve</Trans>
+								</Button>
+							</div>
+						</div>
+					)}
+				</Modal>
+
+				<AdvancedDisclosure className="space-y-5">
+					<div className="space-y-1.5">
+						<TextField
+							label={t`Nostr relay URL`}
+							value={relayUrl}
+							onChange={(e) => onRelayChange(e.target.value)}
+						/>
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								The signaling relay that introduces devices. Defaults to the hosted relay; point it
+								at your own or any public Nostr relay.
+							</Trans>
+						</p>
+					</div>
+					<div className="space-y-1.5">
+						<TextField
+							label={t`TURN / ICE servers URL`}
+							value={iceUrl}
+							onChange={(e) => onIceChange(e.target.value)}
+						/>
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								An endpoint that returns your own ICE servers as JSON. Defaults to the relay's.
+							</Trans>
+						</p>
+					</div>
+				</AdvancedDisclosure>
+			</Section>
+			{/* Not until the group has loaded, or it would show disabled for a moment. */}
+			{group !== undefined && <MailboxSection connected={inGroup} />}
+		</>
 	);
 }

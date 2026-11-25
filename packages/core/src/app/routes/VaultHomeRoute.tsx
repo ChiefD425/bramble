@@ -20,6 +20,7 @@ import { useCardSlot } from "../hooks/useCardSlot";
 import { useDefaultPasswordManager } from "../hooks/useDefaultPasswordManager";
 import { useDuplicateEntry } from "../hooks/useDuplicateEntry";
 import { useListAttach } from "../hooks/useListAttach";
+import { useMailboxExpiry } from "../hooks/useMailboxExpiry";
 import { useReviewNudge } from "../hooks/useReviewNudge";
 import { useSupportAsk } from "../hooks/useSupportAsk";
 import { useWhatsNew } from "../hooks/useWhatsNew";
@@ -100,15 +101,18 @@ export function VaultHomeRoute() {
 	const appUpdate = useAppUpdate();
 	const whatsNew = useWhatsNew();
 	const slot = useCardSlot();
-	// After the update and What's new, which may still be loading (undefined), on an open no card
-	// has been closed in.
-	const supportAsk = useSupportAsk(slot.closed || !!appUpdate || whatsNew !== null);
+	const mailboxExpiry = useMailboxExpiry();
+	// After the update, What's new (which may still be loading: undefined) and the mailbox's paid
+	// time, on an open no card has been closed in.
+	const supportAsk = useSupportAsk(
+		slot.closed || !!appUpdate || whatsNew !== null || !!mailboxExpiry,
+	);
 	// The store-review ask. Called unconditionally (it counts sessions whether or not it ever
 	// asks) and usually null. Entries are the whole vault, archived included: an archived entry
 	// is still one this person put there, which is all the signal is measuring. iOS's own prompt
 	// waits while the list has a card, may get one (the notes still loading), or closed one.
 	const reviewNudge = useReviewNudge(entries.length, {
-		hold: slot.closed || !!appUpdate || whatsNew !== null || !!supportAsk,
+		hold: slot.closed || !!appUpdate || whatsNew !== null || !!mailboxExpiry || !!supportAsk,
 	});
 	const defaultManager = useDefaultPasswordManager();
 	const offerDefaultManager =
@@ -216,6 +220,7 @@ export function VaultHomeRoute() {
 					cards={{
 						appUpdate,
 						whatsNew,
+						mailboxExpiry,
 						supportAsk,
 						reviewNudge,
 						defaultManager: offerDefaultManager

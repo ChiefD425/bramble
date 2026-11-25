@@ -16,6 +16,7 @@ import {
 	syncDevicePublicKey,
 	syncSigningPublicKey,
 } from "../sync/keys";
+import { mailboxDriver, mailboxVaultSwitching } from "../sync/mailbox";
 import {
 	ACTIVE_VAULT_KEY,
 	restartRosterSync,
@@ -172,6 +173,7 @@ export const desktopShell: ShellAdapter = {
 	// and a merge landing after the id moves but before the session stops writes into the
 	// wrong vault's file (issue #27). retargetActiveVault stops it and drains any merge.
 	setActiveVault: async (vaultId) => {
+		mailboxVaultSwitching(vaultId ?? null);
 		await retargetActiveVault(vaultId ?? null);
 		await (vaultId == null
 			? desktopStorage.removeMeta(ACTIVE_VAULT_KEY)
@@ -200,4 +202,6 @@ export const desktopShell: ShellAdapter = {
 	startEnrollJoin,
 	approveEnrollment,
 	getPendingEnrollApproval,
+	mailboxSyncNow: () => mailboxDriver.syncNow(),
+	mailboxMembers: () => mailboxDriver.members(),
 };

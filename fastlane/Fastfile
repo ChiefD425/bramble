@@ -101,9 +101,12 @@ end
 
 platform :ios do
   # Web bundle + shared Rust libs (installs ios/App/VaultCryptoFFI/) + Capacitor sync.
-  # Absolute cd so it works regardless of fastlane's working directory.
+  # Absolute cd so it works regardless of fastlane's working directory. BRAMBLE_SANDBOX=1 builds
+  # the web bundle with `--mode sandbox` (the sandbox mailbox and website; protocol.ts), for a test
+  # build only.
   private_lane :prepare do
-    sh("cd '#{REPO}' && pnpm core:build && pnpm ffi:build:ios && " \
+    mode = ENV["BRAMBLE_SANDBOX"] == "1" ? " --mode sandbox" : ""
+    sh("cd '#{REPO}' && pnpm core:build#{mode} && pnpm ffi:build:ios && " \
        "cd clients/mobile && npx cap sync ios")
   end
 

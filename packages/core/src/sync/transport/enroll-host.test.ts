@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { base64ToBytes, bytesToBase64 } from "../../util/bytes";
 import { decodeVaultBlob, findRecoverySlots } from "../../vault-format";
-import { encodeEnrollmentBundle, INVITE_TTL_MS, type WireRecoverySlot } from "../enrollment";
+import {
+	decodeEnrollmentBundle,
+	encodeEnrollmentBundle,
+	INVITE_TTL_MS,
+	type WireRecoverySlot,
+} from "../enrollment";
 import { emptyEntriesPayload } from "../entries-payload";
 import { pairingSas } from "../pairing-sas";
 import { addDevice, emptyRoster, type RosterEntry } from "../roster";
@@ -355,6 +360,77 @@ describe("invite lifecycle — single use + bounded waits", () => {
 		vekB64: b64(32),
 		approve: async () => true,
 		...over,
+	});
+
+	const admit = async (entry: RosterEntry): Promise<RosterEntry> => ({
+		...entry,
+		admission: { by: "inviter", sig: "s", stableSig: "st" },
+	});
+
+	it("refuses a removed device before asking, when this inviter can't re-admit it", async () => {
+		const approve = vi.fn(async () => true);
+		const onEnrollFailed = vi.fn();
+		const onEnrolled = vi.fn();
+		const roster = { ...emptyRoster(), revokedKeys: ["joinerpub"] };
+		const handle = makeEnrollHandler(
+			"inviter",
+			hostOpts({ roster, approve, onEnrollFailed, onEnrolled }),
+			vi.fn(),
+		);
+		const peer = invitePeer("aaaaaaaa");
+		peer.push(JSON.stringify(ownEntry));
+		peer.push(RECEIPT);
+		await handle(peer.peer);
+		expect(peer.sent).toEqual([ENROLL_REJECTED]);
+		expect(approve).not.toHaveBeenCalled();
+		expect(onEnrolled).not.toHaveBeenCalled();
+		expect(String(onEnrollFailed.mock.calls[0]?.[0])).toMatch(/removed/i);
+	});
+
+	it("a password vault's inviter still re-admits a removed device", async () => {
+		const onEnrolled = vi.fn();
+		const roster = { ...emptyRoster(), revokedKeys: ["joinerpub"] };
+		const handle = makeEnrollHandler("inviter", hostOpts({ roster, admit, onEnrolled }), vi.fn());
+		const peer = invitePeer("aaaaaaaa");
+		peer.push(JSON.stringify(ownEntry));
+		peer.push(RECEIPT);
+		await handle(peer.peer);
+		expect(onEnrolled).toHaveBeenCalledOnce();
+	});
+
+	it("sends the joiner its own admitted entry, and reports that same entry", async () => {
+		const onEnrolled = vi.fn();
+		const handle = makeEnrollHandler("inviter", hostOpts({ admit, onEnrolled }), vi.fn());
+		const peer = invitePeer("aaaaaaaa");
+		peer.push(JSON.stringify(ownEntry));
+		peer.push(RECEIPT);
+		await handle(peer.peer);
+		const { roster } = decodeEnrollmentBundle(String(peer.sent[0]));
+		expect(roster.devices.find((d) => d.id === ownEntry.id)?.admission?.by).toBe("inviter");
+		expect(JSON.parse(onEnrolled.mock.calls[0]?.[0]).admission?.by).toBe("inviter");
+	});
+
+	it("sends nothing when the admission can't be signed", async () => {
+		const onEnrollFailed = vi.fn();
+		const onEnrolled = vi.fn();
+		const handle = makeEnrollHandler(
+			"inviter",
+			hostOpts({
+				admit: async () => {
+					throw new Error("no key");
+				},
+				onEnrollFailed,
+				onEnrolled,
+			}),
+			vi.fn(),
+		);
+		const peer = invitePeer("aaaaaaaa");
+		peer.push(JSON.stringify(ownEntry));
+		peer.push(RECEIPT);
+		await handle(peer.peer);
+		expect(peer.sent).toEqual([ENROLL_REJECTED]);
+		expect(onEnrolled).not.toHaveBeenCalled();
+		expect(onEnrollFailed).toHaveBeenCalledOnce();
 	});
 
 	it("serves the first peer and refuses a second one racing the same invite", async () => {

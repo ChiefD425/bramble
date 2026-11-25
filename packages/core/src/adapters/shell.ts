@@ -1,5 +1,6 @@
 import type { PasskeyCredential } from "../hooks/useVault";
 import type { EntriesPayload, RosterEntry, RosterPayload, WireRecoverySlot } from "../sync";
+import type { MailboxStatusRecord, MembersResponse } from "../sync/mailbox";
 import type { SubdomainMatchMode } from "./autofill";
 import type { HttpBodySource } from "./http";
 
@@ -250,6 +251,10 @@ export interface ShellAdapter {
 	syncSigningPublicKey?(): Promise<string>;
 	/** Ed25519-sign a canonical roster-entry string (see canonicalRosterEntry). Paired with syncSigningPublicKey. */
 	signRoster?(canonical: string): Promise<string>;
+	/** Run a mailbox round now; its status. Absent where the platform has no mailbox. */
+	mailboxSyncNow?(): Promise<MailboxStatusRecord["status"]>;
+	/** Each mailbox member's check-in day, or null when no mailbox engine runs. */
+	mailboxMembers?(): Promise<MembersResponse["members"] | null>;
 	/**
 	 * Look for a newer version of the app itself, and install it.
 	 *

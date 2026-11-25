@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { type Tombstone, TombstoneSchema } from "./entries-payload";
 import { type Hlc, HlcSchema, isFutureStamp } from "./hlc";
+import { SIG_KEY_RE } from "./mailbox/protocol";
 import { mergeReplicas, type ReplicaState, replicaFrom } from "./merge";
 
 /** One member device. `id` is the device's node id (the same id used in HLC stamps). */
@@ -31,7 +32,14 @@ export const RosterEntrySchema = z.object({
 	admissionKey: z.string().min(1).optional(),
 	/** Admission of a NON-initial device: the admitting member's id + its signature over this entry's
 	 * canonical. Absent for the initial enrolled set (bootstrapped via the PSK ceremony). */
-	admission: z.object({ by: z.string().min(1), sig: z.string().min(1) }).optional(),
+	admission: z
+		.object({
+			by: z.string().min(1),
+			sig: z.string().min(1),
+			/** The same admission over `canonicalAdmission`, which outlasts a re-stamp. */
+			stableSig: z.string().min(1).optional(),
+		})
+		.optional(),
 });
 export type RosterEntry = z.infer<typeof RosterEntrySchema>;
 
@@ -53,6 +61,30 @@ export function canonicalRosterEntry(entry: RosterEntry): string {
 	]);
 }
 
+/** What an admission's `stableSig` signs: the entry's identity and keys, without the stamp or its
+ * own admission key, so the admission still holds after the device re-stamps its entry. */
+export function canonicalAdmission(entry: RosterEntry): string {
+	return JSON.stringify([
+		"bramble/admission/v2",
+		entry.id,
+		entry.publicKey,
+		entry.sigKey ?? "",
+		entry.addedAt,
+	]);
+}
+
+/** Admit `entry` as member `by`: signed over both forms, so devices that predate the stable one
+ * still verify it. */
+export async function admitEntry(
+	entry: RosterEntry,
+	by: string,
+	sign: (message: string) => Promise<string>,
+): Promise<RosterEntry> {
+	const sig = await sign(canonicalRosterEntry(entry));
+	const stableSig = await sign(canonicalAdmission(entry));
+	return { ...entry, admission: { by, sig, stableSig } };
+}
+
 /** Attach this device's Ed25519 `sigKey` + `sig` to its own roster entry (Item A). The signature
  * covers the canonical form *including* the sigKey, so `sigKey` is set before signing. `sign` is the
  * host's Ed25519 signer over the canonical string. See docs/p2p-sync-revocation-hardening.md. */
@@ -69,6 +101,9 @@ export async function signRosterEntry(
 export const RosterPayloadSchema = z.object({
 	devices: z.array(RosterEntrySchema),
 	revoked: z.array(TombstoneSchema),
+	/** Keys of revoked devices, sorted; absent when none. An entry carrying one is dead unless an
+	 * admission brought it back, so a revoked device can't return under a new id. */
+	revokedKeys: z.array(z.string().min(1)).optional(),
 });
 export type RosterPayload = z.infer<typeof RosterPayloadSchema>;
 
@@ -111,9 +146,44 @@ function toPayload(state: ReplicaState<RosterEntry>): RosterPayload {
 	};
 }
 
+const keysOf = (entry: RosterEntry) => [entry.publicKey, ...(entry.sigKey ? [entry.sigKey] : [])];
+
+/** Whether two entries carry a key in common: the same device, whatever their ids. */
+export function sharesKey(a: RosterEntry, b: RosterEntry): boolean {
+	const keys = new Set(keysOf(a));
+	return keysOf(b).some((key) => keys.has(key));
+}
+
+/** Whether an entry carries a revoked device's key with no admission to bring it back. */
+function onRevokedKey(entry: RosterEntry, revoked: ReadonlySet<string>): boolean {
+	return entry.admission === undefined && keysOf(entry).some((key) => revoked.has(key));
+}
+
+/** Whether an entry carries a revoked device's key, admitted or not: a joiner only an admission
+ * signed by this group can seat. */
+export function carriesRevokedKey(roster: RosterPayload, entry: RosterEntry): boolean {
+	const gone = new Set(roster.revokedKeys ?? []);
+	return keysOf(entry).some((key) => gone.has(key));
+}
+
+/** `roster` with `keys` revoked: its entries carrying one dropped, the field absent when empty. */
+function withRevokedKeys(roster: RosterPayload, keys: string[]): RosterPayload {
+	if (keys.length === 0) return roster;
+	const revokedKeys = [...new Set(keys)].sort();
+	const gone = new Set(revokedKeys);
+	return {
+		devices: roster.devices.filter((d) => !onRevokedKey(d, gone)),
+		revoked: roster.revoked,
+		revokedKeys,
+	};
+}
+
 /** Merge two rosters. Same convergence guarantees as the entries merge. */
 export function mergeRosters(a: RosterPayload, b: RosterPayload): RosterPayload {
-	return toPayload(mergeReplicas(toReplica(a), toReplica(b)));
+	return withRevokedKeys(toPayload(mergeReplicas(toReplica(a), toReplica(b))), [
+		...(a.revokedKeys ?? []),
+		...(b.revokedKeys ?? []),
+	]);
 }
 
 /** Drop device entries and tombstones stamped implausibly far in the future before merging a
@@ -127,6 +197,7 @@ export function sanitizeRemoteRoster(
 	return {
 		devices: roster.devices.filter((d) => !isFutureStamp(d.hlc, now)),
 		revoked: roster.revoked.filter((t) => !isFutureStamp(t.hlc, now)),
+		...(roster.revokedKeys ? { revokedKeys: roster.revokedKeys } : {}),
 	};
 }
 
@@ -168,29 +239,60 @@ export function verifyRemoteRoster(
 	const anchored = new Map<string, string>(); // known id -> its established (first-seen) sigKey
 	for (const d of local.devices) if (d.sigKey) anchored.set(d.id, d.sigKey);
 	const tombstoned = new Set(local.revoked.map((t) => t.id)); // revoked ids stay dead (B1)
-	const devices = remote.devices.filter((entry) => {
-		if (tombstoned.has(entry.id)) return false;
+	const known = new Map(local.devices.map((d) => [d.id, d]));
+	const devices = remote.devices.flatMap((entry): RosterEntry[] => {
+		if (tombstoned.has(entry.id)) return [];
 		const anchor = anchored.get(entry.id);
 		if (anchor !== undefined) {
 			// Established signing device: same key + valid signature (no swap, no downgrade).
-			return entry.sigKey === anchor && entry.sig !== undefined && isSigValid(entry);
+			if (!(entry.sigKey === anchor && entry.sig !== undefined && isSigValid(entry))) return [];
+			// The signature doesn't cover the admission, and an admission keeps a revoked key alive:
+			// a changed one, or one on changed keys, counts only if it verifies. One that doesn't is
+			// dropped, never swapped for the old, so every device ends with the same entry.
+			const had = known.get(entry.id);
+			if (
+				had &&
+				sameAdmission(entry.admission, had.admission) &&
+				canonicalAdmission(entry) === canonicalAdmission(had)
+			)
+				return [entry];
+			if (entry.admission !== undefined && isAdmissionValid(entry)) return [entry];
+			const { admission: _changed, ...rest } = entry;
+			return [rest];
 		}
 		// Brand-new id: self-sign + admission gates. Verify-if-present in phase 1; the `require` flags
 		// (from core flags.json) flip enforcement on in phase 2.
 		if (entry.sigKey !== undefined && entry.sig !== undefined) {
-			if (!isSigValid(entry)) return false;
+			if (!isSigValid(entry)) return [];
 		} else if (require.signatures) {
-			return false; // phase-2: reject an unsigned new id
+			return []; // phase-2: reject an unsigned new id
 		}
-		if (entry.admission !== undefined) return isAdmissionValid(entry);
-		return !require.admission; // phase-1: tolerate; phase-2: reject an unadmitted new id
+		if (entry.admission !== undefined) return isAdmissionValid(entry) ? [entry] : [];
+		// phase-1: tolerate; phase-2: reject an unadmitted new id
+		return require.admission ? [] : [entry];
 	});
-	return { devices, revoked: remote.revoked };
+	return {
+		devices,
+		revoked: remote.revoked,
+		...(remote.revokedKeys ? { revokedKeys: remote.revokedKeys } : {}),
+	};
 }
+
+// A copy from before stable signatures is the same admission, or devices would part ways for good.
+const sameAdmission = (a: RosterEntry["admission"], b: RosterEntry["admission"]) =>
+	a?.by === b?.by &&
+	a?.sig === b?.sig &&
+	(!a?.stableSig || !b?.stableSig || a.stableSig === b.stableSig);
 
 /** Enroll (or re-enroll) a device. The entry must carry a freshly stamped hlc. */
 export function addDevice(roster: RosterPayload, device: RosterEntry): RosterPayload {
 	return mergeRosters(roster, { devices: [device], revoked: [] });
+}
+
+/** Keys this roster revoked and no active device holds again. */
+export function removedKeys(roster: RosterPayload): string[] {
+	const held = new Set(activeDevices(roster).flatMap(keysOf));
+	return (roster.revokedKeys ?? []).filter((key) => !held.has(key));
 }
 
 /** Whether a joiner's entry may be enrolled: a fresh id, or a member re-presenting its own key. A
@@ -201,14 +303,38 @@ export function mayEnroll(roster: RosterPayload, entry: RosterEntry): boolean {
 	return !held || held.publicKey === entry.publicKey;
 }
 
-/** Revoke a device. `hlc` must be a freshly stamped revocation stamp. */
+/** Revoke a device and its keys. `hlc` must be a freshly stamped revocation stamp. */
 export function revokeDevice(roster: RosterPayload, id: string, hlc: Hlc): RosterPayload {
-	return mergeRosters(roster, { devices: [], revoked: [{ id, hlc }] });
+	const target = roster.devices.find((d) => d.id === id);
+	const keys = target ? keysOf(target) : [];
+	return mergeRosters(roster, {
+		devices: [],
+		revoked: [{ id, hlc }],
+		...(keys.length > 0 ? { revokedKeys: keys } : {}),
+	});
+}
+
+/** The other active devices that removing `id` takes with it: they carry its keys, unadmitted. */
+export function alsoRemoved(roster: RosterPayload, id: string): RosterEntry[] {
+	const active = activeDevices(roster);
+	const target = active.find((d) => d.id === id);
+	if (!target) return [];
+	const keys = new Set(keysOf(target));
+	return active.filter((d) => d.id !== id && onRevokedKey(d, keys));
 }
 
 /** The currently active member devices (not revoked). */
 export function activeDevices(roster: RosterPayload): RosterEntry[] {
-	return liveDevices(toReplica(roster));
+	const gone = new Set(roster.revokedKeys ?? []);
+	return liveDevices(toReplica(roster)).filter((d) => !onRevokedKey(d, gone));
+}
+
+/** Active devices' sigKeys, canonical and deduplicated: who a mailbox should list. */
+export function activeSigKeys(roster: RosterPayload): string[] {
+	const keys = activeDevices(roster).flatMap((d) =>
+		d.sigKey && SIG_KEY_RE.test(d.sigKey) ? [d.sigKey] : [],
+	);
+	return [...new Set(keys)];
 }
 
 /** True iff `id` is an active member (used to gate roster-auth handshakes). */

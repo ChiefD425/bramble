@@ -3,6 +3,8 @@
 import { bodyToBlob, type HttpBodySource } from "@core/adapters/http";
 import type { OptionsScreen, PopOutHandoff, ShellAdapter } from "@core/adapters/shell";
 import type { Target } from "@core/flags";
+import { MailboxStatusRecordSchema } from "@core/sync/mailbox";
+import { MembersResponseSchema } from "@core/sync/mailbox/protocol";
 import { loginHosts } from "@core/vault/autofill-index";
 import { UNLOCK_RP_ID } from "@core/vault/reserved-rp";
 import { setWebauthnInterceptionPauser, setWebauthnRpId } from "@core/vault/webauthn-ceremony";
@@ -353,6 +355,20 @@ export const extensionShell: ShellAdapter = {
 		if (!res.ok) throw new Error(res.error ?? "sync host error");
 		if (typeof res.data !== "string") throw new Error("roster signature response malformed");
 		return res.data;
+	},
+	async mailboxSyncNow() {
+		const res = (await api.runtime.sendMessage({ type: "MAILBOX_SYNC_NOW" })) as
+			| { ok: boolean; data?: unknown; error?: string }
+			| undefined;
+		if (!res?.ok) throw new Error(res?.error ?? "no response from the background");
+		return MailboxStatusRecordSchema.shape.status.parse(res.data);
+	},
+	async mailboxMembers() {
+		const res = (await api.runtime.sendMessage({ type: "MAILBOX_MEMBERS" })) as
+			| { ok: boolean; data?: unknown; error?: string }
+			| undefined;
+		if (!res?.ok) throw new Error(res?.error ?? "no response from the background");
+		return res.data == null ? null : MembersResponseSchema.shape.members.parse(res.data);
 	},
 	async syncAdmissionPublicKey(password: string, saltB64: string) {
 		const res = (await api.runtime.sendMessage({

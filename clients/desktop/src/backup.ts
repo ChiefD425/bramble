@@ -41,7 +41,8 @@ import { desktopCrypto } from "./adapters/crypto";
 import { desktopFiles } from "./adapters/files";
 import { desktopStorage } from "./adapters/storage";
 
-const TICK_EVENT = "backup://tick";
+/** The shell's 5-minute tick (backup.rs), which the mailbox runs on too. */
+export const TICK_EVENT = "backup://tick";
 
 const newId = () => globalThis.crypto.randomUUID();
 

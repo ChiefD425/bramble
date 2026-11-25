@@ -160,6 +160,13 @@ const notifyMeta = (key: string) => {
 	for (const cb of metaListeners.get(key) ?? []) cb();
 };
 
+/** Told after a vault's file is written, by a local edit or a merge alike: the mailbox's cue. */
+const vaultWritten = new Set<(vaultId: string) => void>();
+export function onVaultWritten(cb: (vaultId: string) => void): () => void {
+	vaultWritten.add(cb);
+	return () => vaultWritten.delete(cb);
+}
+
 export const mobileStorage: StorageAdapter = {
 	async hasVaultHandle(vaultId) {
 		await ensureMigrated();
@@ -204,6 +211,7 @@ export const mobileStorage: StorageAdapter = {
 			});
 		}
 		await Filesystem.writeFile({ path, directory: DIR, data: bytesToBase64(blob) });
+		for (const cb of vaultWritten) cb(targetId);
 	},
 	/** The recovery snapshot's bytes, without touching the live file. See StorageAdapter. */
 	async readVaultBackup(vaultId) {

@@ -30,6 +30,12 @@ vi.mock("../../../../hooks/useVault", () => ({
 	}),
 }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => h.navigate }));
+// The mailbox card has its own tests, and needs providers these don't mount.
+vi.mock("./MailboxSection", () => ({
+	MailboxSection: () => null,
+	MailboxCheckIn: () => null,
+	useMailboxCheckIns: () => null,
+}));
 vi.mock("../../../../hooks/useVaultRegistry", () => ({
 	useVaultRegistry: () => ({ syncKey: (k: string) => k }),
 }));
@@ -419,5 +425,31 @@ describe("device names", () => {
 		mount({ group: groupOf("me", "peer"), synced: access });
 		expect(await screen.findByText("peer")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: /^Rename/ })).toBeNull();
+	});
+});
+
+describe("removing a device", () => {
+	const keyed = (id: string, sigKey: string) => ({ ...device(id), sigKey, sig: "s" });
+	const group = {
+		groupKey: "k",
+		roster: {
+			devices: [device("me"), keyed("phone", "P"), keyed("phone2", "P"), keyed("tablet", "T")],
+			revoked: [],
+		},
+	};
+
+	it("names another entry of the same device, which goes with it", async () => {
+		mount({ group });
+		fireEvent.click(await screen.findByRole("button", { name: "Remove phone" }));
+		expect(
+			await screen.findByText("This also removes phone2, which uses the same keys."),
+		).toBeTruthy();
+	});
+
+	it("says nothing extra for a device alone on its keys", async () => {
+		mount({ group });
+		fireEvent.click(await screen.findByRole("button", { name: "Remove tablet" }));
+		await screen.findByRole("button", { name: "Remove" });
+		expect(screen.queryByText(/This also removes/)).toBeNull();
 	});
 });

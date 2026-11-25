@@ -29,10 +29,10 @@ async function device() {
 	const port: MailboxCryptoPort = {
 		mailboxId: async () => MAILBOX,
 		mailboxSeal: vi.fn(async (_g: string, aad: string, plaintext: string) =>
-			bytesToBase64(enc.encode(JSON.stringify({ aad, plaintext }))),
+			bytesToBase64(new Uint8Array([1, ...enc.encode(JSON.stringify({ aad, plaintext }))])),
 		),
 		mailboxOpen: vi.fn(async (_g: string, aad: string, sealedB64: string) => {
-			const opened = JSON.parse(atob(sealedB64)) as { aad: string; plaintext: string };
+			const opened = JSON.parse(atob(sealedB64).slice(1)) as { aad: string; plaintext: string };
 			if (opened.aad !== aad) throw new Error("mailbox open failed");
 			return opened.plaintext;
 		}),
@@ -133,7 +133,10 @@ describe("message envelope", () => {
 
 	it("refuses sealed bytes that do not open as unopenable", async () => {
 		const { port, sigKey } = await device();
-		const garbage = new TextEncoder().encode(JSON.stringify({ aad: "wrong", plaintext: "x" }));
+		const garbage = new Uint8Array([
+			1,
+			...new TextEncoder().encode(JSON.stringify({ aad: "wrong", plaintext: "x" })),
+		]);
 		const messageId = "I".repeat(22);
 		const sig = await port.sign(
 			signedText({ mailboxId: MAILBOX, messageId, sealedSha256: await sha256Hex(garbage) }),
@@ -145,6 +148,23 @@ describe("message envelope", () => {
 		expect(await reason(openMessage(port, { ...fields(sigKey, messageId), body }))).toBe(
 			"unopenable",
 		);
+	});
+
+	it("holds a signed body sealed under a newer version as unsupported", async () => {
+		const { port, sigKey } = await device();
+		const newer = new Uint8Array([
+			2,
+			...new TextEncoder().encode("a future seal format, long enough to reach the version check"),
+		]);
+		const messageId = "I".repeat(22);
+		const sig = await port.sign(
+			signedText({ mailboxId: MAILBOX, messageId, sealedSha256: await sha256Hex(newer) }),
+		);
+		const body = new Uint8Array([...Uint8Array.from(atob(sig), (c) => c.charCodeAt(0)), ...newer]);
+		expect(await reason(openMessage(port, { ...fields(sigKey, messageId), body }))).toBe(
+			"unsupported",
+		);
+		expect(port.mailboxOpen).not.toHaveBeenCalled();
 	});
 
 	it("rethrows a failure that is not the message's fault, such as a locked vault", async () => {

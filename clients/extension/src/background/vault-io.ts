@@ -7,7 +7,13 @@ import {
 	encodeEntriesPayload,
 } from "@core/sync";
 import { base64ToBytes, bytesToBase64 } from "@core/util/bytes";
-import { decodeVaultBlob, type EncryptedEntry, type VaultBlob } from "@core/vault-format";
+import { withVaultWriteLock } from "@core/vault/write-lock";
+import {
+	decodeVaultBlob,
+	type EncryptedEntry,
+	encodeVaultBlob,
+	type VaultBlob,
+} from "@core/vault-format";
 import { api } from "../platform-api";
 import { extensionStorage } from "../storage";
 import { sendToOffscreen } from "./offscreen-client";
@@ -26,6 +32,26 @@ export async function readAndDecodeVault(vaultId?: string): Promise<VaultBlob> {
  * is always writable headless, so the write always goes straight through. */
 export async function writeVault(blob: Uint8Array, vaultId?: string): Promise<void> {
 	await extensionStorage.writeVaultBlob(blob, vaultId);
+}
+
+/** Read a vault, change its entries and write it back as one step under the vault write lock, so
+ * no other writer's save, in a view or in this worker, lands between the read and the write. */
+export async function changeVaultEntries(
+	vaultId: string,
+	mutate: (entries: EncryptedEntry[], payload: EntriesPayload) => Promise<EncryptedEntry[]>,
+): Promise<void> {
+	await withVaultWriteLock(async () => {
+		const blob = await readAndDecodeVault(vaultId);
+		const outer = await reencryptOuterWithEntryChange(blob, mutate, vaultId);
+		await writeVault(
+			encodeVaultBlob({
+				slots: blob.slots,
+				entriesIv: outer.entriesIv,
+				entriesCiphertext: outer.entriesCiphertext,
+			}),
+			vaultId,
+		);
+	});
 }
 
 /** Decrypt, mutate, re-encrypt the outer entry list via offscreen so plaintext never leaves it.

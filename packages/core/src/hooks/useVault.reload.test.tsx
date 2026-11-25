@@ -42,6 +42,9 @@ function makePlatform(initial: EntriesPayload) {
 	let onChange: (() => void) | undefined;
 	let gate: Promise<void> | undefined;
 	let reached: (() => void) | undefined;
+	let hold: Promise<void> | undefined;
+	let readReached: (() => void) | undefined;
+	let onPublish: (() => void) | undefined;
 	let disk = JSON.stringify(initial);
 	const platform = {
 		target: "chromium",
@@ -64,7 +67,16 @@ function makePlatform(initial: EntriesPayload) {
 				return () => {};
 			},
 			unwrapVekPassword: async () => true,
-			decryptWithVek: async () => disk,
+			decryptWithVek: async () => {
+				const read = disk;
+				const h = hold;
+				hold = undefined;
+				if (h) {
+					readReached?.();
+					await h;
+				}
+				return read;
+			},
 			encryptWithVek: async (plaintext: string) => {
 				disk = plaintext;
 				return { iv: "AAAAAAAAAAAAAAAA", ciphertext: "AA==" };
@@ -82,6 +94,8 @@ function makePlatform(initial: EntriesPayload) {
 		autofill: {
 			clearIndex: async () => {},
 			setIndex: async () => {
+				onPublish?.();
+				onPublish = undefined;
 				const g = gate;
 				gate = undefined;
 				if (g) {
@@ -115,6 +129,26 @@ function makePlatform(initial: EntriesPayload) {
 			onChange?.();
 			await parked;
 			return release;
+		},
+		/** Fire an external change and resolve once its reload has read the disk and is held there.
+		 * Releasing it resolves when the reload publishes its index. */
+		externalChangeReading: async () => {
+			let release!: () => void;
+			hold = new Promise<void>((r) => {
+				release = r;
+			});
+			const read = new Promise<void>((r) => {
+				readReached = r;
+			});
+			onChange?.();
+			await read;
+			return () => {
+				const published = new Promise<void>((r) => {
+					onPublish = r;
+				});
+				release();
+				return published;
+			};
 		},
 	};
 }
@@ -170,4 +204,16 @@ it("a write during a reload doesn't seal the old content under the new stamp", a
 	);
 	const [e] = p.disk().entries;
 	expect(JSON.parse(e!.ciphertext.slice(3)).password).toBe("phone-pw");
+});
+
+// The reload read the disk before the save; showing what it read would hide the saved entry
+// until some other context writes again.
+it("a save that lands while a reload reads the disk stays in view", async () => {
+	const p = makePlatform({ entries: [LAPTOP], tombstones: [] });
+	const m = await open(p.platform);
+	const release = await p.externalChangeReading();
+	await m.actions().addEntry({ type: "note", name: "mine", notes: "" } as never);
+	await release();
+	await waitFor(() => expect(m.state().entries.map((e) => e.name)).toContain("mine"));
+	expect(p.disk().entries).toHaveLength(2);
 });

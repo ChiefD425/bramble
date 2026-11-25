@@ -1,4 +1,4 @@
-import { canonicalRosterEntry, type RosterEntry } from "@core/sync/roster";
+import { canonicalAdmission, canonicalRosterEntry, type RosterEntry } from "@core/sync/roster";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The enroll host must add a freshly joined device to the local roster itself, admission-signing it
@@ -165,13 +165,17 @@ describe("host-side roster add on enroll", () => {
 	it("admission-signs the joiner and writes it into the vault's roster", async () => {
 		const mod = await loadTransport();
 		await invite(mod, { password: "hunter2", saltB64: "SALT", adminId: "inviter-id" });
-		await enrolled(JSON.stringify(JOINER));
+		const { admit } = h.enrollOpts as unknown as {
+			admit: (entry: RosterEntry) => Promise<RosterEntry>;
+		};
+		await enrolled(JSON.stringify(await admit(JOINER)));
 
 		// The admission this produces must be what a peer recomputes and verifies: the admitter's
 		// id, and a signature over the joiner's canonical entry.
 		expect(joiner()?.admission).toEqual({
 			by: "inviter-id",
 			sig: `sig(${canonicalRosterEntry(JOINER)})`,
+			stableSig: `sig(${canonicalAdmission(JOINER)})`,
 		});
 	});
 
@@ -180,6 +184,7 @@ describe("host-side roster add on enroll", () => {
 		await invite(mod);
 		await enrolled(JSON.stringify(JOINER));
 
+		expect(h.enrollOpts?.admit).toBeUndefined();
 		expect(joiner()).toBeDefined();
 		expect(joiner()?.admission).toBeUndefined();
 	});

@@ -44,7 +44,7 @@ export async function storeUpload(
 	const counter = capped(declared);
 	const body = c.req.raw.body ?? new Response(new Uint8Array()).body!;
 	try {
-		await deps.bodies.put(key, body.pipeThrough(counter.stream), { sha256 });
+		await deps.bodies.put(key, body.pipeThrough(counter.stream), { sha256, size: declared });
 	} catch (err) {
 		if (err instanceof HashMismatchError) throw mismatch;
 		if (err instanceof TooLargeError) throw new HttpError(413, "too_large");

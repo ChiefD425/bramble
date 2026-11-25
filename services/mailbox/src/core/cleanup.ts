@@ -12,10 +12,32 @@ import {
 	blobWants,
 	deliveries,
 	expiryMarkers,
+	mailboxes,
 	members,
 	messages,
 } from "./schema.ts";
 import { chunk, IN_LIST } from "./sql.ts";
+
+/** A mailbox and all it holds, rows first: a crash leaves orphan bodies for the sweep, never rows
+ * with no body. Three queries. */
+export async function deleteMailbox(
+	{ db, bodies }: Pick<AppDeps, "db" | "bodies">,
+	mailboxId: string,
+): Promise<void> {
+	const held = await db
+		.select({ id: messages.id })
+		.from(messages)
+		.where(eq(messages.mailboxId, mailboxId));
+	const hashes = await db
+		.select({ hash: blobs.hash })
+		.from(blobs)
+		.where(eq(blobs.mailboxId, mailboxId));
+	await db.delete(mailboxes).where(eq(mailboxes.id, mailboxId));
+	await bodies.deleteMany([
+		...held.map((m) => messageKey(mailboxId, m.id)),
+		...hashes.map((b) => blobKey(mailboxId, b.hash)),
+	]);
+}
 
 export interface Candidates {
 	messages: string[];

@@ -17,11 +17,21 @@ const b64 = (n: number) => btoa(String.fromCharCode(...new Uint8Array(n).fill(7)
 // The on-disk byte layout is not under test; routing and ordering are. Held in a module variable
 // the mock reads, so each harness can seed the slots it wants.
 let blobForRead: unknown = null;
+/** Every blob written, before encoding, so a test can see which entries a write carried. */
+const encoded: { entriesCiphertext: Uint8Array }[] = [];
 
 vi.mock("../vault-format", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../vault-format")>()),
 	decodeVaultBlob: () => blobForRead,
-	encodeVaultBlob: () => new Uint8Array([1, 2, 3]),
+	encodeVaultBlob: (blob: { entriesCiphertext: Uint8Array }) => {
+		encoded.push(blob);
+		return new Uint8Array([1, 2, 3]);
+	},
+}));
+const ceremony = vi.hoisted(() => ({ create: null as null | (() => Promise<unknown>) }));
+vi.mock("../vault/webauthn-ceremony", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../vault/webauthn-ceremony")>()),
+	createPrfCredential: () => ceremony.create?.(),
 }));
 
 interface Harness {
@@ -101,6 +111,11 @@ function makePlatform(
 		}),
 		generateSalt: vi.fn(async () => b64(16)),
 		generateSlotId: vi.fn(async () => b64(16)),
+		wrapVekWebauthn: vi.fn(async () => ({
+			verifier: b64(32),
+			wrapIv: b64(12),
+			wrappedVek: b64(48),
+		})),
 		wrapVekPassword: vi.fn(async () => ({
 			verifier: b64(32),
 			wrapIv: b64(12),
@@ -118,8 +133,13 @@ function makePlatform(
 			return { iv: b64(12), ciphertext: b64(32) };
 		}),
 		decryptWithVek: vi.fn(async () => {
-			// After a verified write, the reload that follows fails: a display problem, not a rollback.
-			if (over.failReload && h.steps.includes("verified")) throw new Error("reload failed");
+			// After a verified write, the reload that follows fails once: a display problem, not a
+			// rollback. Only once, since a save reads the disk to merge into it, and a vault that can
+			// never be read again is a different failure (a save then refuses to write blind).
+			if (over.failReload && h.steps.includes("verified") && !h.steps.includes("reload-failed")) {
+				h.steps.push("reload-failed");
+				throw new Error("reload failed");
+			}
 			if (h.steps.includes("write")) h.steps.push("verified");
 			return JSON.stringify(over.payload ?? { entries: [], tombstones: [] });
 		}),
@@ -277,5 +297,70 @@ describe("rotateSecret", () => {
 
 		expect(h.rotated).toBe(0);
 		expect(h.writes).toBe(0);
+	});
+});
+
+// A write that starts from an earlier read must not put that read back over what another view or a
+// sync saved meanwhile (docs/mailbox-service.md).
+describe("writes that start from an earlier read", () => {
+	/** The blob as it is after another writer saved an entry: other entries ciphertext. */
+	const savedMeanwhile = () => ({
+		...(blobForRead as object),
+		entriesCiphertext: new Uint8Array(32).fill(9),
+	});
+
+	it("registering a security key keeps an entry saved during the ceremony", async () => {
+		const h = makePlatform();
+		const get = await actions(h);
+		const later = savedMeanwhile();
+		ceremony.create = async () => {
+			blobForRead = later;
+			return {
+				credentialId: new Uint8Array(16).fill(1),
+				salt: new Uint8Array(32).fill(2),
+				hmacSecret: new Uint8Array(32).fill(3),
+				synced: false,
+			};
+		};
+		await act(async () => {
+			await get().registerWebauthnKey("Key");
+		});
+		expect(encoded.at(-1)?.entriesCiphertext).toEqual(later.entriesCiphertext);
+	});
+
+	it("changing the password keeps an entry saved meanwhile", async () => {
+		const h = makePlatform();
+		const get = await actions(h);
+		const later = savedMeanwhile();
+		const wrap = h.platform.crypto.wrapVekPassword as unknown as ReturnType<typeof vi.fn>;
+		wrap.mockImplementationOnce(async () => {
+			blobForRead = later;
+			return { verifier: b64(32), wrapIv: b64(12), wrappedVek: b64(48) };
+		});
+		await act(async () => {
+			await get().changeMasterPassword("correct horse battery staple");
+		});
+		expect(encoded.at(-1)?.entriesCiphertext).toEqual(later.entriesCiphertext);
+	});
+
+	it("rotating the key keeps an entry saved meanwhile", async () => {
+		const entry = (id: string, wall: number) => ({
+			id,
+			wrappedDek: "w",
+			dekIv: "d",
+			ciphertext: id,
+			iv: "i",
+			hlc: { wall, counter: 0, node: "n" },
+		});
+		const payload = { entries: [entry("x", 1)], tombstones: [] as unknown[] };
+		const h = makePlatform({ payload });
+		const get = await actions(h);
+		// Another view saves y after this one loaded, and this one never reloads.
+		payload.entries.push(entry("y", 2));
+		await act(async () => {
+			await get().rotateSecret("hunter2");
+		});
+		const sealed = JSON.parse(h.sealed.at(-1) as string) as { entries: { id: string }[] };
+		expect(sealed.entries.map((e) => e.id).sort()).toEqual(["x", "y"]);
 	});
 });

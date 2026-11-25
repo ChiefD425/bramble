@@ -5,6 +5,7 @@
 
 import type { CryptoAdapter } from "../adapters/crypto";
 import type { EntriesBlobStore } from "../vault/entries-blob";
+import { withVaultWriteLock } from "../vault/write-lock";
 import type { EncryptedEntry } from "../vault-format";
 import { causalKey, type Versioned } from "./causal";
 import { COMBINE_CONCURRENT_EDITS, combinePayload } from "./combine";
@@ -50,6 +51,23 @@ export interface ApplyResult {
 	payload: EntriesPayload;
 	/** Whether the merge actually changed local state (false = remote was redundant). */
 	changed: boolean;
+	/** sanitizeRemoteEntriesPayload dropped something as future-dated. */
+	setAside: boolean;
+	/** Versions this call refused; not ones `rejected` already held. */
+	refused: EncryptedEntry[];
+}
+
+/** How many records a payload holds, for telling whether sanitizing dropped any. */
+function recordCount(p: EntriesPayload): number {
+	return (
+		p.entries.length +
+		p.tombstones.length +
+		(p.conflicts?.length ?? 0) +
+		(p.files?.length ?? 0) +
+		(p.fileTombstones?.length ?? 0) +
+		(p.fileCascades?.length ?? 0) +
+		Object.keys(p.settings ?? {}).length
+	);
 }
 
 function stampMap(items: { id: string; hlc: Hlc }[]): Map<string, Hlc> {
@@ -120,9 +138,10 @@ async function admitAndMerge(
 	local: EntriesPayload,
 	remote: EntriesPayload,
 	rejected: Set<string>,
-): Promise<{ admitted: EntriesPayload; merged: EntriesPayload }> {
+): Promise<{ admitted: EntriesPayload; merged: EntriesPayload; refused: EncryptedEntry[] }> {
 	const held = new Set([...local.entries, ...(local.conflicts ?? [])].map(entryVersionKey));
 	const opened = new Set<string>();
+	const refusedAll: EncryptedEntry[] = [];
 	let admitted = withoutRejected(remote, rejected);
 	for (;;) {
 		const merged = mergeEntriesPayload(local, admitted);
@@ -130,13 +149,14 @@ async function admitAndMerge(
 			const key = entryVersionKey(e);
 			return !held.has(key) && !opened.has(key);
 		});
-		if (fresh.length === 0) return { admitted, merged };
+		if (fresh.length === 0) return { admitted, merged, refused: refusedAll };
 		const verdicts = await port.openable(fresh);
 		const refused = fresh.filter((_, i) => !verdicts[i]);
 		for (const e of fresh.filter((_, i) => verdicts[i])) opened.add(entryVersionKey(e));
-		if (refused.length === 0) return { admitted, merged };
+		if (refused.length === 0) return { admitted, merged, refused: refusedAll };
 		console.warn(`[sync] refused ${refused.length} entries that don't decrypt in this vault`);
 		for (const e of refused) rejected.add(entryVersionKey(e));
+		refusedAll.push(...refused);
 		admitted = withoutRejected(admitted, rejected);
 	}
 }
@@ -170,8 +190,9 @@ export async function applyRemotePayload(
 	// A peer's payload is untrusted: drop any future-dated (poisoned) stamps before merge or
 	// witness, so a member can't pin an un-deletable entry by stamping it years ahead.
 	const safe = sanitizeRemoteEntriesPayload(remote);
+	const setAside = recordCount(safe) < recordCount(remote);
 	const local = await port.readLocal();
-	const { admitted, merged } = await admitAndMerge(port, local, safe, rejected);
+	const { admitted, merged, refused } = await admitAndMerge(port, local, safe, rejected);
 	const unchanged = { payload: merged, stamps: [] as Hlc[] };
 	const ids = combine && port.combineSiblings ? newSiblingIds(local, merged) : new Set<string>();
 	// Combining only tidies siblings the merge already kept, so a failure leaves them as they are.
@@ -188,7 +209,7 @@ export async function applyRemotePayload(
 		await port.witnessRemote([...remoteStamps(admitted), ...combined.stamps]);
 		await port.writeMerged(combined.payload);
 	}
-	return { payload: combined.payload, changed };
+	return { payload: combined.payload, changed, setAside, refused };
 }
 
 /**
@@ -206,10 +227,12 @@ export function createVaultSyncPort(deps: {
 		readLocal: () => deps.store.readEntriesPayload(),
 		witnessRemote: deps.witnessRemote,
 		async writeMerged(merged) {
-			// Into what's on disk now: another writer on this device may have saved meanwhile, and a
-			// merge loses nothing by being applied again.
-			const current = await deps.store.readEntriesPayload();
-			await deps.store.writeEntriesBlob(mergeEntriesPayload(current, merged));
+			// Into what's on disk now, under the vault write lock: a save can't land between this read
+			// and the write, and a merge loses nothing by being applied again.
+			await withVaultWriteLock(async () => {
+				const current = await deps.store.readEntriesPayload();
+				await deps.store.writeEntriesBlob(mergeEntriesPayload(current, merged));
+			});
 			await deps.onChanged?.();
 		},
 		combineSiblings: (payload, ids) => combinePayload(payload, deps.crypto, ids),

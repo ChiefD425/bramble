@@ -19,6 +19,7 @@ import { startAutoLock } from "./auto-lock";
 import { startBackupSchedule } from "./backup";
 import { forwardConsoleToLog } from "./log-forward";
 import { installNativeWebRtc } from "./native-webrtc";
+import { initMailbox } from "./sync/mailbox";
 import { initRosterSync } from "./sync/roster";
 import { onTotpHandoff } from "./totp-handoff";
 import { listenForMenuUpdateCheck, promptForUpdateOnLaunch } from "./updates-prompt";
@@ -57,6 +58,8 @@ function Root() {
 
 	// Ongoing sync follows the lock state from here on: it starts on unlock and stops on lock.
 	useEffect(() => initRosterSync(), []);
+	// And the mailbox, for the same vault (docs/mailbox-service.md).
+	useEffect(() => initMailbox(), []);
 
 	// Scheduled backups, driven by the shell's tick. Deliberately not gated on the lock state:
 	// a sealed blob needs no key to copy and the credentials are the OS's, so a vault's schedule

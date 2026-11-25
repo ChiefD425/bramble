@@ -27,6 +27,16 @@ export function blobDirFor(vaultId: string): string {
 	return `${BLOBS_ROOT}/${vaultId}`;
 }
 
+/** The plain path of a stored blob's file, for a native transport to send from. */
+export async function blobFilePath(vaultId: string, hash: string): Promise<string> {
+	if (!HASH_RE.test(hash)) throw new Error("not a blob hash");
+	const { uri } = await Filesystem.getUri({
+		path: `${blobDirFor(vaultId)}/${hash}`,
+		directory: DIR,
+	});
+	return pathFromUri(uri);
+}
+
 /** Erase a vault's whole attachment folder. Idempotent: a vault that never had one is fine. */
 export async function deleteMobileVaultBlobs(vaultId: string): Promise<void> {
 	try {

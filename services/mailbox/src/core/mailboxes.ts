@@ -5,6 +5,8 @@
 import {
 	ActivationBodySchema,
 	CreateMailboxBodySchema,
+	HEADERS,
+	MAX_MEMBERS,
 	MailboxIdSchema,
 	MembersBodySchema,
 	type MembersResponse,
@@ -13,7 +15,7 @@ import {
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { AppDeps, Env } from "./app.ts";
+import type { AppDeps, Db, Env } from "./app.ts";
 import { HttpError, param, signedJson } from "./auth.ts";
 import { dropMember } from "./cleanup.ts";
 import { mailboxes, members } from "./schema.ts";
@@ -23,6 +25,16 @@ import { chunk, rowsPerInsert } from "./sql.ts";
 const SMALL_JSON_BYTES = 64 * 1024;
 
 export const mailboxParam = param(z.object({ id: MailboxIdSchema }));
+
+/** Whether this key is a member of the mailbox, eligible or active. */
+export async function isMember(db: Db, mailboxId: string, sigKey: string): Promise<boolean> {
+	const row = await db
+		.select({ one: members.sigKey })
+		.from(members)
+		.where(and(eq(members.mailboxId, mailboxId), eq(members.sigKey, sigKey)))
+		.get();
+	return row !== undefined;
+}
 
 export async function requireMember(
 	deps: AppDeps,
@@ -73,6 +85,8 @@ export function mailboxRoutes(deps: AppDeps) {
 			const body = c.req.valid("json");
 			const caller = c.var.sigKey;
 			if (!body.members.includes(caller)) throw new HttpError(400, "bad_request");
+			// Before anything is written: the hosted service refuses a mailbox with no account.
+			const accountId = await deps.entitlement.admit(c.req.header(HEADERS.account));
 			const now = deps.now();
 			const created = await db
 				.insert(mailboxes)
@@ -80,9 +94,16 @@ export function mailboxRoutes(deps: AppDeps) {
 					id,
 					retentionDays: clamp(body.retentionDays ?? deps.config.retentionMaxDays),
 					createdAt: now,
+					accountId,
 				})
 				.onConflictDoNothing()
 				.returning({ id: mailboxes.id });
+			// Over the cap once written: undone, so of creates in flight together only those that fit
+			// stay. It has no members yet.
+			if (created.length > 0 && accountId && (await deps.entitlement.overMailboxCap?.(accountId))) {
+				await db.delete(mailboxes).where(eq(mailboxes.id, id));
+				throw new HttpError(507, "quota_exceeded");
+			}
 			if (created.length === 0) {
 				// Ids are fixed per group, so a create that died between its two writes would otherwise
 				// lock the group out until the sweep. A mailbox with no members is unclaimed.
@@ -117,6 +138,30 @@ export function mailboxRoutes(deps: AppDeps) {
 		return c.body(null, 204);
 	});
 
+	// Pay for the mailbox from another account (hosted). Its stored bytes count there from now on.
+	r.put("/:id/account", mailboxParam, async (c) => {
+		const { id } = c.req.valid("param");
+		await requireMember(deps, id, c.var.sigKey, "active");
+		const accountId = await deps.entitlement.admit(c.req.header(HEADERS.account), id);
+		// A self-hosted server has no accounts.
+		if (accountId === null) throw new HttpError(404, "not_found");
+		const before = await db
+			.select({ accountId: mailboxes.accountId })
+			.from(mailboxes)
+			.where(eq(mailboxes.id, id))
+			.get();
+		await db.update(mailboxes).set({ accountId }).where(eq(mailboxes.id, id));
+		// As for a create: a move that takes the account over its cap goes back where it was.
+		if (await deps.entitlement.overMailboxCap?.(accountId)) {
+			await db
+				.update(mailboxes)
+				.set({ accountId: before?.accountId ?? null })
+				.where(eq(mailboxes.id, id));
+			throw new HttpError(507, "quota_exceeded");
+		}
+		return c.body(null, 204);
+	});
+
 	r.get("/:id/members", mailboxParam, async (c) => {
 		const { id } = c.req.valid("param");
 		await requireMember(deps, id, c.var.sigKey, "any");
@@ -131,6 +176,15 @@ export function mailboxRoutes(deps: AppDeps) {
 			const { id } = c.req.valid("param");
 			await requireMember(deps, id, c.var.sigKey, "active");
 			const { add, remove } = c.req.valid("json");
+			// Counted as the request leaves it (adds, then removes), so a mailbox never holds more than
+			// MAX_MEMBERS and one request can swap members at the cap.
+			const present = await db
+				.select({ sigKey: members.sigKey })
+				.from(members)
+				.where(eq(members.mailboxId, id));
+			const after = new Set([...present.map((m) => m.sigKey), ...add]);
+			for (const sigKey of remove) after.delete(sigKey);
+			if (after.size > MAX_MEMBERS) throw new HttpError(413, "too_large");
 			const now = deps.now();
 			const rows = [...new Set(add)].map((sigKey) => ({
 				mailboxId: id,

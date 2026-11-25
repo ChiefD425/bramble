@@ -597,7 +597,7 @@ describe("another window saving under an open one", () => {
 		expect(written).toHaveLength(4);
 	});
 
-	it("reads nothing extra, and merges with nothing, where there is only ever one window", async () => {
+	const openOneWindow = async () => {
 		diskVersion.current = 1;
 		const p = makePlatform(
 			{ v1: { entries: [entry("a")], tombstones: [] } },
@@ -609,13 +609,27 @@ describe("another window saving under an open one", () => {
 		await act(async () => seen.registry?.selectVault("v1"));
 		p.finishLoad();
 		await waitFor(() => expect(seen.synced?.ready).toBe(true));
-		// A background sync write, say, which that platform's own reload picks up.
-		diskVersion.current++;
+		return { p, seen };
+	};
+
+	it("merges with nothing where only one window has written", async () => {
+		const { p, seen } = await openOneWindow();
 		const reads = p.payloadReads();
 		await act(async () => {
 			await seen.actions?.addEntry(newLogin);
 		});
 		expect(p.payloadReads()).toBe(reads);
+	});
+
+	it("merges with a background write on any platform, not only where there are windows", async () => {
+		// A sync merge on a phone or the desktop app lands on disk the same way another window's does.
+		const { p, seen } = await openOneWindow();
+		diskVersion.current++;
+		const reads = p.payloadReads();
+		await act(async () => {
+			await seen.actions?.addEntry(newLogin);
+		});
+		expect(p.payloadReads()).toBeGreaterThan(reads);
 	});
 
 	it("drops a reload under way when the vault locks, leaving nothing decrypted", async () => {

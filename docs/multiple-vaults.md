@@ -1295,7 +1295,8 @@ hardening), and full multi-vault autofill Tier 2 (search all vaults; post-v1). D
 - ~~**Join = add a vault** (sync increment 5).~~ **LANDED via the setup shell (2026-07, commit
   8b3e4030): a "Join a device" tab (shown in every circumstance since commit 5b9c0b1c - `canJoin =
   true`; originally gated to `perVaultSync`) collects a
-  pairing code + master password and calls `useVault.startJoin`, which dedups by `groupKey`, else
+  pairing code + master password and calls `useVault.startJoin`, which refuses a code for a
+  `groupKey` a vault here holds (the desktop link opens that vault instead), else
   `createRecord` + `setActiveVault` + runs `joinGroup` in the new vault's context via a deferred
   effect (the join is active-vault-scoped and the captured `joinGroup` holds the old id - the
   binding trap), landing you inside the joined vault unlocked. The Settings "Join with a pairing

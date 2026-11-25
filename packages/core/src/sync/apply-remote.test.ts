@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { fileRecord } from "../test/vault-fixtures";
+import { harness } from "../vault/entry-mutations.harness";
 import type { EncryptedEntry } from "../vault-format";
-import { applyRemotePayload, payloadsEquivalent, type VaultSyncPort } from "./apply-remote";
+import {
+	applyRemotePayload,
+	createVaultSyncPort,
+	payloadsEquivalent,
+	type VaultSyncPort,
+} from "./apply-remote";
 import {
 	type EntriesPayload,
 	emptyEntriesPayload,
 	type FileRecord,
 	type Tombstone,
 } from "./entries-payload";
-import type { Hlc } from "./hlc";
+import { HLC_MAX_DRIFT_MS, type Hlc } from "./hlc";
 
 const hlc = (wall: number, node: string): Hlc => ({ wall, counter: 0, node });
 const env = (id: string, ct: string, stamp: Hlc): EncryptedEntry => ({
@@ -422,5 +428,90 @@ describe("applyRemotePayload combining", () => {
 		await applyRemotePayload(port, remote, { combine: false });
 		await applyRemotePayload(port, remote);
 		expect(called).toBe(false);
+	});
+});
+
+describe("what the merge set aside and refused", () => {
+	const ahead = () => Date.now() + HLC_MAX_DRIFT_MS + 60_000;
+
+	it("reports a future-dated version as set aside", async () => {
+		const { port } = fakePort(payload([]));
+		const future = await applyRemotePayload(port, payload([env("a", "a", hlc(ahead(), "x"))]));
+		expect(future.setAside).toBe(true);
+		const ordinary = await applyRemotePayload(port, payload([env("b", "b", hlc(100, "x"))]));
+		expect(ordinary.setAside).toBe(false);
+	});
+
+	it("reports a future-dated setting as set aside", async () => {
+		const { port } = fakePort(payload([]));
+		const remote: EntriesPayload = {
+			...payload([]),
+			settings: { theme: { hlc: hlc(ahead(), "x"), value: "dark" } },
+		};
+		expect((await applyRemotePayload(port, remote)).setAside).toBe(true);
+	});
+
+	it("returns the versions this call refused", async () => {
+		const { port } = fakePort(payload([]), { unopenable: ["stray"] });
+		const stray = env("stray", "s", hlc(100, "x"));
+		const rejected = new Set<string>();
+		const first = await applyRemotePayload(port, payload([stray]), { rejected });
+		expect(first.refused).toEqual([stray]);
+		const again = await applyRemotePayload(port, payload([stray]), { rejected });
+		expect(again.refused).toEqual([]);
+	});
+});
+
+describe("a merge and a save at once", () => {
+	it("a save landing while a merge reads the disk is kept", async () => {
+		const h = harness();
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let first = true;
+		// The merge's own read waits, the way a slow outer decrypt does on a phone.
+		const port = createVaultSyncPort({
+			store: {
+				readEntriesPayload: async () => {
+					const payload = await h.mutations.readEntriesPayload();
+					if (first) {
+						first = false;
+						await held;
+					}
+					return payload;
+				},
+				writeEntriesBlob: (payload) => h.mutations.writeEntriesBlob(payload),
+			},
+			crypto: h.crypto,
+			witnessRemote: async () => {},
+		});
+		const remote: EncryptedEntry = {
+			id: "from-peer",
+			wrappedDek: "wd",
+			dekIv: "di",
+			ciphertext: 'ct:{"type":"note","name":"from peer"}',
+			iv: "iv",
+			hlc: { wall: 900, counter: 0, node: "peer" },
+		};
+		const merging = port.writeMerged({ entries: [remote], tombstones: [] });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		const saving = h.mutations.add(
+			{
+				entries: [],
+				stamps: new Map(),
+				causal: new Map(),
+				tombstones: new Map(),
+				tombstoneCausal: new Map(),
+				conflicts: [],
+			},
+			{ type: "note", name: "saved here" } as never,
+		);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		release();
+		await Promise.all([merging, saving]);
+		const ids = (await h.mutations.readEntriesPayload()).entries.map((e) => e.id);
+		expect(ids).toContain("from-peer");
+		expect(ids).toHaveLength(2);
 	});
 });

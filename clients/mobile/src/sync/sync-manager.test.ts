@@ -19,6 +19,8 @@ const h = vi.hoisted(() => ({
 	blobStops: 0,
 	blobPokes: 0,
 	stateListener: null as ((locked: boolean) => void) | null,
+	rosterVerify: async (_key: string, _message: string, _sig: string): Promise<boolean> => true,
+	syncEvents: [] as unknown[],
 	// Swapped per test to drive what a "merge" does.
 	applyRemote: async (_port: unknown, _payload: unknown, _opts?: unknown): Promise<void> => {},
 	/** The enroll host's options, from the last invite. */
@@ -67,7 +69,8 @@ vi.mock("@core/vault-format", async (importOriginal) => ({
 	encodeVaultBlob: () => new Uint8Array([1, 2, 3]),
 }));
 
-vi.mock("@core/sync/transport/roster-sync", () => ({
+vi.mock("@core/sync/transport/roster-sync", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@core/sync/transport/roster-sync")>()),
 	startRosterSync: async (opts: Record<string, (...a: never[]) => unknown>) => {
 		h.rosterOpts = opts;
 		h.rosterStarts++;
@@ -131,7 +134,12 @@ vi.mock("../adapters/vault-session", () => ({
 	},
 }));
 
-vi.mock("../native-crypto", () => ({ nativeSyncCrypto: h.syncCrypto }));
+vi.mock("../native-crypto", () => ({
+	nativeSyncCrypto: {
+		...h.syncCrypto,
+		roster_verify: (key: string, message: string, sig: string) => h.rosterVerify(key, message, sig),
+	},
+}));
 // Both the Noise and the roster-signing keypair come from here; returning a stored pair keeps
 // startRoster off the wasm generation path, which isn't what these tests are about.
 vi.mock("../secure-storage", () => ({
@@ -180,10 +188,11 @@ async function startSession(mod: Awaited<ReturnType<typeof loadManager>>) {
 // registry but not the transform cache, so that first call was ~15x slower than its siblings
 // (~900ms locally) and was charged against its own 5s timeout — which a loaded CI runner blew
 // through. Safe to warm: the module's top level only declares state, and beforeEach wipes
-// everything this touches in `h` before any test runs.
+// everything this touches in `h` before any test runs. The hook's own default 10s is still too
+// short with every package's tests running at once, so it gets 60s.
 beforeAll(async () => {
 	await import("./sync-manager");
-});
+}, 60_000);
 
 beforeEach(() => {
 	h.meta.clear();
@@ -196,6 +205,8 @@ beforeEach(() => {
 	h.blobPokes = 0;
 	h.stateListener = null;
 	h.applyRemote = async () => {};
+	h.rosterVerify = async () => true;
+	h.syncEvents.length = 0;
 	h.enrollOpts = null;
 	h.locked = false;
 	vi.stubGlobal("crypto", { randomUUID: () => "id", getRandomValues: (a: Uint8Array) => a });
@@ -372,6 +383,129 @@ describe("activeVaultId resolution", () => {
 	});
 });
 
+describe("what the mailbox shares with P2P", () => {
+	const KEY = `${"A".repeat(43)}=`;
+	const stamped = {
+		id: "d1",
+		publicKey: "P",
+		label: "Phone",
+		addedAt: 1,
+		hlc: { wall: 1, counter: 0, node: "d1" },
+	};
+	/** A group with a real, empty roster, which the mailbox merges into. */
+	const group = (vaultId: string) =>
+		h.meta.set(`sync.group:${vaultId}`, { groupKey: "k", roster: { devices: [], revoked: [] } });
+
+	it("queueApply runs merges one at a time, behind P2P's", async () => {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A));
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadManager();
+		await startSession(mod);
+		const order: string[] = [];
+		let release!: () => void;
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		h.applyRemote = async () => {
+			await gate;
+			order.push("p2p");
+		};
+		const p2p = opts().pushRemotePayload(PAYLOAD);
+		const mailbox = mod.queueApply(async () => {
+			order.push("mailbox");
+			return "done";
+		});
+		await new Promise((r) => setTimeout(r, 0));
+		expect(order).toEqual([]);
+		release();
+		expect(await mailbox).toBe("done");
+		await p2p;
+		expect(order).toEqual(["p2p", "mailbox"]);
+	});
+
+	it("a merge that fails does not stop the ones queued after it", async () => {
+		const mod = await loadManager();
+		const failed = mod.queueApply(async () => {
+			throw new Error("boom");
+		});
+		await expect(failed).rejects.toThrow("boom");
+		expect(await mod.queueApply(async () => 1)).toBe(1);
+	});
+
+	it("refusedFor keeps one set per vault, shared with P2P until the vault locks", async () => {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A, VAULT_B));
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadManager();
+		await startSession(mod);
+		let p2pRejected: unknown;
+		h.applyRemote = async (_port, _payload, mergeOpts) => {
+			p2pRejected = (mergeOpts as { rejected?: unknown }).rejected;
+		};
+		await opts().pushRemotePayload(PAYLOAD);
+		const a = mod.refusedFor(VAULT_A);
+		expect(mod.refusedFor(VAULT_A)).toBe(a);
+		expect(mod.refusedFor(VAULT_B)).not.toBe(a);
+		expect(p2pRejected).toBe(a);
+		// A refusal can come of a transient state (the wrong key mid-switch); it ends with the unlock.
+		h.stateListener?.(true);
+		expect(mod.refusedFor(VAULT_A)).not.toBe(a);
+	});
+
+	it("a vault with no group is never read as an empty roster", async () => {
+		const mod = await loadManager();
+		await expect(mod.mailboxVaultDeps(VAULT_A).readRoster()).rejects.toThrow(
+			"no sync group for this vault",
+		);
+	});
+
+	it("merges into the vault it was built for, even once another is active", async () => {
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadManager();
+		const deps = mod.mailboxVaultDeps(VAULT_A);
+		h.meta.set("active-vault", VAULT_B);
+		await (
+			deps.sync as unknown as { store: { writeEntriesBlob: (p: unknown) => Promise<void> } }
+		).store.writeEntriesBlob({ entries: [], tombstones: [] });
+		expect(h.blobWrites).toEqual([{ vaultId: VAULT_A }]);
+	});
+
+	it("writes a roster into the vault's own group and tells the devices list", async () => {
+		group(VAULT_A);
+		const mod = await loadManager();
+		mod.onSyncEvent((e) => h.syncEvents.push(e));
+		await mod.mailboxVaultDeps(VAULT_A).writeRoster({ devices: [stamped], revoked: [] });
+		expect(h.meta.get(`sync.group:${VAULT_A}`)).toMatchObject({
+			groupKey: "k",
+			roster: { devices: [{ id: "d1" }] },
+		});
+		expect(h.syncEvents).toEqual([{ kind: "roster" }]);
+	});
+
+	it("verifies a mailbox roster with this device's sync crypto", async () => {
+		group(VAULT_A);
+		const mod = await loadManager();
+		const asked: string[] = [];
+		h.rosterVerify = async (key) => {
+			asked.push(key);
+			return false;
+		};
+		const remote = { devices: [{ ...stamped, sigKey: KEY, sig: "S" }], revoked: [] };
+		const verified = await mod.mailboxVaultDeps(VAULT_A).verifyRoster(JSON.stringify(remote));
+		expect(asked).toEqual([KEY]);
+		expect(JSON.parse(verified ?? "{}").devices ?? []).toEqual([]);
+	});
+
+	it("rosterVerify answers the sync crypto's verdict", async () => {
+		const mod = await loadManager();
+		h.rosterVerify = async (key, message, sig) => key === "K" && message === "m" && sig === "s";
+		expect(await mod.rosterVerify("K", "m", "s")).toBe(true);
+		expect(await mod.rosterVerify("K", "m", "forged")).toBe(false);
+	});
+});
+
 // Issue #230: what an unlock does, without having to lock first.
 describe("sync now", () => {
 	async function running() {
@@ -479,13 +613,21 @@ describe("the first device to join", () => {
 		});
 		expect(h.rosterOpts).toBeNull();
 
-		h.enrollOpts?.onEnrolled?.(JSON.stringify(JOINER) as never);
+		// The enroll host signs through `admit` before the vault goes out, then hands the signed entry on.
+		const admitted = await h.enrollOpts?.admit?.(JOINER as never);
+		h.enrollOpts?.onEnrolled?.(JSON.stringify(admitted) as never);
 
 		await vi.waitFor(() => expect(h.rosterOpts).not.toBeNull());
 		const group = h.meta.get(`sync.group:${VAULT_A}`) as {
-			roster: { devices: { id: string; admission?: { by: string; sig: string } }[] };
+			roster: {
+				devices: { id: string; admission?: { by: string; sig: string; stableSig?: string } }[];
+			};
 		};
 		const joiner = group.roster.devices.find((d) => d.id === "joiner-id");
-		expect(joiner?.admission).toEqual({ by: "inviter-id", sig: "admission-sig" });
+		expect(joiner?.admission).toEqual({
+			by: "inviter-id",
+			sig: "admission-sig",
+			stableSig: "admission-sig",
+		});
 	});
 });

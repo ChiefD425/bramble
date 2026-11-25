@@ -12,6 +12,8 @@ export const HEADERS = {
 	contentSha256: "x-bramble-content-sha256",
 	sig: "x-bramble-sig",
 	token: "x-bramble-token",
+	/** The hosted service's account number: a bearer secret, so a header, never a URL. */
+	account: "x-bramble-account",
 } as const;
 
 export const EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -20,7 +22,6 @@ export const MAX_CLOCK_SKEW_MS = 300_000;
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024;
 /** A 90 MiB attachment sealed, under the Workers 100 MB request cap. */
 export const MAX_BLOB_BYTES = 95_000_000;
-export const DEFAULT_RETENTION_DAYS = 365;
 export const INBOX_PAGE = 500;
 export const MAX_LIST = 1000;
 export const MAX_WANTS = 10_000;
@@ -31,7 +32,7 @@ export const MAILBOX_ID_RE = /^[A-Za-z0-9_-]{43}$/;
 /** 16 bytes, base64url without padding. */
 export const MESSAGE_ID_RE = /^[A-Za-z0-9_-]{22}$/;
 /** A roster Ed25519 verify key: 32 bytes, standard base64. */
-export const SIG_KEY_RE = /^[A-Za-z0-9+/]{43}=$/;
+export const SIG_KEY_RE = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/;
 /** SHA-256 hex over a blob's ciphertext, the blob store's key. */
 export const BLOB_HASH_RE = /^[0-9a-f]{64}$/;
 
@@ -106,19 +107,23 @@ export const PostResponseSchema = z.object({ stored: z.boolean(), recipients: z.
 export type PostResponse = z.infer<typeof PostResponseSchema>;
 
 export const InboxResponseSchema = z.object({
-	messages: z.array(
-		z.object({ id: MessageIdSchema, sender: SigKeySchema, size: z.int(), createdAt: z.int() }),
-	),
-	blobs: z.array(
-		z.object({ hash: BlobHashSchema, size: z.int(), uploader: SigKeySchema, createdAt: z.int() }),
-	),
+	messages: z
+		.array(
+			z.object({ id: MessageIdSchema, sender: SigKeySchema, size: z.int(), createdAt: z.int() }),
+		)
+		.max(INBOX_PAGE),
+	blobs: z
+		.array(
+			z.object({ hash: BlobHashSchema, size: z.int(), uploader: SigKeySchema, createdAt: z.int() }),
+		)
+		.max(INBOX_PAGE),
 	/** Hashes other active members want that this mailbox does not hold, in hash order. */
-	wanted: z.array(BlobHashSchema),
+	wanted: z.array(BlobHashSchema).max(INBOX_PAGE),
 	/** More wanted hashes follow the last one: ask again with `wantedAfter` set to it. */
 	wantedMore: z.boolean(),
-	markers: z.array(
-		z.object({ id: z.int(), sender: SigKeySchema, count: z.int(), expiredAt: z.int() }),
-	),
+	markers: z
+		.array(z.object({ id: z.int(), sender: SigKeySchema, count: z.int(), expiredAt: z.int() }))
+		.max(INBOX_PAGE),
 	/** More messages or blobs wait for the caller: collect and acknowledge these, then ask again. */
 	more: z.boolean(),
 	retentionDays: z.int(),
@@ -146,9 +151,67 @@ export const MAILBOX_ERROR_CODES = [
 	"quota_exceeded",
 	"hash_mismatch",
 	"collect_only",
+	"account_required",
+	"account_unknown",
+	"rate_limited",
 ] as const;
 export const MailboxErrorCodeSchema = z.enum(MAILBOX_ERROR_CODES);
 export type MailboxErrorCode = z.infer<typeof MailboxErrorCodeSchema>;
+
+/**
+ * An app built with `--mode sandbox` uses the sandbox mailbox, whose accounts are bought with Stripe
+ * test cards on the website's sandbox build (`pnpm --filter website deploy:sandbox`). Vite replaces
+ * MODE at build, so a release build holds only the real addresses. Optional: the mailbox server
+ * imports this file outside Vite, where import.meta.env doesn't exist.
+ */
+const SANDBOX = import.meta.env?.MODE === "sandbox";
+
+/** Bramble's hosted mailbox. */
+export const HOSTED_MAILBOX_URL = SANDBOX
+	? "https://mailbox-sandbox.bramble.sh"
+	: "https://mailbox.bramble.sh";
+/** Where a hosted account is opened and paid for (docs/mailbox-service.md, "Buying from the apps"). */
+export const ACCOUNT_PAGE_URL = SANDBOX
+	? "https://sandbox.bramble-website-chc.pages.dev/account"
+	: "https://bramble.sh/account";
+export const ACCOUNT_DIGITS = 25;
+
+/** "12345 67890 …" from 25 digits. */
+export function formatAccountNumber(digits: string): string {
+	return digits.replace(/(\d{5})(?=\d)/g, "$1 ");
+}
+
+/** An account number however it is spaced or dashed, as five groups of five; null for anything else. */
+export function parseAccountNumber(input: string): string | null {
+	const digits = input.replace(/[\s-]/g, "");
+	return new RegExp(`^\\d{${ACCOUNT_DIGITS}}$`).test(digits) ? formatAccountNumber(digits) : null;
+}
+
+/** The account page, the number in its fragment: browsers never send a fragment to a server. */
+export function accountPageUrl(number?: string): string {
+	const parsed = number ? parseAccountNumber(number) : null;
+	return parsed ? `${ACCOUNT_PAGE_URL}#n=${parsed.replace(/ /g, "")}` : ACCOUNT_PAGE_URL;
+}
+
+/** The number an account page's fragment carries, or null. */
+export function accountFromFragment(hash: string): string | null {
+	const digits = /^#?n=(\d+)$/.exec(hash)?.[1];
+	return digits ? parseAccountNumber(digits) : null;
+}
+
+/** What is kept of an account number where it needn't be read back: a hash of its digits. */
+export async function accountKeyOf(number: string): Promise<string> {
+	return sha256Hex(number.replace(/\D/g, ""));
+}
+
+/** The hosted service's answer about an account (`GET /v1/accounts/status`). */
+export const AccountStatusResponseSchema = z.object({
+	paidThrough: z.int().min(0),
+	frozen: z.boolean(),
+	usedBytes: z.int().min(0),
+	quotaBytes: z.int().min(0),
+});
+export type AccountStatusResponse = z.infer<typeof AccountStatusResponseSchema>;
 
 export const ErrorResponseSchema = z.object({
 	error: MailboxErrorCodeSchema,

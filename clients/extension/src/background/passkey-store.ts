@@ -15,7 +15,7 @@ import { decodeEntriesPayload, heldVersions, nextCausal, nextVersion } from "@co
 import { normalizeEntryData } from "@core/vault/entry-normalize";
 import { stampedPlaintext } from "@core/vault/parts";
 import { type PasskeyPlacement, withPasskey } from "@core/vault/passkey";
-import { type EncryptedEntry, encodeVaultBlob, type VaultBlob } from "@core/vault-format";
+import type { EncryptedEntry } from "@core/vault-format";
 import { addLoginEntry } from "./autofill-index";
 import { sendToOffscreen } from "./offscreen-client";
 import { requireActiveVaultId } from "./session";
@@ -23,9 +23,8 @@ import { nextStamp } from "./sync-clock";
 import {
 	broadcastVaultChanged,
 	bytesToBase64,
+	changeVaultEntries,
 	readAndDecodeVault,
-	reencryptOuterWithEntryChange,
-	writeVault,
 } from "./vault-io";
 
 // Passkey crypto runs in the offscreen (the WASM core). The background reaches it via
@@ -120,19 +119,6 @@ async function encryptEntry(
 	return resp.data as Omit<EncryptedEntry, "id" | "hlc">;
 }
 
-async function writeBlob(
-	vaultId: string,
-	base: VaultBlob,
-	outer: { entriesIv: Uint8Array; entriesCiphertext: Uint8Array; entryCount: number },
-): Promise<void> {
-	const blob: VaultBlob = {
-		slots: base.slots,
-		entriesIv: outer.entriesIv,
-		entriesCiphertext: outer.entriesCiphertext,
-	};
-	await writeVault(encodeVaultBlob(blob), vaultId);
-}
-
 function hostname(u: string): string {
 	try {
 		return new URL(u).hostname;
@@ -144,7 +130,6 @@ function hostname(u: string): string {
 /** Persist a passkey placement: append a new login, or rewrite an existing one's passkeys[]. */
 export async function savePlacement(plan: PasskeyPlacement): Promise<void> {
 	const vaultId = requireActiveVaultId();
-	const base = await readAndDecodeVault(vaultId);
 	if (plan.kind === "create") {
 		// The browser's provider refuses bramble.sh before placement, so a create here is a login.
 		if (plan.data.type !== "login") throw new Error("only a login can be placed here");
@@ -155,12 +140,7 @@ export async function savePlacement(plan: PasskeyPlacement): Promise<void> {
 			stampedPlaintext(id, plan.data satisfies LoginEntryData, undefined, hlc),
 		);
 		const newEnc: EncryptedEntry = { id, ...enc, hlc, ...nextCausal({ hlc, bases: [], held: [] }) };
-		const outer = await reencryptOuterWithEntryChange(
-			base,
-			async (entries) => [...entries, newEnc],
-			vaultId,
-		);
-		await writeBlob(vaultId, base, outer);
+		await changeVaultEntries(vaultId, async (entries) => [...entries, newEnc]);
 		// Best-effort: surface the new login for autofill before the next rehydrate.
 		await addLoginEntry({
 			type: "login",
@@ -171,46 +151,41 @@ export async function savePlacement(plan: PasskeyPlacement): Promise<void> {
 			password: plan.data.password,
 		});
 	} else {
-		const outer = await reencryptOuterWithEntryChange(
-			base,
-			async (entries, payload) => {
-				const next: EncryptedEntry[] = [];
-				for (const e of entries) {
-					if (e.id !== plan.entryId) {
-						next.push(e);
-						continue;
-					}
-					const dec = await sendToOffscreen({
-						type: "CRYPTO_DECRYPT",
-						vaultId,
-						payload: {
-							ciphertext: e.ciphertext,
-							iv: e.iv,
-							wrappedDek: e.wrappedDek,
-							dekIv: e.dekIv,
-						},
-					});
-					if (!dec.ok || typeof dec.data !== "string") {
-						throw new Error(`decrypt entry failed: ${dec.error ?? "no data"}`);
-					}
-					const prev = JSON.parse(dec.data) as EntryData;
-					const hlc = await nextStamp();
-					const held = heldVersions(payload, e.id);
-					const v = nextVersion({ hlc, bases: [e], held });
-					// Added to the list as it is now: one that synced in since the plan stays.
-					const passkeys = withPasskey((prev as LoginEntryData).passkeys, plan.passkey);
-					const data = { ...prev, passkeys } as EntryData;
-					const reenc = await encryptEntry(
-						vaultId,
-						stampedPlaintext(e.id, data, { data: prev, version: e }, v.hlc),
-					);
-					next.push({ id: e.id, ...reenc, hlc: v.hlc, ...v.causal });
+		await changeVaultEntries(vaultId, async (entries, payload) => {
+			const next: EncryptedEntry[] = [];
+			for (const e of entries) {
+				if (e.id !== plan.entryId) {
+					next.push(e);
+					continue;
 				}
-				return next;
-			},
-			vaultId,
-		);
-		await writeBlob(vaultId, base, outer);
+				const dec = await sendToOffscreen({
+					type: "CRYPTO_DECRYPT",
+					vaultId,
+					payload: {
+						ciphertext: e.ciphertext,
+						iv: e.iv,
+						wrappedDek: e.wrappedDek,
+						dekIv: e.dekIv,
+					},
+				});
+				if (!dec.ok || typeof dec.data !== "string") {
+					throw new Error(`decrypt entry failed: ${dec.error ?? "no data"}`);
+				}
+				const prev = JSON.parse(dec.data) as EntryData;
+				const hlc = await nextStamp();
+				const held = heldVersions(payload, e.id);
+				const v = nextVersion({ hlc, bases: [e], held });
+				// Added to the list as it is now: one that synced in since the plan stays.
+				const passkeys = withPasskey((prev as LoginEntryData).passkeys, plan.passkey);
+				const data = { ...prev, passkeys } as EntryData;
+				const reenc = await encryptEntry(
+					vaultId,
+					stampedPlaintext(e.id, data, { data: prev, version: e }, v.hlc),
+				);
+				next.push({ id: e.id, ...reenc, hlc: v.hlc, ...v.causal });
+			}
+			return next;
+		});
 	}
 	await broadcastVaultChanged();
 }

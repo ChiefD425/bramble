@@ -11,6 +11,17 @@
 
 import type { PairingSas } from "../sync/pairing-sas";
 
+/** What the desktop app's open vault holds, for deciding what linking does. */
+export interface DesktopVaultSummary {
+	name: string;
+	empty: boolean;
+	entries: number;
+	/** Keys that vault's group removed: a browser holding one is out of the group. */
+	removedKeys?: string[];
+	/** Whether the app has a backup target for this vault. Absent from an older app. */
+	backupTargets?: boolean;
+}
+
 export interface DesktopLinkStatus {
 	paired: boolean;
 	/** Epoch ms, when paired. */
@@ -49,12 +60,7 @@ export interface DesktopLinkAdapter {
 	cancel?(id: string): Promise<void>;
 	/** What the desktop app's vault holds, asked right after linking and before claiming its
 	 * invite: the app answers only the browser that just linked. Null when it will not say. */
-	vaultSummary?(): Promise<{
-		name: string;
-		empty: boolean;
-		entries: number;
-		backupTargets?: boolean;
-	} | null>;
+	vaultSummary?(): Promise<DesktopVaultSummary | null>;
 	/** Reconnect over the established keys. True when the desktop app accepted. */
 	connect(): Promise<boolean>;
 	/**

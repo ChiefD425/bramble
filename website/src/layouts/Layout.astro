@@ -1,20 +1,26 @@
 ---
 import "@/styles/starwind.css";
 import { SITE } from "@/consts";
+import { WEBSITE_FLAGS, type WebsiteFlag } from "@/flags";
 
 interface Props {
 	title?: string;
 	description?: string;
 	/** Page path for the canonical URL, e.g. "/privacy". */
 	path?: string;
+	/** Hide this page behind a website flag: without it, a visitor lands on the home page. */
+	flag?: WebsiteFlag;
 }
 
 const {
 	title,
 	description = SITE.description,
 	path = "/",
+	flag,
 } = Astro.props;
 
+// The sandbox build (`deploy:sandbox`) shows flagged pages: the sandbox apps link straight to them.
+const gate = import.meta.env.MODE === "sandbox" ? undefined : flag;
 const pageTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · ${SITE.tagline}`;
 const canonical = new URL(path, SITE.url).href;
 const ogImage = new URL("/icon-512.png", SITE.url).href;
@@ -47,6 +53,33 @@ const ogImage = new URL("/icon-512.png", SITE.url).href;
 
 		<meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#242424" media="(prefers-color-scheme: dark)" />
+
+		{flag && <meta name="robots" content="noindex" />}
+		{gate && <noscript><meta http-equiv="refresh" content="0; url=/" /></noscript>}
+
+		{/* Website flags, before first paint so a flagged page never flashes. `?ff=a,b` on any page
+		    sets this tab's flags, and an empty value clears them. The tab keeps them, because
+		    coming back from Stripe carries no query. */}
+		<script is:inline define:vars={{ known: WEBSITE_FLAGS, required: gate ?? null }}>
+			var key = "bramble.ff";
+			var on = [];
+			try {
+				on = JSON.parse(sessionStorage.getItem(key)) || [];
+			} catch (e) {}
+			var given = new URLSearchParams(location.search).get("ff");
+			if (given !== null) {
+				on = given.split(",").filter(function (name) {
+					return known.indexOf(name) !== -1;
+				});
+				try {
+					sessionStorage.setItem(key, JSON.stringify(on));
+				} catch (e) {}
+			}
+			if (required && on.indexOf(required) === -1) {
+				document.documentElement.style.display = "none";
+				location.replace("/");
+			}
+		</script>
 
 		{/* Set the theme before first paint so there is no light/dark flash. Mirrors
 		    the extension's behavior and reads the same `colorTheme` key the Starwind

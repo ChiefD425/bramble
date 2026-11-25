@@ -7,6 +7,7 @@
 
 import { isBackupTargetsKey } from "@core/backup/config";
 import { onBlobArrived } from "@core/sync/blob-arrivals";
+import { MAILBOX_ALARM } from "@core/sync/mailbox";
 import { api } from "../platform-api";
 import { BACKUP_ALARM, runDueBackups, scheduleBackups } from "./backup";
 import "./backup-connect";
@@ -29,6 +30,7 @@ import { getLockOnScreenLock, PREF_AUTOLOCK_MINUTES } from "./prefs";
 import { setReady } from "./router";
 import "./desktop-link";
 import { openDesktopLink } from "./desktop-link";
+import { isMailboxOffKey, mailboxDriver, retargetMailboxToOpenVault } from "./mailbox";
 import {
 	AUTOLOCK_ALARM,
 	clearSession,
@@ -57,6 +59,7 @@ void hydrated.then(() => {
 	void openDesktopLink().catch(() => {});
 	if (!vaultLocked()) {
 		void maybeStartSync();
+		void retargetMailboxToOpenVault();
 		void runDueBackups();
 	}
 	void scheduleBackups();
@@ -117,6 +120,10 @@ api.alarms.onAlarm.addListener((alarm) => {
 		if (!vaultLocked()) void maybeStartSync();
 		return;
 	}
+	if (alarm.name === MAILBOX_ALARM) {
+		if (!vaultLocked()) void mailboxDriver.alarm();
+		return;
+	}
 	if (alarm.name === BACKUP_ALARM) {
 		if (!vaultLocked()) void runDueBackups();
 		return;
@@ -159,6 +166,7 @@ api.storage.onChanged.addListener((changes, area) => {
 	// vault changes while unlocked).
 	// Best-effort. See docs/p2p-sync.md.
 	if (Object.keys(changes).some(isVaultBlobKey) && !vaultLocked()) {
+		mailboxDriver.changed();
 		void (async () => {
 			await maybeStartSync();
 			await sendToOffscreen({ type: "SYNC_BROADCAST_NOW" }).catch(() => {});
@@ -170,7 +178,11 @@ api.storage.onChanged.addListener((changes, area) => {
 	// no-op if already running (its own guard), so a roster gossip write can't restart-loop it.
 	if (Object.keys(changes).some(isSyncGroupKey) && !vaultLocked()) {
 		void maybeStartSync();
+		// Joined, left or re-paired: the mailbox re-checks which group it speaks for.
+		mailboxDriver.changed();
 	}
+	// Opting this device out of (or back into) the mailbox takes effect at the next round, now.
+	if (Object.keys(changes).some(isMailboxOffKey) && !vaultLocked()) mailboxDriver.changed();
 	// Re-arm or clear the backup poke when any vault's target list or schedule changes.
 	if (Object.keys(changes).some(isBackupTargetsKey)) void scheduleBackups();
 });

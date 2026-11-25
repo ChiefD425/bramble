@@ -16,6 +16,7 @@
 // The crypto lives in the offscreen document, because MV3's service worker has no WASM host.
 // This module owns the port and the persistence and relays handshake messages across.
 
+import type { DesktopVaultSummary } from "@core/adapters/desktop-link";
 import { linkNonceCommit, linkSas, linkSasMaterial } from "@core/sync/link-sas";
 import type { PairingSas } from "@core/sync/pairing-sas";
 import { syncKeyFor } from "@core/sync/sync-keys";
@@ -1505,16 +1506,11 @@ on(
 
 /** What the app's vault holds, for deciding what linking does. Null when it will not say: not
  * the browser that just linked, the app is locked, or it predates this. */
-export async function desktopVaultSummary(via?: string): Promise<{
-	name: string;
-	empty: boolean;
-	entries: number;
-	backupTargets?: boolean;
-} | null> {
+export async function desktopVaultSummary(via?: string): Promise<DesktopVaultSummary | null> {
 	try {
 		const answer = (await askDesktop({ op: "vaultSummary" }, via)) as {
 			ok?: boolean;
-			summary?: { name: string; empty: boolean; entries: number; backupTargets?: boolean };
+			summary?: DesktopVaultSummary;
 		};
 		return answer?.ok === true ? (answer.summary ?? null) : null;
 	} catch {

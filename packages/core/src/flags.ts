@@ -180,6 +180,14 @@ export const CAPABILITIES = {
 	// Desktop is single-active like mobile: the spotlight bar and the app both search the
 	// one unlocked vault, which is a settled product decision, not a gap.
 	perVaultSync: { extension: true, mobile: false, desktop: false },
+	// Sync through a mailbox (docs/mailbox-service.md).
+	mailboxSync: { extension: true, mobile: true, desktop: true },
+	// Bramble's hosted mailbox at mailbox.bramble.sh, with its account (Plan 5c). A server of
+	// one's own stays under Advanced.
+	mailboxHosted: { extension: true, mobile: true, desktop: true },
+	// The hosted mailbox's price and every link to the website's account page. Never on iOS, which
+	// shows no price and no purchase path (docs/mailbox-service.md, "Buying from the apps").
+	mailboxPurchase: { chromium: true, firefox: true, android: true, ios: false, desktop: true },
 } satisfies Record<string, Capability>;
 
 export type CapabilityKey = keyof typeof CAPABILITIES;

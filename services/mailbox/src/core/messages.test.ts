@@ -20,6 +20,7 @@ import {
 	setup,
 	type TestServer,
 } from "../test/harness.ts";
+import { ROW_BYTES } from "./messages.ts";
 import { blobs, deliveries, messages } from "./schema.ts";
 import { chunk } from "./sql.ts";
 import { DAY_MS } from "./time.ts";
@@ -84,6 +85,16 @@ describe("posting", () => {
 	it("refuses a post that would exceed the quota", async () => {
 		const { a, id } = await trio({ quotaBytes: 10 });
 		const { res } = await postMessage(a, id, { bytes: randomBytes(11) });
+		expect(res.status).toBe(507);
+		expect(await res.json()).toEqual({ error: "quota_exceeded" });
+	});
+
+	it("each message costs at least ROW_BYTES", async () => {
+		const { a, id } = await trio({ quotaBytes: 2 * ROW_BYTES });
+		const empty = { bytes: new Uint8Array(0) };
+		expect((await postMessage(a, id, empty)).res.status).toBe(200);
+		expect((await postMessage(a, id, empty)).res.status).toBe(200);
+		const { res } = await postMessage(a, id, empty);
 		expect(res.status).toBe(507);
 		expect(await res.json()).toEqual({ error: "quota_exceeded" });
 	});
@@ -167,6 +178,8 @@ describe("collecting", () => {
 		expect(await res.json()).toEqual({ error: "bad_request" });
 	});
 
+	// Posts a full page of signed messages and one more: real work, which a parallel run can slow
+	// past the default 5 seconds.
 	it("pages the inbox and records the caller's check-in day", async () => {
 		const { server, a, b, id } = await trio();
 		for (let i = 0; i <= INBOX_PAGE; i++) await postMessage(a, id, { to: [b] });
@@ -180,7 +193,7 @@ describe("collecting", () => {
 		const day = Math.floor(server.clock.now / 86_400_000);
 		expect(members.find((m) => m.sigKey === b.sigKey)?.lastCheckedDay).toBe(day);
 		expect(first.serverTime).toBe(server.clock.now);
-	});
+	}, 30_000);
 });
 
 describe("compaction", () => {

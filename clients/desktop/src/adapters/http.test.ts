@@ -5,13 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // cross as number arrays and come back as bytes.
 
 const h = vi.hoisted(() => ({
-	calls: [] as { cmd: string; args: Record<string, unknown> }[],
+	calls: [] as { cmd: string; args: Record<string, unknown>; options?: unknown }[],
 	reply: { status: 200, body: [] as number[] },
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
-	invoke: async (cmd: string, args: Record<string, unknown>) => {
-		h.calls.push({ cmd, args });
+	invoke: async (cmd: string, args: Record<string, unknown>, options?: unknown) => {
+		h.calls.push({ cmd, args, ...(options ? { options } : {}) });
+		if (cmd === "http_stream_open") return 7;
+		if (cmd === "stream_write") return undefined;
 		return h.reply;
 	},
 }));
@@ -73,5 +75,43 @@ describe("desktopHttp", () => {
 		const res = await desktopHttp.send({ method: "GET", url: "https://p.example/x" });
 		expect(res.status).toBe(status);
 		expect(res.ok).toBe(ok);
+	});
+});
+
+describe("desktopHttp with a body too large to cross whole", () => {
+	it("streams it through the shell a chunk at a time, never through http_send", async () => {
+		const bytes = new Uint8Array(5 * 1024 * 1024).map((_, i) => i % 251);
+		h.reply = { status: 200, body: [...new TextEncoder().encode('{"stored":true}')] };
+		const res = await desktopHttp.send({
+			method: "PUT",
+			url: "https://mailbox.example/v1/b",
+			headers: { "x-bramble-sig": "s" },
+			body: {
+				size: bytes.length,
+				read: async (offset, length) => bytes.slice(offset, offset + length),
+			},
+		});
+		expect(h.calls[0]).toEqual({
+			cmd: "http_stream_open",
+			args: {
+				method: "PUT",
+				url: "https://mailbox.example/v1/b",
+				headers: { "x-bramble-sig": "s" },
+				size: bytes.length,
+			},
+		});
+		const writes = h.calls.filter((c) => c.cmd === "stream_write");
+		expect(writes.length).toBeGreaterThan(1);
+		expect(
+			writes.every(
+				(w) => (w.options as { headers: Record<string, string> }).headers["x-stream-id"] === "7",
+			),
+		).toBe(true);
+		const sent = writes.flatMap((w) => [...(w.args as unknown as Uint8Array)]);
+		expect(sent).toEqual([...bytes]);
+		expect(h.calls.at(-1)).toEqual({ cmd: "stream_finish", args: { id: 7 } });
+		expect(h.calls.some((c) => c.cmd === "http_send")).toBe(false);
+		expect(res.ok).toBe(true);
+		expect(new TextDecoder().decode(res.body)).toBe('{"stored":true}');
 	});
 });

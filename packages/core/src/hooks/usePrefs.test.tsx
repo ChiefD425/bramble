@@ -134,6 +134,52 @@ describe("usePrefs shared provider", () => {
 	});
 });
 
+// The load reads every key in one positional Promise.all; a pref added in the wrong slot reads its
+// neighbour's value and falls back to its default without an error.
+describe("loading this device's switches", () => {
+	const SWITCHES = [
+		"breachCheckEnabled",
+		"offerToSave",
+		"autofillEnabled",
+		"autofillQuickType",
+		"copyTotpOnFill",
+		"passkeyProviderEnabled",
+		"passkeyConfirmOncePerUnlock",
+		"lockOnScreenLock",
+		"statsCollapsed",
+		"autostartPromptDismissed",
+		"defaultManagerPromptDismissed",
+		"updateCheck",
+		"supportAskEnabled",
+	] as const;
+
+	it("gives each the value stored under its own key", async () => {
+		const { platform, store } = makePlatform();
+		let seen = {} as ReturnType<typeof usePrefs>["prefs"];
+		function Read() {
+			const { prefs, loaded } = usePrefs();
+			if (loaded) seen = prefs;
+			return null;
+		}
+		const show = () =>
+			render(
+				<PlatformProvider platform={platform}>
+					<PrefsProvider>
+						<Read />
+					</PrefsProvider>
+				</PlatformProvider>,
+			);
+		show();
+		await act(async () => {});
+		const defaults = { ...seen };
+		cleanup();
+		for (const name of SWITCHES) store.set(`pref.${name}`, !defaults[name]);
+		show();
+		await act(async () => {});
+		for (const name of SWITCHES) expect([name, seen[name]]).toEqual([name, !defaults[name]]);
+	});
+});
+
 // The list's address carries the order only while the app is open; this is what a fresh open
 // and the "go to vault" button fall back to.
 describe("the vault list's sort order", () => {

@@ -56,7 +56,11 @@ async function invite(): Promise<{ inviter: Inviter; code: string }> {
 	// After the vault exists: creating the first one drops sync.relay (see pair-with-extension).
 	await page.getByRole("button", { name: "Settings" }).click();
 	await page.getByRole("button", { name: "Sync", exact: true }).click();
-	await page.getByRole("button", { name: /Advanced/i }).click();
+	// Device sync's, which comes before the Mailbox card's.
+	await page
+		.getByRole("button", { name: /Advanced/i })
+		.first()
+		.click();
 	await page.getByLabel(/Nostr relay URL/i).fill(RELAY);
 	await page.getByLabel(/TURN \/ ICE servers URL/i).fill("");
 	await page

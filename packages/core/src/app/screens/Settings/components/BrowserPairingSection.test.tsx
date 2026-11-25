@@ -24,6 +24,7 @@ const h = vi.hoisted(() => ({
 	armed: Promise.resolve() as Promise<void>,
 	/** How many times preparing the invite fails before it works. */
 	inviteFailures: 0,
+	group: undefined as unknown,
 }));
 
 vi.mock("../../../../hooks/useVaultRegistry", () => ({
@@ -82,7 +83,8 @@ const pairing = {
 const platform = {
 	target: "desktop",
 	storage: {
-		getMeta: async (k: string) => (k.startsWith("backup.targets:") ? h.targets : undefined),
+		getMeta: async (k: string) =>
+			k === "sync.group:v1" ? h.group : k.startsWith("backup.targets:") ? h.targets : undefined,
 	},
 	shell: {
 		onSyncEvent: (cb: (e: { kind: string }) => void) => {
@@ -129,6 +131,7 @@ afterEach(() => {
 	h.onSyncEvent = null;
 	h.armed = Promise.resolve();
 	h.inviteFailures = 0;
+	h.group = undefined;
 });
 
 describe("the list of linked browsers", () => {
@@ -322,6 +325,34 @@ describe("connecting a browser by emoji", () => {
 		);
 		fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
 		await waitFor(() => expect(h.summaries.at(-1)).toBeNull());
+	});
+
+	it("tells the linking browser which keys this vault's group removed", async () => {
+		const device = (publicKey: string) => ({
+			id: publicKey,
+			publicKey,
+			label: publicKey,
+			addedAt: 1,
+			hlc: { wall: 1, counter: 0, node: publicKey },
+		});
+		h.group = {
+			groupKey: "k",
+			roster: {
+				devices: [device("kept"), { ...device("readded"), admission: { by: "kept", sig: "s" } }],
+				revoked: [],
+				revokedKeys: ["gone", "readded"],
+			},
+		};
+		await connect();
+		await waitFor(() =>
+			expect(h.summaries).toContainEqual({
+				name: "Home",
+				empty: false,
+				entries: 2,
+				removedKeys: ["gone"],
+				backupTargets: false,
+			}),
+		);
 	});
 
 	it("tells the linking browser when this vault has a backup target, which it can't see", async () => {

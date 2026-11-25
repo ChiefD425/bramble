@@ -19,7 +19,7 @@ import {
 	type VaultEntries,
 	vaultEntriesFromPayload,
 } from "./entry-mutations";
-import { harness, twoWindows } from "./entry-mutations.harness";
+import { harness, twoWindows, vaultDisk } from "./entry-mutations.harness";
 import { effectivePartStamps, PART_STAMP_FIELDS } from "./parts";
 import { MAX_PASSWORD_CHANGELOG } from "./password-changelog";
 
@@ -782,6 +782,7 @@ describe("createEntryMutations: synced settings survive entry writes", () => {
 		hlc: { wall: 400, counter: 0, node: "other" },
 		vv: { other: { wall: 400, counter: 0, node: "other" } },
 	};
+	const shownAt = { wall: 600, counter: 0, node: "phone" };
 	const withSetting = (): VaultEntries => ({
 		...empty(),
 		conflicts: [elsewhere],
@@ -803,6 +804,13 @@ describe("createEntryMutations: synced settings survive entry writes", () => {
 	// every copy and every fill.
 	it.each(ENTRY_MUTATIONS)("%s preserves the map, in memory and on disk", async (_name, run) => {
 		const h = harness();
+		// The sibling's displayed version, which won't open here: the only way a view holds a
+		// sibling without it. A save merges into the disk, so the disk has to hold it too.
+		await h.mutations.writeEntriesBlob({
+			entries: [{ ...elsewhere, ciphertext: "unreadable", hlc: shownAt, vv: { phone: shownAt } }],
+			tombstones: [],
+			conflicts: [elsewhere],
+		});
 		const next = await run(h, withSetting());
 		expect(next.settings).toEqual(withSetting().settings);
 		expect(await onDisk(h)).toEqual(withSetting().settings);
@@ -997,7 +1005,9 @@ describe("createEntryMutations: version history", () => {
 			causal: new Map([[id, { vv: { phone: at(5000, "phone") } }]]),
 			conflicts: [{ ...sib(id, 3000, "device-a") }],
 		};
-		const next = await h.mutations.update(seeded, id, login("a2"));
+		// A disk of its own, since a save merges into the disk and this state is built by hand, and a
+		// clock past its stamps, as a device's is once it has seen them.
+		const next = await harness(() => 10_000).mutations.update(seeded, id, login("a2"));
 		const stamp = next.stamps.get(id)!;
 		expect(stamp.node.startsWith("device-a~")).toBe(true);
 		expect(next.causal.get(id)!.vv[stamp.node]).toEqual(stamp);
@@ -1039,14 +1049,21 @@ describe("createEntryMutations: version history", () => {
 			tombstones: new Map([[id, oldTomb.hlc]]),
 			tombstoneCausal: new Map([[id, { vv: oldTomb.vv }]]),
 		};
-		const next = await h.mutations.remove(seeded, id);
+		// A disk of its own, holding what a device with this hand-built state would: the other
+		// entry's displayed version, which outranks its sibling. A save merges into the disk.
+		const fresh = harness();
+		await fresh.mutations.writeEntriesBlob({
+			entries: [{ ...sib("other-id", 700, "phone"), ciphertext: "unreadable" }],
+			tombstones: [],
+		});
+		const next = await fresh.mutations.remove(seeded, id);
 		expect(next.conflicts).toEqual([sib("other-id", 600)]);
 		expect(next.causal.has(id)).toBe(false);
 		const tomb = { hlc: next.tombstones.get(id)!, ...next.tombstoneCausal.get(id) };
 		expect(containsHistory(tomb, sib(id, 500))).toBe(true);
 		expect(containsHistory(tomb, versionOf(a, id))).toBe(true);
 		expect(containsHistory(tomb, oldTomb)).toBe(true);
-		const disk = await h.mutations.readEntriesPayload();
+		const disk = await fresh.mutations.readEntriesPayload();
 		expect(disk.tombstones.find((t) => t.id === id)!.vv).toEqual(tomb.vv);
 	});
 
@@ -1402,7 +1419,9 @@ describe("createEntryMutations: part stamps", () => {
 				},
 			],
 		};
-		const next = await h.mutations.update(seeded, id, loginWith("a2"));
+		// A disk of its own, since a save merges into the disk and this state is built by hand, and a
+		// clock past its stamps, as a device's is once it has seen them.
+		const next = await harness(() => 10_000).mutations.update(seeded, id, loginWith("a2"));
 		const stamp = stampOf(next, id);
 		expect(stamp.node.startsWith("device-a~")).toBe(true);
 		expect(eff(next.entries[0]!).parts.name).toEqual(stamp);
@@ -1521,6 +1540,66 @@ describe("createEntryMutations: saving from the version the form opened", () => 
 	});
 });
 
+describe("two writers on one vault", () => {
+	const writers = () => {
+		const disk = vaultDisk();
+		return { disk, a: harness(() => 1000, "a", disk), b: harness(() => 1000, "b", disk) };
+	};
+	/** What the disk holds, read past the fake outer layer. */
+	const onDisk = (disk: { bytes: Uint8Array }): EntriesPayload =>
+		decodeEntriesPayload(new TextDecoder().decode(decodeVaultBlob(disk.bytes).entriesCiphertext));
+	const names = (entries: readonly EncryptedEntry[]) =>
+		entries.map((e) => (JSON.parse(e.ciphertext.slice(3)) as { name: string }).name).sort();
+
+	it("a save from a stale copy keeps what another writer saved", async () => {
+		const { disk, a, b } = writers();
+		await a.mutations.add(empty(), login("x"));
+		const seen = await b.mutations.add(empty(), login("y"));
+		expect(names(onDisk(disk).entries)).toEqual(["x", "y"]);
+		expect(seen.entries.map((e) => e.name).sort()).toEqual(["x", "y"]);
+	});
+
+	it("a stale save keeps another writer's synced setting", async () => {
+		const { disk, a, b } = writers();
+		await a.mutations.setSetting(empty(), "pref.mailbox", { kind: "hosted" });
+		await b.mutations.add(empty(), login("y"));
+		expect(onDisk(disk).settings?.["pref.mailbox"]?.value).toEqual({ kind: "hosted" });
+	});
+
+	it("two edits of one entry from the same start are kept as siblings", async () => {
+		const { disk, a, b } = writers();
+		const start = await a.mutations.add(empty(), login("e"));
+		const id = start.entries[0]!.id;
+		await a.mutations.update(start, id, loginWith("e", { username: "from-a" }));
+		await b.mutations.update(start, id, loginWith("e", { username: "from-b" }));
+		const payload = onDisk(disk);
+		expect(payload.entries.filter((e) => e.id === id)).toHaveLength(1);
+		expect((payload.conflicts ?? []).filter((e) => e.id === id)).toHaveLength(1);
+	});
+
+	it("a save into a vault it can't read fails, and writes nothing", async () => {
+		const { a } = writers();
+		const start = await a.mutations.add(empty(), login("e"));
+		a.crypto.decryptWithVek = async () => {
+			throw new Error("not this vault's key");
+		};
+		const before = a.writes();
+		await expect(a.mutations.add(start, login("x"))).rejects.toThrow("not this vault's key");
+		expect(a.writes()).toBe(before);
+	});
+
+	it("an untouched entry edited from a stale copy is a clean edit", async () => {
+		const { disk, a, b } = writers();
+		const start = await a.mutations.add(empty(), login("e"));
+		const id = start.entries[0]!.id;
+		await a.mutations.add(start, login("x"));
+		await b.mutations.update(start, id, loginWith("e", { username: "from-b" }));
+		const payload = onDisk(disk);
+		expect(names(payload.entries)).toEqual(["e", "x"]);
+		expect(payload.conflicts ?? []).toHaveLength(0);
+	});
+});
+
 describe("createEntryMutations: two windows on one vault", () => {
 	const names = (entries: { name: string }[]) => entries.map((e) => e.name).sort();
 	/** Both windows loaded, and what each holds. */
@@ -1603,17 +1682,17 @@ describe("createEntryMutations: two windows on one vault", () => {
 		expect(mine.lastUsedAt).toBeDefined();
 	});
 
-	it("asks for a reload after merging, and goes on merging until it has one", async () => {
+	it("asks for a reload after merging, and already holds what it merged", async () => {
 		const { first, second, one, two } = await opened();
 		await first.mutations.add(one, login("Saved first"));
 
 		const afterMerge = await second.mutations.add(two, login("Saved second"));
 		expect(second.reloads()).toBe(1);
-		expect(afterMerge.diskSeen).toBeNull();
+		expect(names(afterMerge.entries)).toEqual(["Saved first", "Saved second"]);
 
-		// Before the reload lands, memory still lacks the first window's login.
+		// It knows the disk it left, so the next save has nothing to merge.
 		await second.mutations.add(afterMerge, login("Saved third"));
-		expect(second.reloads()).toBe(2);
+		expect(second.reloads()).toBe(1);
 		expect(names((await first.load()).entries)).toEqual([
 			"Saved first",
 			"Saved second",
@@ -1665,13 +1744,12 @@ describe("createEntryMutations: two windows on one vault", () => {
 		expect(names((await first.load()).entries)).toEqual(["Saved first", "Saved second"]);
 	});
 
-	it("writes plainly where a platform doesn't track the disk", async () => {
+	it("still merges where a platform doesn't track the disk, and asks no reload", async () => {
 		const { first, second, one } = await opened();
 		const { diskSeen: _diskSeen, ...untracked } = one;
 		await first.mutations.add(one, login("Saved first"));
-		const decrypt = vi.spyOn(second.crypto, "decryptWithVek");
 		const written = await second.mutations.add(untracked, login("Saved second"));
-		expect(decrypt).not.toHaveBeenCalled();
+		expect(names(written.entries)).toEqual(["Saved first", "Saved second"]);
 		expect(second.reloads()).toBe(0);
 		expect(written).not.toHaveProperty("diskSeen");
 	});

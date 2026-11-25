@@ -137,6 +137,33 @@ describe("usePrefs routing by scope", () => {
 
 	// A missing vault must not break prefs. usePrefs is mounted in hosts and tests that have no
 	// vault at all, so the context falls back to a not-ready value rather than throwing.
+	it("a synced account number reads normalized, and garbage as none", async () => {
+		function AccountHarness() {
+			const { prefs } = usePrefs();
+			return <span>{prefs.mailboxAccount ?? "none"}</span>;
+		}
+		const withValue =
+			(value: unknown) =>
+			({ children }: { children: ReactNode }) => (
+				<SyncedSettingsContext.Provider
+					value={{
+						settings: {
+							"pref.mailboxAccount": { hlc: { wall: 1, counter: 0, node: "n" }, value },
+						},
+						ready: true,
+						set: vi.fn(async () => {}),
+					}}
+				>
+					<PrefsProvider>{children}</PrefsProvider>
+				</SyncedSettingsContext.Provider>
+			);
+		render(<AccountHarness />, { wrapper: withValue("1234567890 1234567890-12345") });
+		expect(await screen.findByText("12345 67890 12345 67890 12345")).toBeTruthy();
+		cleanup();
+		render(<AccountHarness />, { wrapper: withValue("12345") });
+		expect(await screen.findByText("none")).toBeTruthy();
+	});
+
 	it("works with no synced-settings provider at all", async () => {
 		PLATFORM.storage.setMeta.mockClear();
 		render(

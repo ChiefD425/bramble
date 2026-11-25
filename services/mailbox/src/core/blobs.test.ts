@@ -15,11 +15,12 @@ import {
 	setup,
 	uploadBlob,
 } from "../test/harness.ts";
+import { ROW_BYTES } from "./messages.ts";
 import { blobs } from "./schema.ts";
 import { DAY_MS } from "./time.ts";
 
-async function trio() {
-	const { server, devices } = await setup(3);
+async function trio(opts: Parameters<typeof setup>[1] = {}) {
+	const { server, devices } = await setup(3, opts);
 	const [a, b, c] = [devices[0]!, devices[1]!, devices[2]!];
 	const id = await createMailbox(a, [b, c]);
 	await activate(id, b, c);
@@ -180,5 +181,37 @@ describe("blobs", () => {
 		expect(await res.json()).toEqual({ stored: true, recipients: 2 });
 		expect(await blobHashes(b, id)).toEqual([hash]);
 		expect(await blobHashes(c, id)).toEqual([hash]);
+	});
+});
+
+describe("wants and the quota", () => {
+	const hashes = (n: number) => Array.from({ length: n }, () => randomBytes(32).toString("hex"));
+
+	it("a collect-only mailbox takes no wants", async () => {
+		const { b, id } = await trio({ canPost: false });
+		const res = await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: hashes(1) });
+		expect(res.status).toBe(402);
+		expect(await res.json()).toEqual({ error: "collect_only" });
+	});
+
+	it("a collect-only mailbox still lets a member shrink its wants", async () => {
+		const opts: { canPost: boolean } = { canPost: true };
+		const { b, id } = await trio(opts);
+		const two = hashes(2);
+		expect((await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: two })).status).toBe(204);
+		opts.canPost = false;
+		const fewer = await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: two.slice(0, 1) });
+		expect(fewer.status).toBe(204);
+		const more = await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: hashes(3) });
+		expect(more.status).toBe(402);
+	});
+
+	it("want rows count against the quota", async () => {
+		const { b, id } = await trio({ quotaBytes: 3 * ROW_BYTES });
+		const over = await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: hashes(4) });
+		expect(over.status).toBe(507);
+		expect(await over.json()).toEqual({ error: "quota_exceeded" });
+		const fits = await b.request("PUT", `/v1/mailboxes/${id}/wants`, { hashes: hashes(3) });
+		expect(fits.status).toBe(204);
 	});
 });

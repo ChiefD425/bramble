@@ -301,6 +301,7 @@ import {
 	unlockRpIdOrder,
 	type WebauthnKeyKind,
 } from "../vault/webauthn-ceremony";
+import { withVaultWriteLock } from "../vault/write-lock";
 import { type SyncedSettingsAccess, SyncedSettingsContext } from "./synced-settings";
 import { PER_VAULT_PREF_KEYS, PREF_ALIAS_PROVIDER } from "./usePrefs";
 import { useSyncEnrollment } from "./useSyncEnrollment";
@@ -552,15 +553,15 @@ export interface VaultActions {
 	): Promise<string>;
 	/** Join an existing group from a pairing code; rebuilds this device's vault under the chosen unlock method. */
 	joinGroup(pairingCode: string, unlock: JoinUnlock, opts?: { viaLink?: boolean }): Promise<void>;
-	/** Setup-flow join: create a NEW vault from a pairing code (dedups to an existing vault if already
-	 * a member), then run the join in that vault's context and unlock into it. Resolves when the join
-	 * completes, with the id of the vault it opened. Drives `joining` / `joinError`. See
-	 * docs/multiple-vaults.md. */
+	/** Setup-flow join: create a NEW vault from a pairing code, then run the join in that vault's
+	 * context and unlock into it. A code for a group a vault here already holds is refused, or with
+	 * `openIfHeld` opens that vault. Resolves when the join completes, with the id of the vault it
+	 * opened. Drives `joining` / `joinError`. See docs/multiple-vaults.md. */
 	startJoin(
 		pairingCode: string,
 		unlock: JoinUnlock,
 		label?: string,
-		opts?: { viaLink?: boolean },
+		opts?: { viaLink?: boolean; openIfHeld?: boolean },
 	): Promise<string>;
 	/** Revoke a device from the sync group (roster tombstone); propagates over ongoing sync. */
 	removeDevice(deviceId: string): Promise<void>;
@@ -703,6 +704,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	// edit. One ref, reset in one piece, so a closing vault can't leave a field behind.
 	// See docs/synced-settings.md and docs/sync-conflicts.md.
 	const vaultStateRef = useRef<VaultSyncState>(emptyVaultSyncState());
+	// A load shows what it read only if no later load started and no save committed meanwhile.
+	const loadSeqRef = useRef(0);
+	const commitSeqRef = useRef(0);
 	// Which vault those refs hold, or null when they hold none. A mutation rewrites the whole blob
 	// from them, so one made before they hold the open vault wipes it, or pours another vault into
 	// it. The ref is what writes check; the state is what `synced.ready` reads.
@@ -835,36 +839,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		return platformAutofill.onProviderEnabled(() => void refreshAutofillIndex());
 	}, [isLocked, platformAutofill, refreshAutofillIndex]);
 
-	/** Decrypt all entries and push the autofill index. */
-	// `vaultId` names the vault when the caller just created or selected it and this closure's
-	// `activeId` hasn't caught up (the restore screen's first-vault unlock).
-	const loadEntries = useCallback(
-		async (vaultId?: string, superseded?: () => boolean) => {
-			const targetId = vaultId ?? activeId;
-			// Tracked only where another window can write under this one.
-			const tracked = (ciphertext: Uint8Array) =>
-				crypto.notifyExternalChange ? { diskSeen: ciphertext } : {};
-			// Bind the eventual plaintext cache publish to the unlocked session that started this
-			// load, before any blob read/decrypt await can cross a lock/unlock or vault switch.
-			// A lease that cannot be issued is the same class of refusal as one that is rejected
-			// later, so it drops the index update rather than the unlock.
-			const indexLease = await autofill.beginIndexUpdate?.().catch((e: unknown) => {
-				console.warn("[vault] no autofill index lease for this load:", e);
-				return undefined;
-			});
+	/** Read and open the vault's entries, setting aside any it can't decrypt; null when it has none. */
+	const openEntries = useCallback(
+		async (targetId: string | null | undefined, superseded?: () => boolean) => {
 			const { blob } = await readDecodedBlob();
-			if (superseded?.()) return;
-			if (blob.entriesCiphertext.length === 0) {
-				vaultStateRef.current = { ...emptyVaultSyncState(), ...tracked(blob.entriesCiphertext) };
-				latestRef.current = { ...latestRef.current, entries: [] };
-				markLoaded(vaultKey(targetId));
-				setConflicts(NO_CONFLICTS);
-				setSyncedSettings(undefined);
-				setFiles([]);
-				setEntries([]);
-				await publishIndex([], indexLease, targetId);
-				return;
-			}
+			const diskSeen = blob.entriesCiphertext;
+			if (diskSeen.length === 0) return { diskSeen, payload: null, decrypted: [] as Entry[] };
 			// A blob that decodes but won't decrypt is the issue-#27 signature; recover from the
 			// verified snapshot where one exists. See vault/recover-entries.
 			const outerJson = await decryptEntriesOrRecover(
@@ -901,19 +881,21 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 							readDecodedBlob,
 							verifyVekBeforeWrite: true,
 						});
-						// Into what's on disk now, not over it: the extension background writes the same
-						// blob without asking, and may have saved something while this combined.
-						const current = mergeEntriesPayload(await store.readEntriesPayload(), combined.payload);
-						await store.writeEntriesBlob(current);
-						payload = current;
+						// Into what's on disk now, under the vault write lock: another context may have
+						// saved while this combined, and none can save between this read and the write.
+						payload = await withVaultWriteLock(async () => {
+							const current = mergeEntriesPayload(
+								await store.readEntriesPayload(),
+								combined.payload,
+							);
+							await store.writeEntriesBlob(current);
+							return current;
+						});
 					}
 				} catch (e) {
 					console.warn("[vault] combining siblings on load failed; keeping the conflict:", e);
 				}
 			}
-			if (superseded?.()) return;
-			setSyncedSettings(payload.settings);
-			setFiles(liveFiles(payload));
 			// Advance this device's clock past every stamp it just read, so the next
 			// local write is causally ordered after them.
 			const clock = await ensureClock();
@@ -932,7 +914,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 					dekIv: enc.dekIv,
 				})),
 			);
-			if (superseded?.()) return;
+			if (superseded?.()) return null;
 			// Decode everything readable BEFORE any write: a failed open must leave the vault as it was.
 			const unreadable: EncryptedEntry[] = [];
 			const decrypted: Entry[] = [];
@@ -969,19 +951,62 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 					unreadable,
 				);
 			}
+			return { diskSeen, payload, decrypted };
+		},
+		[readDecodedBlob, crypto, storage, ensureClock],
+	);
+
+	/** Decrypt all entries and push the autofill index. */
+	// `vaultId` names the vault when the caller just created or selected it and this closure's
+	// `activeId` hasn't caught up (the restore screen's first-vault unlock).
+	const loadEntries = useCallback(
+		async (vaultId?: string, superseded?: () => boolean) => {
+			const targetId = vaultId ?? activeId;
+			const load = ++loadSeqRef.current;
+			// Bind the eventual plaintext cache publish to the unlocked session that started this
+			// load, before any blob read/decrypt await can cross a lock/unlock or vault switch.
+			// A lease that cannot be issued is the same class of refusal as one that is rejected
+			// later, so it drops the index update rather than the unlock.
+			const indexLease = await autofill.beginIndexUpdate?.().catch((e: unknown) => {
+				console.warn("[vault] no autofill index lease for this load:", e);
+				return undefined;
+			});
+			let opened: Awaited<ReturnType<typeof openEntries>>;
+			for (;;) {
+				const commits = commitSeqRef.current;
+				opened = await openEntries(targetId, superseded);
+				// A later load read a newer disk and shows it; a save committed meanwhile is newer than
+				// this read, and reading again picks it up.
+				if (!opened || load !== loadSeqRef.current || superseded?.()) return;
+				if (commits === commitSeqRef.current) break;
+			}
+			const { diskSeen, payload, decrypted } = opened;
+			if (!payload) {
+				vaultStateRef.current = { ...emptyVaultSyncState(), diskSeen };
+				latestRef.current = { ...latestRef.current, entries: [] };
+				markLoaded(vaultKey(targetId));
+				setConflicts(NO_CONFLICTS);
+				setSyncedSettings(undefined);
+				setFiles([]);
+				setEntries([]);
+				await publishIndex([], indexLease, targetId);
+				return;
+			}
+			setSyncedSettings(payload.settings);
+			setFiles(liveFiles(payload));
 			const loaded = vaultEntriesFromPayload(payload, decrypted);
 			const { entries: _entries, ...syncState } = loaded;
 			// Stamps and entries change together, as in commitEntries: a write or an opened version
 			// read before the render lands would otherwise pair new stamps with old content.
 			// What this load read, not what the disk holds by now: a save since then must still merge.
-			vaultStateRef.current = { ...syncState, ...tracked(blob.entriesCiphertext) };
+			vaultStateRef.current = { ...syncState, diskSeen };
 			latestRef.current = { ...latestRef.current, entries: decrypted };
 			markLoaded(vaultKey(targetId));
 			setConflicts(conflictsOf(loaded));
 			setEntries(decrypted);
 			await publishIndex(toAutofillIndex(decrypted), indexLease, targetId);
 		},
-		[readDecodedBlob, crypto, storage, autofill, ensureClock, publishIndex, activeId, markLoaded],
+		[openEntries, autofill, publishIndex, activeId, markLoaded],
 	);
 
 	// Another window saved: read it, unless this vault has closed or changed by the time that lands.
@@ -1315,7 +1340,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			if (await crypto.isLocked()) {
 				throw new Error(t`Unlock the vault before adding a key.`);
 			}
-			const { blob } = await readDecodedBlob();
 
 			const { credentialId, salt, hmacSecret, synced } = await createPrfCredential(label, {
 				kind,
@@ -1337,8 +1361,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 				wrappedVek: base64ToBytes(wrapped.wrappedVek),
 			};
 
-			const newBlob = addWebauthnSlot(blob, slot);
-			await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+			// Read after the tap, inside the lock: the ceremony takes seconds, and a save that lands
+			// meanwhile must not be written over.
+			await withVaultWriteLock(async () => {
+				const { blob } = await readDecodedBlob();
+				await storage.writeVaultBlob(encodeVaultBlob(addWebauthnSlot(blob, slot)));
+			});
 
 			const labels = { ...latestRef.current.webauthnKeyLabels };
 			labels[slotIdB64] = {
@@ -1358,9 +1386,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	const revokeWebauthnKey = useCallback(
 		async (slotIdB64: string) => {
 			setError(null);
-			const { blob } = await readDecodedBlob();
-			const newBlob = removeWebauthnSlot(blob, base64ToBytes(slotIdB64));
-			await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+			await withVaultWriteLock(async () => {
+				const { blob } = await readDecodedBlob();
+				const newBlob = removeWebauthnSlot(blob, base64ToBytes(slotIdB64));
+				await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+			});
 			const labels = { ...latestRef.current.webauthnKeyLabels };
 			delete labels[slotIdB64];
 			await storage.setMeta(WEBAUTHN_KEY_LABELS_PREF, labels);
@@ -1405,9 +1435,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			await storage.writeVaultBlob(bytes, newId);
 			vaultStateRef.current = {
 				...emptyVaultSyncState(),
-				...(bound.notifyExternalChange
-					? { diskSeen: decodeVaultBlob(bytes).entriesCiphertext }
-					: {}),
+				diskSeen: decodeVaultBlob(bytes).entriesCiphertext,
 			};
 			markLoaded(newId);
 			setConflicts(NO_CONFLICTS);
@@ -1551,6 +1579,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	// Commit a mutation's next state. Only ever runs after a successful persist,
 	// so a failed write leaves entries + refs untouched.
 	const commitEntries = useCallback((next: VaultEntries) => {
+		commitSeqRef.current++;
 		const { entries: _entries, ...syncState } = next;
 		vaultStateRef.current = syncState;
 		setConflicts(conflictsOf(next));
@@ -1824,18 +1853,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		[crypto, readDecodedBlob],
 	);
 
-	/**
-	 * Re-wrap the in-memory VEK under `password` as the vault's single password
-	 * slot. Shared core of set, re-enable, and change. Does NOT rotate the VEK
-	 * (other slots depend on it), only the password KEK + verifier. The written
-	 * slot is verified post-write and the file rolled back on failure.
-	 */
-	const writeMasterPasswordSlot = useCallback(
+	/** Check a just-written password slot opens, or restore the file from before the write. Runs
+	 * inside the write lock, so the restore can't undo anyone else's save. */
+	const verifyPasswordWrite = useCallback(
 		async (password: string) => {
-			const { blob } = await readDecodedBlob();
-			const slot = await wrapPasswordSlot(password);
-			const newBlob = upsertPasswordSlot(blob, slot);
-			await storage.writeVaultBlob(encodeVaultBlob(newBlob));
 			try {
 				const { blob: written } = await readDecodedBlob();
 				const writtenSlot = findPasswordSlot(written);
@@ -1853,6 +1874,26 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 				await storage.restoreVaultFromBackup().catch(() => false);
 				throw new Error(t`Couldn't save the master password. Please try again.`);
 			}
+		},
+		[readDecodedBlob, crypto, storage, t],
+	);
+
+	/**
+	 * Re-wrap the in-memory VEK under `password` as the vault's single password
+	 * slot. Shared core of set, re-enable, and change. Does NOT rotate the VEK
+	 * (other slots depend on it), only the password KEK + verifier. The written
+	 * slot is verified post-write and the file rolled back on failure.
+	 */
+	const writeMasterPasswordSlot = useCallback(
+		async (password: string) => {
+			// The slow part first, then read and write inside the lock, so a save that lands while the
+			// password is stretched isn't written over.
+			const slot = await wrapPasswordSlot(password);
+			await withVaultWriteLock(async () => {
+				const { blob } = await readDecodedBlob();
+				await storage.writeVaultBlob(encodeVaultBlob(upsertPasswordSlot(blob, slot)));
+				await verifyPasswordWrite(password);
+			});
 			await refreshSlotMetadata();
 			// The provider's copy carries the password slot: the old password must stop opening it.
 			await refreshAutofillIndex();
@@ -1861,10 +1902,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			readDecodedBlob,
 			wrapPasswordSlot,
 			storage,
-			crypto,
+			verifyPasswordWrite,
 			refreshSlotMetadata,
 			refreshAutofillIndex,
-			t,
 		],
 	);
 
@@ -1906,10 +1946,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		if ((await storage.getMeta(syncKey("sync.group"))) != null) {
 			throw new Error(t`Disconnect this device from sync before turning off the master password.`);
 		}
-		const { blob } = await readDecodedBlob();
-		// Throws (invariant B) if no security key remains to unlock with.
-		const newBlob = removePasswordSlot(blob);
-		await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+		await withVaultWriteLock(async () => {
+			const { blob } = await readDecodedBlob();
+			// Throws (invariant B) if no security key remains to unlock with.
+			const newBlob = removePasswordSlot(blob);
+			await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+		});
 		await refreshSlotMetadata();
 		await refreshAutofillIndex();
 	}, [crypto, readDecodedBlob, storage, syncKey, refreshSlotMetadata, refreshAutofillIndex, t]);
@@ -1945,61 +1987,67 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			if ((vaultStateRef.current.manifest?.files?.length ?? 0) > 0) {
 				throw new Error(t`Rotating the key isn't available yet for a vault with attachments.`);
 			}
-			// Read before rotating: this is the last moment the old key can open anything.
-			const { blob } = await readDecodedBlob();
-			const snapshot = snapshotEntries();
-			// Sibling versions are sealed under DEKs the old key wraps, so open them while it exists.
-			const conflictPlaintexts = await mutations.openConflicts(snapshot);
-
-			await crypto.rotateVek();
-			// From here the old key is gone. Everything below re-derives from plaintext held in
-			// memory, and any failure has to end in a restore.
-			let code: string;
+			let code = "";
 			let resealed: EncryptedEntry[] = [];
-			try {
-				const { conflicts: resealedConflicts, ...sealed } = await mutations.sealAll(
-					snapshot,
-					conflictPlaintexts,
-				);
-				resealed = resealedConflicts;
-				code = makeRecoveryCode();
-				const withPassword = upsertPasswordSlot(
-					{ ...blob, ...sealed },
-					await wrapPasswordSlot(password),
-				);
-				const rotated = upsertRecoverySlot(withPassword, await wrapRecoverySlot(code));
-				// Security-key slots wrap the key that no longer exists; keeping them would offer an
-				// unlock that cannot work.
-				const slots = rotated.slots.filter((slot) => slot.kind !== SLOT_KIND_WEBAUTHN);
-				await storage.writeVaultBlob(encodeVaultBlob({ ...rotated, slots }));
+			// All of it inside the write lock, so no save can land between the read and the verified
+			// write, and the restore on failure can't undo anyone else's.
+			await withVaultWriteLock(async () => {
+				// Read before rotating: this is the last moment the old key can open anything.
+				const { blob } = await readDecodedBlob();
+				// What is on disk now, not just this view's copy: a save that landed since it loaded is
+				// re-sealed too, instead of being left under a key that is about to be gone.
+				const snapshot = await mutations.withDisk(snapshotEntries());
+				// Sibling versions are sealed under DEKs the old key wraps, so open them while it exists.
+				const conflictPlaintexts = await mutations.openConflicts(snapshot);
 
-				const { blob: written } = await readDecodedBlob();
-				const slot = findPasswordSlot(written);
-				const ok =
-					slot != null &&
-					(await crypto.verifyPasswordSlot({
-						password,
-						saltB64: bytesToBase64(slot.salt),
-						slotIdB64: bytesToBase64(slot.slotId),
-						verifierB64: bytesToBase64(slot.verifier),
-						magicVersion: verifierPrefix(),
-					}));
-				if (!ok) throw new Error("rotated password slot failed post-write verify");
-				// And that the entries came back: a readable slot list over unreadable entries is
-				// the failure this whole shape exists to prevent.
-				await crypto.decryptWithVek(
-					bytesToBase64(written.entriesIv),
-					bytesToBase64(written.entriesCiphertext),
-				);
-			} catch (e) {
-				console.error("[vault] rotation failed; restoring", e);
-				await storage.restoreVaultFromBackup().catch(() => false);
-				// The loaded key is now the new one, which the restored file knows nothing about.
-				// Locking makes the next unlock read the old key back out of the restored slots.
-				await crypto.lock().catch(() => {});
-				setIsLocked(true);
-				throw new Error(t`Rotation failed and nothing was changed. Unlock and try again.`);
-			}
+				await crypto.rotateVek();
+				// From here the old key is gone. Everything below re-derives from plaintext held in
+				// memory, and any failure has to end in a restore.
+				try {
+					const { conflicts: resealedConflicts, ...sealed } = await mutations.sealAll(
+						snapshot,
+						conflictPlaintexts,
+					);
+					resealed = resealedConflicts;
+					code = makeRecoveryCode();
+					const withPassword = upsertPasswordSlot(
+						{ ...blob, ...sealed },
+						await wrapPasswordSlot(password),
+					);
+					const rotated = upsertRecoverySlot(withPassword, await wrapRecoverySlot(code));
+					// Security-key slots wrap the key that no longer exists; keeping them would offer an
+					// unlock that cannot work.
+					const slots = rotated.slots.filter((slot) => slot.kind !== SLOT_KIND_WEBAUTHN);
+					await storage.writeVaultBlob(encodeVaultBlob({ ...rotated, slots }));
+
+					const { blob: written } = await readDecodedBlob();
+					const slot = findPasswordSlot(written);
+					const ok =
+						slot != null &&
+						(await crypto.verifyPasswordSlot({
+							password,
+							saltB64: bytesToBase64(slot.salt),
+							slotIdB64: bytesToBase64(slot.slotId),
+							verifierB64: bytesToBase64(slot.verifier),
+							magicVersion: verifierPrefix(),
+						}));
+					if (!ok) throw new Error("rotated password slot failed post-write verify");
+					// And that the entries came back: a readable slot list over unreadable entries is
+					// the failure this whole shape exists to prevent.
+					await crypto.decryptWithVek(
+						bytesToBase64(written.entriesIv),
+						bytesToBase64(written.entriesCiphertext),
+					);
+				} catch (e) {
+					console.error("[vault] rotation failed; restoring", e);
+					await storage.restoreVaultFromBackup().catch(() => false);
+					// The loaded key is now the new one, which the restored file knows nothing about.
+					// Locking makes the next unlock read the old key back out of the restored slots.
+					await crypto.lock().catch(() => {});
+					setIsLocked(true);
+					throw new Error(t`Rotation failed and nothing was changed. Unlock and try again.`);
+				}
+			});
 			// Committed: the file is written and verified. Refreshing the view comes after the
 			// rollback boundary on purpose — failing to re-read entries is a display problem, and
 			// undoing a good rotation over it would invalidate a recovery code the user was shown.
@@ -2031,11 +2079,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		if (await crypto.isLocked()) {
 			throw new Error(t`Unlock the vault before generating a recovery code.`);
 		}
-		const { blob } = await readDecodedBlob();
 		const code = makeRecoveryCode();
 		const slot = await wrapRecoverySlot(code);
-		const newBlob = upsertRecoverySlot(blob, slot);
-		await storage.writeVaultBlob(encodeVaultBlob(newBlob));
+		await withVaultWriteLock(async () => {
+			const { blob } = await readDecodedBlob();
+			await storage.writeVaultBlob(encodeVaultBlob(upsertRecoverySlot(blob, slot)));
+		});
 		await refreshSlotMetadata();
 		return code;
 	}, [crypto, readDecodedBlob, wrapRecoverySlot, storage, refreshSlotMetadata, t]);
@@ -2228,16 +2277,22 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			pairingCode: string,
 			method: JoinUnlock,
 			label?: string,
-			opts?: { viaLink?: boolean },
+			opts?: { viaLink?: boolean; openIfHeld?: boolean },
 		): Promise<string> => {
 			if (joinInFlightRef.current) return joinInFlightRef.current;
 			const run = (async () => {
 				setJoinError(null);
 				const code = decodePairingCode(pairingCode.trim()); // validate before creating anything
-				// Dedup: if a vault already syncs this group, open it instead of adding a duplicate.
+				// Dedup: a vault already syncs this group, so no duplicate. Peers ignore a removed device
+				// and it still holds the group, so only the link flow, which can tell, may just open it.
 				for (const v of vaults) {
 					const g = await storage.getMeta<{ groupKey?: string }>(syncKeyFor("sync.group", v.id));
 					if (g?.groupKey === code.groupKey) {
+						if (!opts?.openIfHeld) {
+							throw new Error(
+								"This device is already in that sync group. If it was removed, disconnect it in that vault's Device sync, then pair again.",
+							);
+						}
 						selectVault(v.id);
 						return v.id;
 					}

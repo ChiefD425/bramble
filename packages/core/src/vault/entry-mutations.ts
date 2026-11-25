@@ -32,7 +32,7 @@ import type { EncryptedEntry, VaultBlob } from "../vault-format";
 import { toAutofillIndex } from "./autofill-index";
 import { foldCarriedCopy, type MatchedCopy } from "./combine-into";
 import { createEntriesBlobStore } from "./entries-blob";
-import { entryDataSchema } from "./entry-normalize";
+import { entryDataSchema, normalizeEntryData } from "./entry-normalize";
 import { cascadeFilesForEntries, type SealedFile, withSealedFiles } from "./file-mutations";
 import { withPartStamps } from "./parts";
 import {
@@ -41,6 +41,7 @@ import {
 	withSupersededPasswords,
 } from "./password-changelog";
 import { normalizeTags, tagKey, tagsEqual } from "./tags";
+import { withVaultWriteLock } from "./write-lock";
 
 // Coalesce a burst of uses into one write.
 const USE_COALESCE_MS = 60_000;
@@ -220,6 +221,11 @@ export interface EntryMutations {
 	 * the index can then never drift from disk, whichever kind of change caused the write.
 	 */
 	persist(next: VaultEntries): Promise<VaultEntries>;
+	/**
+	 * What is on disk merged into `current`, as the state a view shows. Call it inside
+	 * withVaultWriteLock, before a write that starts from `current` rather than from `persist`.
+	 */
+	withDisk(current: VaultEntries): Promise<VaultEntries>;
 	/** Decrypt the on-disk entries payload (empty for a fresh vault). */
 	readEntriesPayload(): Promise<EntriesPayload>;
 	/**
@@ -409,34 +415,80 @@ export function createEntryMutations(deps: EntryMutationsDeps): EntryMutations {
 		};
 	};
 
-	// Persist a new state in one write, then refresh the autofill index so it can
-	// never drift from disk. Returns `next` only after the write succeeds, so a
-	// failed write leaves the caller's state untouched.
-	const persist = async (next: VaultEntries): Promise<VaultEntries> => {
-		const indexLease = await autofill.beginIndexUpdate?.();
-		const payload = await buildPayload(next);
-		let diskSeen = next.diskSeen;
-		let merged = false;
-		if (
-			diskSeen !== undefined &&
-			!sameCiphertext(diskSeen, (await readDecodedBlob()).blob.entriesCiphertext)
-		) {
-			// This write's own versions first, so one with the same stamp as the disk's stays this one.
-			await writeEntriesBlob(mergeEntriesPayload(payload, await readEntriesPayload()));
-			diskSeen = null;
-			merged = true;
-		} else {
-			await writeEntriesBlob(payload, (written) => {
-				if (diskSeen !== undefined) diskSeen = written;
-			});
+	/** The state a payload holds, opening only the versions `known` doesn't already hold. */
+	const stateOf = async (payload: EntriesPayload, known: VaultEntries): Promise<VaultEntries> => {
+		const held = new Map(known.entries.map((e) => [e.id, e]));
+		const isHeld = (e: EncryptedEntry) => {
+			const stamp = known.stamps.get(e.id);
+			return held.has(e.id) && stamp !== undefined && compareHlc(stamp, e.hlc) === 0;
+		};
+		const foreign = payload.entries.filter((e) => !isHeld(e));
+		const opened = await crypto.decryptEntries(
+			foreign.map(({ ciphertext, iv, wrappedDek, dekIv }) => ({
+				ciphertext,
+				iv,
+				wrappedDek,
+				dekIv,
+			})),
+		);
+		const openedById = new Map(foreign.map((e, i) => [e.id, opened[i]]));
+		const decrypted: Entry[] = [];
+		for (const e of payload.entries) {
+			if (isHeld(e)) {
+				decrypted.push(held.get(e.id) as Entry);
+				continue;
+			}
+			// One that won't open is left out, as a load leaves it out; the disk still holds it.
+			const plaintext = openedById.get(e.id);
+			if (plaintext) decrypted.push({ id: e.id, ...normalizeEntryData(JSON.parse(plaintext)) });
 		}
-		// It's on disk now, whatever the index does.
-		crypto.notifyExternalChange?.();
-		await autofill.setIndex(toAutofillIndex(next.entries), indexLease);
-		// Last, so the read this asks for comes after the caller has committed.
-		if (merged) onDiskMerged?.();
-		return diskSeen === undefined ? next : { ...next, diskSeen };
+		return vaultEntriesFromPayload(payload, decrypted);
 	};
+
+	/** `next` merged with what is on disk now: the payload to write and the state it holds. */
+	const mergeWithDisk = async (next: VaultEntries, own?: EntriesPayload) => {
+		// Own first: a version with the same stamp on both sides keeps this write's copy, since
+		// some changes (a breach mark, a touch) rewrite an entry under the stamp it already has.
+		const payload = mergeEntriesPayload(
+			own ?? (await buildPayload(next)),
+			await readEntriesPayload(),
+		);
+		const state = await stateOf(payload, next);
+		return {
+			payload,
+			state: next.diskSeen === undefined ? state : { ...state, diskSeen: next.diskSeen },
+		};
+	};
+
+	// Persist a new state in one write, then refresh the autofill index so it can never drift from
+	// disk. Inside the vault write lock, a save from a copy that another view or a sync has moved past
+	// merges into the disk and loses nothing; one that knows the disk hasn't moved skips the merge.
+	// Returns the state written only after the write succeeds, so a failed write leaves the caller's
+	// state untouched.
+	const persist = (next: VaultEntries): Promise<VaultEntries> =>
+		withVaultWriteLock(async () => {
+			const indexLease = await autofill.beginIndexUpdate?.();
+			const own = await buildPayload(next);
+			// After encrypting, which an attachment can make slow.
+			const unmoved =
+				next.diskSeen != null &&
+				sameCiphertext(next.diskSeen, (await readDecodedBlob()).blob.entriesCiphertext);
+			const { payload, state } = unmoved
+				? { payload: own, state: next }
+				: await mergeWithDisk(next, own);
+			let written: Uint8Array | null = null;
+			await writeEntriesBlob(payload, (bytes) => {
+				written = bytes;
+			});
+			// It's on disk now, whatever the index does.
+			crypto.notifyExternalChange?.();
+			await autofill.setIndex(toAutofillIndex(state.entries), indexLease);
+			// Last, so the read this asks for comes after the caller has committed.
+			if (!unmoved && next.diskSeen !== undefined) onDiskMerged?.();
+			return next.diskSeen === undefined ? state : { ...state, diskSeen: written };
+		});
+
+	const withDisk = async (current: VaultEntries) => (await mergeWithDisk(current)).state;
 
 	// Validate at the seam (reject before encrypt), but persist the original value:
 	// validation is a gate, not a transform, so forward-compat keys survive the way
@@ -566,6 +618,7 @@ export function createEntryMutations(deps: EntryMutationsDeps): EntryMutations {
 	return {
 		readEntriesPayload,
 		persist,
+		withDisk,
 		writeEntriesBlob,
 
 		add: async (current, data) => {

@@ -8,6 +8,8 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.io.File
 import java.io.IOException
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import okhttp3.Call
 import okhttp3.Callback
@@ -120,6 +122,31 @@ class NativeHttpPlugin : Plugin() {
         enqueue(call, url, method, headers, requestBody, file.length())
     }
 
+    /**
+     * The response body written to `path`, whatever the status, and the SHA-256 of what was
+     * written: a mailbox attachment, too large to cross the bridge, which the caller adopts only
+     * if it hashes to the address it asked for. Hashed as it streams, so it is read once.
+     */
+    @PluginMethod
+    fun download(call: PluginCall) {
+        val url = call.getString("url") ?: return call.reject("Missing url")
+        val method = call.getString("method") ?: "GET"
+        val path = call.getString("path") ?: return call.reject("Missing path")
+        val file = File(path)
+        // No call limit: a large download can outlast any fixed one, and the read timeout already
+        // catches a download that stops moving.
+        enqueue(call, url, method, headersOf(call), null, 0L, callLimit = false) { response ->
+            val body = response.body ?: throw IOException("The host sent no body")
+            val digest = MessageDigest.getInstance("SHA-256")
+            DigestInputStream(body.byteStream(), digest).use { input ->
+                file.outputStream().use { output -> input.copyTo(output, 1 shl 16) }
+            }
+            JSObject()
+                .put("status", response.code)
+                .put("sha256", digest.digest().joinToString("") { "%02x".format(it) })
+        }
+    }
+
     private fun enqueue(
         call: PluginCall,
         url: String,
@@ -127,6 +154,12 @@ class NativeHttpPlugin : Plugin() {
         headers: Map<String, String>,
         requestBody: RequestBody?,
         bodySize: Long,
+        callLimit: Boolean = true,
+        answer: (Response) -> JSObject = { response ->
+            JSObject()
+                .put("status", response.code)
+                .put("body", Base64.encodeToString(response.body?.bytes() ?: ByteArray(0), Base64.NO_WRAP))
+        },
     ) {
         // Keeps the process running if Bramble is left mid-request. See TransferService.
         val transfer = Transfers.begin(context)
@@ -145,7 +178,7 @@ class NativeHttpPlugin : Plugin() {
             val idle = 60L + bodySize / 8_192L
             pending = client.newBuilder()
                 .readTimeout(idle, TimeUnit.SECONDS)
-                .callTimeout(maxOf(600L, 2 * idle), TimeUnit.SECONDS)
+                .callTimeout(if (callLimit) maxOf(600L, 2 * idle) else 0L, TimeUnit.SECONDS)
                 .build()
                 .newCall(request)
         } catch (e: Exception) {
@@ -159,12 +192,7 @@ class NativeHttpPlugin : Plugin() {
         pending.enqueue(object : Callback {
             override fun onResponse(c: Call, response: Response) {
                 try {
-                    val bytes = response.use { it.body?.bytes() ?: ByteArray(0) }
-                    call.resolve(
-                        JSObject()
-                            .put("status", response.code)
-                            .put("body", Base64.encodeToString(bytes, Base64.NO_WRAP))
-                    )
+                    call.resolve(response.use(answer))
                 } catch (e: IOException) {
                     fail(e)
                 } finally {

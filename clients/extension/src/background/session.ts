@@ -15,6 +15,7 @@ import { clearIndex } from "./autofill-index";
 import { runDueBackups } from "./backup";
 import { CAPTURE_KEY_PREFIX } from "./corner-prompt";
 import { retargetLink } from "./desktop-link";
+import { mailboxDriver, retargetMailboxToOpenVault } from "./mailbox";
 import { sendToOffscreen } from "./offscreen-client";
 import { closeUnlockPopout, POPOUT_HANDOFF_KEY } from "./popout";
 import { getAutoLockMinutes } from "./prefs";
@@ -123,6 +124,7 @@ function applyActiveVaultTransition(value: unknown): boolean {
 	if (!vekStore.applyActiveVaultId(value)) return false;
 	advanceAutofillSession();
 	retargetSync(vekStore.getActiveVaultId());
+	void retargetMailboxToOpenVault();
 	retargetLink(vekStore.getActiveVaultId());
 	return true;
 }
@@ -258,6 +260,7 @@ export async function clearSession(): Promise<void> {
 		void broadcastLockState(true, autofillSessionGeneration);
 		clearIndex();
 		void stopSync();
+		mailboxDriver.retarget(null);
 		let durableCleanupError: unknown;
 		try {
 			await vekStore.clearAllVeks();
@@ -400,6 +403,7 @@ on(
 		await api.storage.session.set({ [OPENED_VAULT_KEY]: vaultId });
 		await api.storage.local.set({ [LAST_OPENED_VAULT_KEY]: vaultId }).catch(() => {});
 		void maybeStartSync(vekStore.vekMutationSnapshot());
+		mailboxDriver.retarget(vaultId);
 		return { ok: true };
 	}),
 );

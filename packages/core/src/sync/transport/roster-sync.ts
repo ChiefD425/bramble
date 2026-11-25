@@ -9,11 +9,13 @@
 
 import { flags } from "../../flags";
 import {
+	canonicalAdmission,
 	canonicalRosterEntry,
 	decodeRoster,
 	encodeRoster,
 	type RosterEntry,
 	type RosterPayload,
+	sharesKey,
 	verifyRemoteRoster,
 } from "..";
 import { outgoingPayload } from "../entries-payload";
@@ -160,20 +162,26 @@ export async function verifyRosterEnvelope(
 		// An admission is valid iff a CURRENT live member (the admitter) signed this entry with its
 		// published admission key. A compromised member without the password can't produce one.
 		if (entry.admission) {
-			const admitter = current.devices.find((d) => d.id === entry.admission?.by);
-			if (admitter?.admissionKey) {
-				try {
-					if (
-						await rosterVerify(
-							admitter.admissionKey,
-							canonicalRosterEntry(entry),
-							entry.admission.sig,
-						)
-					)
-						validAdmission.add(entry);
-				} catch {
-					// failed admission signature -> not in validAdmission
-				}
+			const { admission } = entry;
+			const admitter = current.devices.find((d) => d.id === admission.by);
+			// A device can't vouch for its own keys under another id.
+			const key = admitter && !sharesKey(admitter, entry) ? admitter.admissionKey : undefined;
+			if (key) {
+				// Either form: the stamped one devices have always signed, or the stable one that
+				// outlasts the entry being re-stamped. The stable one leaves out the admission key, so
+				// it counts only on an entry its owner signed.
+				const holds = async (message: string, sig: string | undefined) => {
+					try {
+						return sig !== undefined && (await rosterVerify(key, message, sig));
+					} catch {
+						return false; // failed admission signature -> not in validAdmission
+					}
+				};
+				if (
+					(await holds(canonicalRosterEntry(entry), admission.sig)) ||
+					(valid.has(entry) && (await holds(canonicalAdmission(entry), admission.stableSig)))
+				)
+					validAdmission.add(entry);
 			}
 		}
 	}

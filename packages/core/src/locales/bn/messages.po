@@ -290,6 +290,10 @@ msgstr "{uncarried, plural, one {#টি ফাইল কপি হয়নি�
 #~ msgid "{uncarried} files didn't copy. They are still in the old vault, which is kept until you delete it."
 #~ msgstr "{uncarried} files didn't copy. They are still in the old vault, which is kept until you delete it."
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "{used} of {quota} used"
+msgstr "{quota} এর মধ্যে {used} ব্যবহৃত"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #~ msgid "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
 #~ msgstr "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
@@ -298,6 +302,10 @@ msgstr "{uncarried, plural, one {#টি ফাইল কপি হয়নি�
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "<0>{0}</0> items ready to import"
 msgstr "<0>{0}</0>টি আইটেম ইমপোর্টের জন্য প্রস্তুত"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "$2 a month, at least 6 months at a time."
+msgstr "মাসে $2, একবারে কমপক্ষে ৬ মাস।"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "1 hour"
@@ -376,6 +384,10 @@ msgstr "QR কোড পাওয়া গেছে, তবে সেটি অ
 msgid "A security code is 3 or 4 digits."
 msgstr "সিকিউরিটি কোড ৩ বা ৪ ডিজিটের হয়।"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "A token is at least 16 letters, digits, dashes or underscores"
+msgstr "একটি টোকেনে কমপক্ষে ১৬টি বর্ণ, অঙ্ক, ড্যাশ বা আন্ডারস্কোর থাকে"
+
 #: packages/core/src/app/screens/Settings/components/AboutSection.tsx
 #: packages/core/src/app/screens/Settings/Settings.tsx
 msgid "About"
@@ -384,6 +396,14 @@ msgstr "পরিচিতি"
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Access key ID"
 msgstr "অ্যাক্সেস কি ID"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Access token (only for your own server)"
+msgstr "অ্যাক্সেস টোকেন (শুধুমাত্র আপনার নিজের সার্ভারের জন্য)"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Account number"
+msgstr "অ্যাকাউন্ট নম্বর"
 
 #: packages/core/src/app/screens/VaultHome/SelectionBar.tsx
 msgid "Actions"
@@ -427,6 +447,10 @@ msgstr "ট্যাগ যোগ করুন"
 msgid "Add a vault"
 msgstr "ভল্ট যোগ করুন"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Add an account number to start the mailbox"
+msgstr "মেইলবক্স চালু করতে একটি অ্যাকাউন্ট নম্বর যোগ করুন"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #: packages/core/src/app/screens/Settings/components/DataSection.tsx
 msgid "Add an encrypted .bramble backup or export to this vault. Entries you already have aren't added twice."
@@ -468,6 +492,10 @@ msgstr "ডেস্কটপের ভল্ট যোগ করুন"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "এই লগইন কোন কোন ওয়েবসাইটের জন্য, সেগুলো যোগ করুন। কোনো সাইটের সাথে যুক্ত নয় এমন লগইনের জন্য ফাঁকা রাখুন।"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Add time"
+msgstr "সময় যোগ করুন"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add URL"
@@ -518,6 +546,10 @@ msgstr "অ্যাডভান্সড"
 msgid "Aeroplane"
 msgstr "বিমান"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "After that, your devices sync only when they're online together."
+msgstr "এর পরে, আপনার ডিভাইসগুলো কেবল তখনই সিঙ্ক করবে যখন সেগুলো একসাথে অনলাইন থাকে।"
+
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Alias domain"
 msgstr "বিকল্প নামের ডোমেইন"
@@ -567,6 +599,10 @@ msgstr "বিকল্প হিসেবে পাসকোড ব্যবহ
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Also lock the vault whenever your computer's screen locks, whatever the timeout."
 msgstr "সময়সীমা যা-ই হোক, কম্পিউটারের স্ক্রিন লক হলেই ভল্টও লক হবে।"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "An account number is 25 digits"
+msgstr "একটি অ্যাকাউন্ট নম্বর ২৫ অঙ্কের"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "An app password reaches every file in the account, not just this folder, and cannot be narrowed. For a backup that holds your whole vault history, a separate account used only for backups is worth the two minutes."
@@ -866,6 +902,11 @@ msgstr "Bramble সর্বশেষ ভার্সনে আছে"
 msgid "Bramble is up to date."
 msgstr "Bramble সর্বশেষ ভার্সনে আছে।"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Bramble Mailbox"
+msgstr "Bramble মেইলবক্স"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
 msgid "Bramble needs that permission to talk to the desktop app."
@@ -917,6 +958,10 @@ msgstr "বাকেট"
 msgid "Butterfly"
 msgstr "প্রজাপতি"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Buy more time"
+msgstr "আরও সময় কিনুন"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Cactus"
 msgstr "ক্যাকটাস"
@@ -924,6 +969,10 @@ msgstr "ক্যাকটাস"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Cake"
 msgstr "কেক"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Can't reach the mailbox; trying again soon"
+msgstr "মেইলবক্সে পৌঁছানো যাচ্ছে না; শীঘ্রই আবার চেষ্টা করা হচ্ছে"
 
 #: packages/core/src/app/screens/TotpSetup/TotpSetup.tsx
 msgid "Can't save this code"
@@ -976,6 +1025,10 @@ msgstr "বিড়াল"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Change"
 msgstr "পরিবর্তন করুন"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Change account number"
+msgstr "অ্যাকাউন্ট নম্বর পরিবর্তন করুন"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Change it on the site to keep your account safe."
@@ -1244,6 +1297,10 @@ msgstr "{name} কানেক্ট করুন"
 msgid "Connect a browser"
 msgstr "ব্রাউজার কানেক্ট করুন"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Connect a device to enable the mailbox."
+msgstr "মেইলবক্স চালু করতে একটি ডিভাইস সংযুক্ত করুন।"
+
 #: packages/core/src/app/components/AliasGenerator.tsx
 msgid "Connect an alias provider to create addresses here."
 msgstr "এখানে ঠিকানা তৈরি করতে একটি বিকল্প নাম প্রোভাইডার কানেক্ট করুন।"
@@ -1328,6 +1385,7 @@ msgstr "{copied} কপি হয়েছে"
 #: packages/core/src/app/components/EntryRow.tsx
 #: packages/core/src/app/components/PasswordGenerator.tsx
 #: packages/core/src/app/components/RecoveryCodeDisplay.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Copy"
@@ -1625,6 +1683,10 @@ msgid "Details"
 msgstr "বিস্তারিত"
 
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
+msgid "device"
+msgstr "ডিভাইস"
+
+#: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Device name"
 msgstr "ডিভাইসের নাম"
 
@@ -1668,6 +1730,7 @@ msgid "Disconnect this device from sync before turning off the master password."
 msgstr "মাস্টার পাসওয়ার্ড বন্ধ করার আগে এই ডিভাইসটি সিঙ্ক থেকে ডিসকানেক্ট করুন।"
 
 #: packages/core/src/app/components/DefaultManagerCard.tsx
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #: packages/core/src/app/components/SupportCard.tsx
 #: packages/core/src/app/components/UpdateCard.tsx
@@ -1804,6 +1867,10 @@ msgstr "এন্ডপয়েন্ট"
 msgid "Enter a new password"
 msgstr "নতুন পাসওয়ার্ড দিন"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Enter just the server's address, like https://mailbox.example.com"
+msgstr "শুধু সার্ভারের ঠিকানা লিখুন, যেমন https://mailbox.example.com"
+
 #. placeholder {0}: link.summary.name
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
 msgid "Enter the master password of {0}, the vault in your desktop app. This browser will use it too."
@@ -1864,6 +1931,11 @@ msgstr "আপনার WebDAV ঠিকানা এবং অ্যাকা�
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "eTLD+1 (default, matches all subdomains)"
 msgstr "eTLD+1 (ডিফল্ট, সব সাবডোমেইনের সাথে মেলে)"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Every device stops syncing through it."
+msgstr "এর মাধ্যমে সব ডিভাইসের সিঙ্ক বন্ধ হয়ে যায়।"
 
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "Every selected entry already has this tag."
@@ -2072,6 +2144,10 @@ msgstr "শক্তিশালী পাসওয়ার্ড তৈরি 
 msgid "Generator"
 msgstr "জেনারেটর"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Get an account number"
+msgstr "একটি অ্যাকাউন্ট নম্বর নিন"
+
 #: packages/core/src/app/components/ReviewNudgeCard.tsx
 #~ msgid "Getting on with Bramble?"
 #~ msgstr "Getting on with Bramble?"
@@ -2131,6 +2207,10 @@ msgstr "হৃদয়"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Hidden"
 msgstr "লুকানো"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Hide"
+msgstr "লুকান"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Hide authenticator key"
@@ -2605,6 +2685,30 @@ msgstr "{0}-এর লগইন সেভ হয়েছে"
 #~ msgid "Look up a site"
 #~ msgstr "Look up a site"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox"
+msgstr "মেইলবক্স"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox check-in: {date}"
+msgstr "মেইলবক্স চেক-ইন: {date}"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox check-in: today"
+msgstr "মেইলবক্স চেক-ইন: আজ"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Mailbox server"
+msgstr "মেইলবক্স সার্ভার"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Mailbox time ended {date}"
+msgstr "মেইলবক্সের সময় শেষ হয়েছে {date}"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Mailbox time ends {date}"
+msgstr "মেইলবক্সের সময় শেষ হবে {date}"
+
 #: packages/core/src/app/components/DefaultManagerCard.tsx
 msgid "Make Bramble your default password manager?"
 msgstr "Bramble-কে আপনার ডিফল্ট পাসওয়ার্ড ম্যানেজার করতে চান?"
@@ -2672,6 +2776,10 @@ msgstr "{browserName}-এর এন্ট্রি আর ফাইল {desktopN
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Mushroom"
 msgstr "মাশরুম"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "My other devices already use it"
+msgstr "আমার অন্য ডিভাইসগুলো ইতিমধ্যে এটি ব্যবহার করে"
 
 #: packages/core/src/app/entry-modes/card.tsx
 #: packages/core/src/app/entry-modes/login.tsx
@@ -2757,6 +2865,10 @@ msgstr "কোনো লগইন ঝুঁকিতে নেই।"
 msgid "No logins match."
 msgstr "কোনো লগইন মেলেনি।"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "No paid time yet"
+msgstr "এখনও কোনো কেনা সময় নেই"
+
 #: packages/core/src/app/screens/VaultSetup/components/JoinCard.tsx
 msgid "No QR code detected. Try again, or paste the code."
 msgstr "কোনো QR কোড পাওয়া যায়নি। আবার চেষ্টা করুন, অথবা কোডটি পেস্ট করুন।"
@@ -2838,6 +2950,10 @@ msgstr "সিঙ্ক হচ্ছে না: এই ডিভাইস এখ
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "সিঙ্ক হচ্ছে না: আপনার অন্য ডিভাইসগুলো আর এই ডিভাইসটিকে চিনছে না। সংযোগ বিচ্ছিন্ন করুন, তারপর অন্য ডিভাইসের কোড দিয়ে আবার যুক্ত হোন।"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Not using the mailbox"
+msgstr "মেইলবক্স ব্যবহার করা হচ্ছে না"
+
 #: packages/core/src/app/entry-modes/card.tsx
 #: packages/core/src/app/entry-modes/login.tsx
 #: packages/core/src/app/entry-modes/ssh-key.tsx
@@ -2881,6 +2997,14 @@ msgstr "অক্টোপাস"
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Off"
 msgstr "বন্ধ"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+#~ msgid "Off here, the other devices carry on without this one."
+#~ msgstr ""
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Off on this device"
+msgstr "এই ডিভাইসে বন্ধ"
 
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
@@ -3028,6 +3152,18 @@ msgstr "অন্যান্য প্রতিষ্ঠান"
 #: packages/core/src/app/screens/VaultHome/VaultHome.tsx
 msgid "Overview"
 msgstr "সারসংক্ষেপ"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid through {date}"
+msgstr "{date} পর্যন্ত কেনা হয়েছে"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid time ended {date}"
+msgstr "কেনা সময় শেষ হয়েছে {date}"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Paid time ends {date}"
+msgstr "কেনা সময় শেষ হবে {date}"
 
 #: packages/core/src/app/screens/VaultSetup/components/JoinCard.tsx
 msgid "Pair with another device"
@@ -3235,6 +3371,10 @@ msgstr "আপনার অন্য ডিভাইসের কোডের �
 #: packages/core/src/app/entry-modes/attachments.tsx
 msgid "Popout to window to attach files"
 msgstr "ফাইল সংযুক্ত করতে আলাদা উইন্ডোতে খুলুন"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Posting is paused for this account"
+msgstr "এই অ্যাকাউন্টের জন্য পোস্টিং স্থগিত আছে"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Press Enter / submit the form right after the credentials are filled in."
@@ -3584,6 +3724,7 @@ msgstr "সান্তা"
 
 #: packages/core/src/app/entry-modes/attachments.tsx
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Save"
 msgstr "সেভ করুন"
 
@@ -3836,6 +3977,10 @@ msgstr "সেটিংস"
 msgid "Settings sections"
 msgstr "সেটিংসের বিভাগ"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Show"
+msgstr "দেখান"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Show a save / update card in the corner of the page when you sign in with credentials Bramble doesn't have."
 msgstr "Bramble-এ নেই এমন শংসাপত্র দিয়ে সাইন ইন করার সময় পৃষ্ঠার কোণে একটি সংরক্ষণ/আপডেট কার্ড দেখানো হবে।"
@@ -3901,6 +4046,10 @@ msgstr "মান দেখান"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Show your logins below sign-in fields in Safari. macOS keeps their usernames and sites outside your vault."
 msgstr "Safari-তে সাইন-ইন ঘরের নিচে আপনার লগইন দেখান। macOS এগুলোর ব্যবহারকারীর নাম ও সাইট আপনার ভল্টের বাইরে রাখে।"
+
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+msgid "Sign in"
+msgstr "সাইন ইন করুন"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 #~ msgid "Sign in and Bramble stores encrypted backups in its own {name} app folder. Only ciphertext is uploaded, so {name} can't read anything in your vault."
@@ -3987,9 +4136,19 @@ msgstr "আপনি লক না করা বা অ্যাপ বন্ধ
 msgid "Still saving. This is taking longer than it should."
 msgstr "এখনো সেভ হচ্ছে। স্বাভাবিকের চেয়ে বেশি সময় লাগছে।"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Stop"
+msgstr "থামান"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Stop using the app"
 msgstr "অ্যাপ ব্যবহার বন্ধ করুন"
+
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Stop using the mailbox"
+msgstr "মেইলবক্স ব্যবহার বন্ধ করুন"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Stops filling and unlocking through the desktop app on this browser. This vault keeps syncing with it, and nothing is deleted anywhere. To take this browser out of the vault entirely, remove it from the device list under Device sync."
@@ -4041,6 +4200,11 @@ msgstr "যে চিহ্নগুলো ব্যবহার হবে"
 msgid "Sync"
 msgstr "সিঙ্ক"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Sync even when your devices are never online at the same time. The server only holds encrypted changes, and deletes them once every device has them."
+msgstr "আপনার ডিভাইসগুলো কখনো একই সময়ে অনলাইন না থাকলেও সিঙ্ক করুন। সার্ভার কেবল এনক্রিপ্ট করা পরিবর্তনগুলো রাখে এবং প্রতিটি ডিভাইসে পৌঁছে গেলে সেগুলো মুছে ফেলে।"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Sync now"
 msgstr "এখনই সিঙ্ক করুন"
@@ -4057,6 +4221,11 @@ msgstr "ডেস্কটপ অ্যাপের সাথে সিঙ্ক
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Synced · {0} devices"
 msgstr "সিঙ্ক হয়েছে · {0}টি ডিভাইস"
+
+#. placeholder {0}: formatAgo(record.at)
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Synced through the mailbox {0}"
+msgstr "মেইলবক্সের মাধ্যমে সিঙ্ক হয়েছে {0}"
 
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "System"
@@ -4261,6 +4430,19 @@ msgstr "ডেস্কটপের ভল্টে আগে থেকেই �
 msgid "The desktop's vault has its own email alias provider, so this vault's wasn't brought over."
 msgstr "ডেস্কটপের ভল্টের নিজস্ব বিকল্প ইমেইল প্রোভাইডার আছে, তাই এই ভল্টেরটি আনা হয়নি।"
 
+#: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox doesn't recognize this account number"
+msgstr "মেইলবক্স এই অ্যাকাউন্ট নম্বরটি চিনতে পারছে না"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox is full"
+msgstr "মেইলবক্সটি পূর্ণ"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "The mailbox only delivers right now"
+msgstr "মেইলবক্সটি এখন কেবল ডেলিভারি করছে"
+
 #: packages/core/src/app/screens/Settings/components/HiddenVaultRow.tsx
 #~ msgid "The old vault"
 #~ msgstr "The old vault"
@@ -4355,6 +4537,11 @@ msgstr "এগুলো এখন আপনার ভল্টে আছে। �
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "This adds the desktop's vault to this browser as a separate one. Your existing vaults stay as they are."
 msgstr "এতে ডেস্কটপের ভল্ট এই ব্রাউজারে আলাদা একটি ভল্ট হিসেবে যোগ হবে। আপনার বর্তমান ভল্টগুলো যেমন আছে তেমনই থাকবে।"
+
+#. placeholder {0}: goesWith.get(d.id)
+#: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
+msgid "This also removes {0}, which uses the same keys."
+msgstr "এটি {0}-কেও মুছে ফেলে, যা একই কী ব্যবহার করে।"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "This authenticator key is invalid and can't generate codes."
@@ -4458,6 +4645,10 @@ msgstr "এই ডিভাইস এখন অন্য ডিভাইস য�
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "this device only"
 msgstr "শুধু এই ডিভাইসে"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "This device uses the mailbox for another vault. Turn it off there to use it here."
+msgstr "এই ডিভাইসটি অন্য একটি ভল্টের জন্য মেইলবক্স ব্যবহার করে। এখানে এটি ব্যবহার করতে সেখানে এটি বন্ধ করুন।"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "This domain and its subdomains"
@@ -4939,6 +5130,10 @@ msgstr "পাসওয়ার্ড ব্যবহার করুন"
 #~ msgid "Use security key"
 #~ msgstr "Use security key"
 
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Use the mailbox on this device"
+msgstr "এই ডিভাইসে মেইলবক্স ব্যবহার করুন"
+
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
 msgid "Use the vault from the Bramble desktop app on this computer."
 msgstr "এই কম্পিউটারের Bramble ডেস্কটপ অ্যাপের ভল্ট ব্যবহার করুন।"
@@ -4950,6 +5145,10 @@ msgstr "এটি ব্যবহার করুন"
 #: packages/core/src/app/components/ui/weak-password-notice.tsx
 msgid "Use this password anyway"
 msgstr "তবুও এই পাসওয়ার্ড ব্যবহার করুন"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Use this server"
+msgstr "এই সার্ভার ব্যবহার করুন"
 
 #: packages/core/src/app/screens/Settings/components/TapToUnlockSection.tsx
 msgid "Use Touch ID or Windows Hello instead of typing your master password."
@@ -5067,6 +5266,10 @@ msgstr "{finishing}-এর লিংক করা শেষ হওয়ার �
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "Waiting for a device to join…"
 msgstr "ডিভাইস যুক্ত হওয়ার অপেক্ষায়…"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Waiting for another device to add this one"
+msgstr "অন্য একটি ডিভাইসের মাধ্যমে এটি যোগ করার জন্য অপেক্ষা করা হচ্ছে"
 
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
@@ -5192,6 +5395,10 @@ msgstr "আপনি শুধু সিকিউরিটি কি ট্য�
 #~ msgid "You'll unlock this vault with your security key only. If you lose all your security keys, your recovery code is the only way back in. There's no master password to fall back on."
 #~ msgstr "You'll unlock this vault with your security key only. If you lose all your security keys, your recovery code is the only way back in. There's no master password to fall back on."
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Your account stays. To delete it, use the account page."
+msgstr "আপনার অ্যাকাউন্টটি থাকবে। এটি মুছে ফেলতে অ্যাকাউন্ট পৃষ্ঠা ব্যবহার করুন।"
+
 #: packages/core/src/hooks/useVault.tsx
 msgid "Your attachments weren't sent. They're still here, and in your backups."
 msgstr "আপনার সংযুক্তিগুলো পাঠানো হয়নি। সেগুলো এখনো এখানে আর আপনার ব্যাকআপে আছে।"
@@ -5225,6 +5432,10 @@ msgstr "আনলক করার সময় আপনার ব্রাউ�
 msgid "Your device passcode can also unlock this vault."
 msgstr "আপনার ডিভাইসের পাসকোড দিয়েও এই ভল্ট আনলক করা যাবে।"
 
+#: packages/core/src/app/components/MailboxExpiryCard.tsx
+msgid "Your devices sync only when they're online together."
+msgstr "আপনার ডিভাইসগুলি কেবল তখনই সিঙ্ক হয় যখন সেগুলি একসাথে অনলাইনে থাকে।"
+
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "আপনার ডোমেইন"
@@ -5244,6 +5455,10 @@ msgstr "আপনার অন্য ডিভাইসে একই চিহ�
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 msgid "Your other devices can no longer read this vault. Pair each of them again from Device sync."
 msgstr "আপনার অন্য ডিভাইসগুলো আর এই ভল্ট পড়তে পারবে না। ডিভাইস সিঙ্ক থেকে প্রতিটিকে আবার যুক্ত করুন।"
+
+#: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
+msgid "Your other devices keep using it. Off here, this device syncs only when it's online with them."
+msgstr "আপনার অন্যান্য ডিভাইসগুলি এটি ব্যবহার করা চালিয়ে যায়। এখানে বন্ধ থাকলে, এই ডিভাইসটি কেবল তখনই সিঙ্ক হয় যখন এটি সেগুলির সাথে অনলাইনে থাকে।"
 
 #: packages/core/src/app/screens/Settings/components/RotateSecretSection.tsx
 msgid "Your other devices stop being able to read this vault. They all share the key being replaced, so each one has to be paired again from Device sync."

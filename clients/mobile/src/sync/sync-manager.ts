@@ -24,9 +24,10 @@ import {
 	type SyncEvent,
 	type WireRecoverySlot,
 } from "@core/index";
+import type { VaultSyncPort } from "@core/sync/apply-remote";
 import { blobArrived } from "@core/sync/blob-arrivals";
 import { answerBlobStatus } from "@core/sync/blob-status";
-import { addDevice, canonicalRosterEntry, mayEnroll, RosterEntrySchema } from "@core/sync/roster";
+import { addDevice, admitEntry, mayEnroll, RosterEntrySchema } from "@core/sync/roster";
 import { syncKeyFor, vaultSyncGroups } from "@core/sync/sync-keys";
 import {
 	type BlobSyncSession,
@@ -36,7 +37,7 @@ import {
 import { startEnroll } from "@core/sync/transport/enroll-host";
 import type { MeshSession } from "@core/sync/transport/peer-session";
 import { relayOrDefault } from "@core/sync/transport/relay-url";
-import { startRosterSync } from "@core/sync/transport/roster-sync";
+import { startRosterSync, verifyRosterEnvelope } from "@core/sync/transport/roster-sync";
 import { parseRegistry, VAULT_REGISTRY_KEY } from "@core/vault/vault-registry";
 import { mobileCrypto } from "../adapters/crypto";
 import { mobileFiles } from "../adapters/files";
@@ -60,7 +61,7 @@ export const ACTIVE_VAULT_KEY = "active-vault";
 // undefined rather than guessing `vaults[0]`: guessing pointed sync at a vault the user was not in,
 // which is how a merge sealed under one vault's VEK landed in another vault's file (issue #27).
 // The single-vault fallback stays for installs that predate setActiveVault being written.
-async function activeVaultId(): Promise<string | undefined> {
+export async function activeVaultId(): Promise<string | undefined> {
 	const active = await mobileStorage.getMeta<string>(ACTIVE_VAULT_KEY);
 	if (active) return active;
 	const reg = parseRegistry(await mobileStorage.getMeta(VAULT_REGISTRY_KEY));
@@ -70,6 +71,11 @@ async function activeVaultId(): Promise<string | undefined> {
 interface GroupConfig {
 	groupKey: string;
 	roster: RosterPayload;
+}
+
+/** The vault's sync group, if it is in one. */
+export function storedGroup(vaultId: string): Promise<GroupConfig | undefined> {
+	return mobileStorage.getMeta<GroupConfig>(syncKeyFor(GROUP_KEY, vaultId));
 }
 
 // Mobile sync session manager. The extension runs this in an offscreen document
@@ -157,6 +163,16 @@ async function signingKeypair(): Promise<SigningKeypair> {
 /** This device's Ed25519 roster-signing verify key (base64). Paired with signRoster. */
 export async function syncSigningPublicKey(): Promise<string> {
 	return (await signingKeypair()).publicKey;
+}
+
+/** Ed25519 verify with a roster key, through the native or wasm sync crypto. */
+export async function rosterVerify(
+	sigKey: string,
+	message: string,
+	sigB64: string,
+): Promise<boolean> {
+	const crypto = await loadSyncCrypto();
+	return (await crypto.roster_verify(sigKey, message, sigB64)) === true;
 }
 
 /** Ed25519-sign a canonical roster-entry string with this device's signing seed. */
@@ -255,9 +271,10 @@ export async function startEnrollInvite(opts: {
 	entries: EntriesPayload;
 	passwordCheck?: { saltB64: string; slotIdB64: string; verifierB64: string };
 	recoverySlots?: WireRecoverySlot[];
-	/** Lets this module admit the joiner itself rather than relying on the UI. See admitJoiner. */
+	/** The material to admission-sign the joiner (a password vault). */
 	admission?: Admission;
 }): Promise<void> {
+	const { admission } = opts;
 	const wasm = await loadSyncCrypto();
 	const { privateKey, publicKey } = await deviceKeypair();
 	// Pinned now, like the VEK below: the roster this enrollment writes to is the vault being
@@ -272,6 +289,12 @@ export async function startEnrollInvite(opts: {
 	settleApproval(false); // a new invite supersedes any prompt left over from the last one
 	session = await startEnroll("inviter", {
 		vekB64,
+		admit: admission
+			? (entry) =>
+					admitEntry(entry, admission.adminId, (message) =>
+						syncAdmissionSign(admission.password, admission.saltB64, message),
+					)
+			: undefined,
 		devicePubB64: publicKey,
 		// Park the transfer on the user's answer: authenticated is not the same as authorized.
 		approve: (sas, label) =>
@@ -303,7 +326,7 @@ export async function startEnrollInvite(opts: {
 		// makes the group, so without this nothing synced until the next lock and unlock.
 		onEnrolled: (entryJson) => {
 			void (async () => {
-				if (vaultId) await admitJoiner(vaultId, opts.admission, entryJson);
+				if (vaultId) await addJoiner(vaultId, entryJson);
 				emit({ kind: "enrolled", entryJson });
 				await maybeStartRosterSync();
 			})();
@@ -319,34 +342,17 @@ interface Admission {
 }
 
 /**
- * Admission-sign a freshly joined device and add it to this vault's roster, as the desktop app's
- * host does. Idempotent with the UI's own write: Ed25519 is deterministic over the same canonical
- * entry and the roster merge is a union. Reported, not thrown: the enrollment itself succeeded.
+ * Add a freshly joined device, already admission-signed by `admit` if it could be, to this vault's
+ * roster, as the desktop app's host does. Idempotent with the UI's own write: the roster merge is
+ * a union. Reported, not thrown: the enrollment itself succeeded.
  */
-async function admitJoiner(
-	vaultId: string,
-	admission: Admission | undefined,
-	entryJson: string,
-): Promise<void> {
+async function addJoiner(vaultId: string, entryJson: string): Promise<void> {
 	try {
 		const entry = RosterEntrySchema.parse(JSON.parse(entryJson));
-		const admitted = admission
-			? {
-					...entry,
-					admission: {
-						by: admission.adminId,
-						sig: await syncAdmissionSign(
-							admission.password,
-							admission.saltB64,
-							canonicalRosterEntry(entry),
-						),
-					},
-				}
-			: entry;
 		const key = syncKeyFor(GROUP_KEY, vaultId);
 		const group = await mobileStorage.getMeta<GroupConfig>(key);
-		if (!group || !mayEnroll(group.roster, admitted)) return;
-		await mobileStorage.setMeta(key, { ...group, roster: addDevice(group.roster, admitted) });
+		if (!group || !mayEnroll(group.roster, entry)) return;
+		await mobileStorage.setMeta(key, { ...group, roster: addDevice(group.roster, entry) });
 		emit({ kind: "roster" });
 	} catch (e) {
 		report(`sync: could not add the new device to the roster (${(e as Error).message})`);
@@ -471,6 +477,10 @@ answerBlobStatus(async (vaultId, hashes) =>
 let sessionGen = 0;
 /** Serializes merges so two applies can't interleave their read-modify-write of the same blob. */
 let applyInFlight: Promise<unknown> = Promise.resolve();
+/** Entry versions refused at merge, per vault, shared by P2P and the mailbox. Cleared whenever
+ * sync stops, so a refusal that came of a transient state (the wrong key mid-switch) can't outlive
+ * the unlock it happened in. */
+const refusedByVault = new Map<string, Set<string>>();
 // Throttle the "last synced" stamp: peers rebroadcast every few seconds, so update at most ~30s.
 let lastSyncStampAt = 0;
 
@@ -491,8 +501,7 @@ async function startRoster(): Promise<void> {
 	// session and bumps the gen rather than letting the running one follow the active vault.
 	const blobStore = makeBlobStore(vaultId);
 	const gen = sessionGen;
-	// Entry versions this session refused at merge; per session, so a transient state can't outlive it.
-	const rejected = new Set<string>();
+	const rejected = refusedFor(vaultId);
 	sessionVaultId = vaultId;
 	const fetchLocalRoster = async () => {
 		const g = await mobileStorage.getMeta<GroupConfig>(groupMetaKey);
@@ -521,7 +530,7 @@ async function startRoster(): Promise<void> {
 		pushRemotePayload: async (json) => {
 			// Queue behind any merge already running: applyRemotePayload is a read-modify-write of
 			// the whole blob, so two in parallel would race and the loser's edits would vanish.
-			const run = applyInFlight.then(async () => {
+			await queueApply(async () => {
 				// The session this merge belongs to was torn down or retargeted while it waited. Its
 				// blobStore still points at the old vault, and (worse) the global VEK may now be
 				// another vault's, so writing here is exactly the corruption in issue #27. Drop it:
@@ -552,9 +561,6 @@ async function startRoster(): Promise<void> {
 					emit({ kind: "synced", at });
 				}
 			});
-			// Keep the chain alive after a failed merge, but still surface the failure to this caller.
-			applyInFlight = run.catch(() => {});
-			await run;
 		},
 	});
 	if (gen !== sessionGen) return; // torn down while the session started
@@ -606,8 +612,77 @@ function stopRosterSync(): void {
 	blobSession?.stop();
 	blobSession = null;
 	sessionVaultId = null;
+	refusedByVault.clear();
 	// Invalidate any merge still queued: it captured the old gen and must not write.
 	sessionGen++;
+}
+
+/** Run `apply` after the earlier merges, P2P's and the mailbox's alike. A failed merge still
+ * reaches its caller, and the ones queued after it still run. */
+export function queueApply<T>(apply: () => Promise<T>): Promise<T> {
+	const run = applyInFlight.then(apply);
+	applyInFlight = run.catch(() => {});
+	return run;
+}
+
+/** The vault's refused entry versions, shared by P2P and the mailbox. */
+export function refusedFor(vaultId: string): Set<string> {
+	let refused = refusedByVault.get(vaultId);
+	if (!refused) {
+		refused = new Set<string>();
+		refusedByVault.set(vaultId, refused);
+	}
+	return refused;
+}
+
+/** The pieces the mailbox's vault port needs, over the same stores P2P merges into, pinned to
+ * `vaultId` as a P2P session is. */
+export function mailboxVaultDeps(vaultId: string): {
+	sync: VaultSyncPort;
+	readEntries(): Promise<EntriesPayload>;
+	readRoster(): Promise<RosterPayload>;
+	writeRoster(roster: RosterPayload): Promise<void>;
+	verifyRoster(rosterJson: string): Promise<string | null>;
+} {
+	const store = makeBlobStore(vaultId);
+	const groupMetaKey = syncKeyFor(GROUP_KEY, vaultId);
+	// Never an empty roster: reconciling against one would remove every other member.
+	const readRoster = async () => {
+		const group = await mobileStorage.getMeta<GroupConfig>(groupMetaKey);
+		if (!group?.groupKey) throw new Error("no sync group for this vault");
+		return group.roster;
+	};
+	return {
+		sync: createVaultSyncPort({
+			store,
+			crypto: mobileCrypto,
+			witnessRemote: async (stamps) => {
+				const clock = await getClock(vaultId);
+				for (const hlc of stamps) clock.witness(hlc);
+			},
+			onChanged: notifyExternalChange,
+		}),
+		readEntries: () => store.readEntriesPayload(),
+		readRoster,
+		// Merged again into what is stored now, as P2P's roster push does.
+		async writeRoster(roster) {
+			const group = await mobileStorage.getMeta<GroupConfig>(groupMetaKey);
+			if (!group) return;
+			await mobileStorage.setMeta(groupMetaKey, {
+				...group,
+				roster: mergeRemoteRoster(group.roster, roster),
+			});
+			emit({ kind: "roster" });
+		},
+		async verifyRoster(rosterJson) {
+			const local = await readRoster();
+			return verifyRosterEnvelope(
+				{ roster: local, wasm: await loadSyncCrypto() },
+				rosterJson,
+				local,
+			);
+		},
+	};
 }
 
 /**

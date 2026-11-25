@@ -1,4 +1,5 @@
 import Capacitor
+import CryptoKit
 import Foundation
 import UIKit
 
@@ -27,7 +28,8 @@ public class NativeHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "NativeHttp"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "send", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "sendFile", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "sendFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "download", returnType: CAPPluginReturnPromise)
     ]
 
     /// Answers every redirect with "do not follow", which surfaces the 3xx as the response.
@@ -99,7 +101,13 @@ public class NativeHttpPlugin: CAPPlugin, CAPBridgedPlugin {
             request.httpBody = body
         }
         request.timeoutInterval = timeout(forBody: request.httpBody?.count ?? 0)
-        run(call) { done in self.session.dataTask(with: request, completionHandler: done) }
+        run(call) { done in
+            self.session.dataTask(with: request) { data, response, error in
+                done(response, error) { http in
+                    ["status": http.statusCode, "body": (data ?? Data()).base64EncodedString()]
+                }
+            }
+        }
     }
 
     /// `send`, with the body streamed from a file rather than carried across the bridge: a backup
@@ -118,12 +126,57 @@ public class NativeHttpPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         request.timeoutInterval = timeout(forBody: size)
-        run(call) { done in self.session.uploadTask(with: request, fromFile: file, completionHandler: done) }
+        run(call) { done in
+            self.session.uploadTask(with: request, fromFile: file) { data, response, error in
+                done(response, error) { http in
+                    ["status": http.statusCode, "body": (data ?? Data()).base64EncodedString()]
+                }
+            }
+        }
     }
+
+    /// The response body written to `path`, whatever the status, and the SHA-256 of what was
+    /// written: a mailbox attachment, too large to cross the bridge, which the caller adopts only
+    /// if it hashes to the address it asked for. The request timeout here is the usual idle limit,
+    /// since a download receives data the whole time it moves.
+    @objc func download(_ call: CAPPluginCall) {
+        guard var request = request(for: call) else { return }
+        guard let path = call.getString("path") else {
+            call.reject("Missing path")
+            return
+        }
+        request.timeoutInterval = timeout(forBody: 0)
+        let destination = URL(fileURLWithPath: path)
+        run(call) { done in
+            self.session.downloadTask(with: request) { location, response, error in
+                // URLSession deletes its file once this handler returns, so it is moved now.
+                done(response, error) { http in
+                    guard let location = location else { throw CocoaError(.fileNoSuchFile) }
+                    try? FileManager.default.removeItem(at: destination)
+                    try FileManager.default.moveItem(at: location, to: destination)
+                    return ["status": http.statusCode, "sha256": try Self.sha256Hex(of: destination)]
+                }
+            }
+        }
+    }
+
+    /// Hashed a megabyte at a time, so a large file is never held whole.
+    private static func sha256Hex(of file: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: file)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// What a finished task resolves with, built from its HTTP response. Throwing rejects the call.
+    typealias Answer = (HTTPURLResponse) throws -> PluginCallResultData
 
     private func run(
         _ call: CAPPluginCall,
-        makeTask: (@escaping @Sendable (Data?, URLResponse?, Error?) -> Void) -> URLSessionTask
+        makeTask: (@escaping @Sendable (URLResponse?, Error?, Answer) -> Void) -> URLSessionTask
     ) {
         // A request outlives the app being left. iOS suspends an app within seconds of it going to
         // the background, which would freeze an upload partway, so each request asks for the time
@@ -145,7 +198,7 @@ public class NativeHttpPlugin: CAPPlugin, CAPBridgedPlugin {
         // Resolved from the completion handler, never waited on. The bridge dispatches EVERY
         // plugin call in the app on one serial queue, so blocking here would stall every other
         // plugin for the length of a network request. See BiometricVault's keychainQueue.
-        let task = makeTask { data, response, error in
+        let task = makeTask { response, error, answer in
             defer { finishBackground() }
             state.lock()
             let wasExpired = expired
@@ -164,10 +217,11 @@ public class NativeHttpPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("The host did not answer with an HTTP response")
                 return
             }
-            call.resolve([
-                "status": http.statusCode,
-                "body": (data ?? Data()).base64EncodedString()
-            ])
+            do {
+                call.resolve(try answer(http))
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
         let id = UIApplication.shared.beginBackgroundTask(withName: "Bramble transfer") {
             state.lock()

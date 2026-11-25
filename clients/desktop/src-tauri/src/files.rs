@@ -4,6 +4,7 @@
 //! delete another vault's files:
 //!   blobs/<vaultId>/<hash>            a sealed attachment, named by the SHA-256 of its bytes
 //!   blobs/<vaultId>/.staging-<key>    one being sealed or received; never listed as a blob
+//!   blobs/<vaultId>/.landing-<hash>   one downloading from a mailbox, until its hash is checked
 //! and under the app cache dir:
 //!   open/<token>/<name>               a decrypted copy handed to another app; swept on lock
 //!   open/kdbx-<id>/attachment-<n>     a KeePass import's attachments, until sealed; swept too
@@ -11,9 +12,10 @@
 //!
 //! An attachment's bytes never cross into the webview to be sealed or opened. A picked file is
 //! sealed from its path here, with the VEK this process holds, and a copy to open is decrypted
-//! here straight to disk. Only backup and restore move blob bytes across, and those go as raw
-//! IPC bytes rather than the JSON number arrays the rest of this IPC uses, which would turn a
-//! 90 MB attachment into several hundred megabytes of JSON.
+//! here straight to disk. Only backup and restore, and a mailbox upload, move blob bytes across,
+//! and those go as raw IPC bytes rather than the JSON number arrays the rest of this IPC uses,
+//! which would turn a 90 MB attachment into several hundred megabytes of JSON. A mailbox download
+//! lands here directly (`files_download_blob`).
 //!
 //! As in storage.rs, `ops` takes its directories as parameters, so the part that can lose or
 //! leak a file is testable without a running app.
@@ -76,12 +78,15 @@ pub(crate) mod ops {
         path::{Path, PathBuf},
     };
 
+    use sha2::{Digest, Sha256};
     use vault_crypto::SealedFileBlob;
 
     use super::{BlobEntry, CmdResult, KdbxFile};
     use crate::storage::ops::{restrict_dir, restrict_file, validate_vault_id};
 
     const STAGING: &str = ".staging-";
+    /// A blob arriving from a mailbox, until its hash is checked. See `Landing`.
+    const LANDING: &str = ".landing-";
     const OPEN_DIR: &str = "open";
 
     fn io<T>(r: std::io::Result<T>, what: &str) -> CmdResult<T> {
@@ -232,6 +237,114 @@ pub(crate) mod ops {
 
     pub fn read_staged(root: &Path, vault_id: &str, key: &str, offset: u64, length: u64) -> CmdResult<Vec<u8>> {
         read_range(&staging_path(root, vault_id, key)?, offset, length)
+    }
+
+    /// A blob arriving from a mailbox: written to `.landing-<hash>` as it streams and hashed on the
+    /// way, then published under its hash only if the bytes hash to it. On every other path,
+    /// including a drop partway, the file is removed. One per blob, so a retry after the app was
+    /// killed mid-download writes over what that left rather than beside it.
+    struct Landing {
+        file: Option<fs::File>,
+        path: PathBuf,
+        dst: PathBuf,
+        hasher: Sha256,
+        written: u64,
+        max: u64,
+        kept: bool,
+    }
+
+    impl Landing {
+        fn open(root: &Path, vault_id: &str, hash: &str, max: u64) -> CmdResult<Landing> {
+            let dst = blob_path(root, vault_id, hash)?;
+            let path = blob_dir(root, vault_id)?.join(format!("{LANDING}{hash}"));
+            let file = io(fs::File::create(&path), "open landing")?;
+            restrict_file(&path)?;
+            Ok(Landing {
+                file: Some(file),
+                path,
+                dst,
+                hasher: Sha256::new(),
+                written: 0,
+                max,
+                kept: false,
+            })
+        }
+
+        fn write(&mut self, bytes: &[u8]) -> CmdResult<()> {
+            self.written += bytes.len() as u64;
+            if self.written > self.max {
+                return Err("the blob is larger than a blob can be".into());
+            }
+            self.hasher.update(bytes);
+            let file = self.file.as_mut().ok_or("landing closed")?;
+            io(file.write_all(bytes), "write landing")
+        }
+
+        fn publish(mut self, hash: &str) -> CmdResult<()> {
+            let digest: String = std::mem::take(&mut self.hasher)
+                .finalize()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            if digest != hash {
+                return Err("the downloaded blob does not match its hash".into());
+            }
+            // Closed before the rename, which Windows refuses on an open file.
+            if let Some(file) = self.file.take() {
+                io(file.sync_all(), "sync landing")?;
+            }
+            io(fs::rename(&self.path, &self.dst), "publish blob")?;
+            self.kept = true;
+            Ok(())
+        }
+    }
+
+    impl Drop for Landing {
+        fn drop(&mut self) {
+            self.file.take();
+            if !self.kept {
+                let _ = fs::remove_file(&self.path);
+            }
+        }
+    }
+
+    /// Fetch a blob from a mailbox straight into the vault's folder. A 2xx is streamed, checked
+    /// and published, and answered with its status; any other status is answered as it is, with
+    /// nothing written. The time allowed is an upload's for the largest blob: a floor no working
+    /// home connection is under.
+    pub async fn download_blob(
+        root: &Path,
+        vault_id: &str,
+        hash: &str,
+        method: &str,
+        url: reqwest::Url,
+        headers: Vec<(String, String)>,
+        max_bytes: u64,
+    ) -> CmdResult<u16> {
+        validate_hash(hash)?;
+        let timeout = crate::net::upload_timeout_for(max_bytes);
+        let mut res = crate::net::request(
+            method,
+            url,
+            headers,
+            reqwest::Body::from(Vec::new()),
+            timeout,
+        )
+        .await?;
+        let status = res.status().as_u16();
+        if !res.status().is_success() {
+            return Ok(status);
+        }
+        let mut landing = Landing::open(root, vault_id, hash, max_bytes)?;
+        while let Some(chunk) = res
+            .chunk()
+            .await
+            .map_err(|e| format!("download failed: {e}"))?
+        {
+            landing.write(&chunk)?;
+        }
+        landing.publish(hash)?;
+        Ok(status)
     }
 
     /// Promote a received blob. Only ever after the core has verified its hash.
@@ -758,6 +871,35 @@ pub fn files_delete_vault(window: tauri::Window, vault_id: String) -> CmdResult<
     ops::delete_vault(&root(&window)?, &vault_id)
 }
 
+/// The protocol's largest blob (`MAX_BLOB_BYTES` in core's mailbox protocol).
+const MAX_BLOB_BYTES: u64 = 95_000_000;
+
+/// A mailbox attachment, streamed from the server into the vault's blob folder and kept only if
+/// it hashes to its address: the bytes never enter the webview. Answers the server's status, a
+/// 2xx meaning stored. The request is already signed by the caller.
+#[tauri::command]
+pub async fn files_download_blob(
+    window: tauri::Window,
+    vault_id: String,
+    hash: String,
+    method: String,
+    url: String,
+    headers: std::collections::HashMap<String, String>,
+) -> CmdResult<u16> {
+    let root = root(&window)?;
+    let url = reqwest::Url::parse(&url).map_err(|e| format!("http url: {e}"))?;
+    ops::download_blob(
+        &root,
+        &vault_id,
+        &hash,
+        &method,
+        url,
+        headers.into_iter().collect(),
+        MAX_BLOB_BYTES,
+    )
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::ops;
@@ -1043,5 +1185,141 @@ mod tests {
         ops::discard_kdbx_dir(cache.path(), &folder).unwrap();
         assert!(!path.exists());
         vault_crypto::lock();
+    }
+
+    // ---- a mailbox download, landed and checked here ----
+
+    use sha2::{Digest, Sha256};
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+
+    fn sha_hex(bytes: &[u8]) -> String {
+        Sha256::digest(bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    }
+
+    /// A one-request HTTP server answering `status` with `body`, declaring `declared` bytes (more
+    /// than it sends, to cut a download off partway).
+    fn one_response(status: u16, body: Vec<u8>, declared: usize) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!(
+            "http://{}/v1/mailboxes/m/blobs/x",
+            listener.local_addr().unwrap()
+        );
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if line == "\r\n" || line.is_empty() {
+                    break;
+                }
+            }
+            let mut out = stream;
+            let head = format!("HTTP/1.1 {status} X\r\ncontent-length: {declared}\r\n\r\n");
+            out.write_all(head.as_bytes()).unwrap();
+            out.write_all(&body).unwrap();
+        });
+        url
+    }
+
+    fn download(root: &std::path::Path, hash: &str, url: &str, max: u64) -> Result<u16, String> {
+        tauri::async_runtime::block_on(ops::download_blob(
+            root,
+            VAULT,
+            hash,
+            "GET",
+            reqwest::Url::parse(url).unwrap(),
+            vec![("x-bramble-sig".into(), "s".into())],
+            max,
+        ))
+    }
+
+    /// Anything a download left in the vault's folder besides published blobs.
+    fn leftovers(root: &std::path::Path) -> Vec<String> {
+        fs::read_dir(root.join("blobs").join(VAULT))
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok()?.file_name().to_str().map(str::to_owned))
+                    .filter(|name| name.starts_with('.'))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn a_downloaded_blob_that_matches_its_hash_is_published() {
+        let dir = tempfile::tempdir().unwrap();
+        let body: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+        let hash = sha_hex(&body);
+        let url = one_response(200, body.clone(), body.len());
+        assert_eq!(download(dir.path(), &hash, &url, 1 << 20), Ok(200));
+        assert_eq!(
+            ops::read(dir.path(), VAULT, &hash, 0, 1 << 20).unwrap(),
+            body
+        );
+        assert!(leftovers(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_downloaded_blob_that_does_not_match_is_discarded() {
+        let dir = tempfile::tempdir().unwrap();
+        let url = one_response(200, b"not what was asked for".to_vec(), 22);
+        let err = download(dir.path(), HASH, &url, 1 << 20).unwrap_err();
+        assert!(err.contains("does not match its hash"), "{err}");
+        assert!(!ops::has(dir.path(), VAULT, HASH).unwrap());
+        assert!(leftovers(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_missing_blob_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let url = one_response(404, b"{\"error\":\"not_found\"}".to_vec(), 21);
+        assert_eq!(download(dir.path(), HASH, &url, 1 << 20), Ok(404));
+        assert!(!ops::has(dir.path(), VAULT, HASH).unwrap());
+        assert!(leftovers(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_download_larger_than_a_blob_can_be_is_abandoned() {
+        let dir = tempfile::tempdir().unwrap();
+        let body = vec![7u8; 4096];
+        let hash = sha_hex(&body);
+        let url = one_response(200, body, 4096);
+        let err = download(dir.path(), &hash, &url, 1024).unwrap_err();
+        assert!(err.contains("larger than a blob can be"), "{err}");
+        assert!(!ops::has(dir.path(), VAULT, &hash).unwrap());
+        assert!(leftovers(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_download_cut_off_partway_leaves_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let body = vec![9u8; 1000];
+        let hash = sha_hex(&body);
+        let url = one_response(200, body[..100].to_vec(), 1000);
+        assert!(download(dir.path(), &hash, &url, 1 << 20).is_err());
+        assert!(!ops::has(dir.path(), VAULT, &hash).unwrap());
+        assert!(leftovers(dir.path()).is_empty());
+    }
+
+    // The app killed mid-download leaves its landing file behind: the next try for that blob
+    // writes over it rather than beside it, so it never piles up.
+    #[test]
+    fn a_retry_writes_over_what_an_interrupted_download_left() {
+        let dir = tempfile::tempdir().unwrap();
+        let body = b"the whole blob".to_vec();
+        let hash = sha_hex(&body);
+        let landing = ops::blob_dir(dir.path(), VAULT)
+            .unwrap()
+            .join(format!(".landing-{hash}"));
+        fs::write(&landing, b"half of an earlier try").unwrap();
+        let url = one_response(200, body.clone(), body.len());
+        assert_eq!(download(dir.path(), &hash, &url, 1 << 20), Ok(200));
+        assert_eq!(ops::read(dir.path(), VAULT, &hash, 0, 100).unwrap(), body);
+        assert!(leftovers(dir.path()).is_empty());
     }
 }

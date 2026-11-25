@@ -7,7 +7,12 @@ import { bytesToBase64 } from "@core/util/bytes";
 import { buildVaultBytes, wrapPasswordSlot } from "@core/vault/build-vault";
 import { createEntriesBlobStore } from "@core/vault/entries-blob";
 import { decryptEntriesOrRecover } from "@core/vault/recover-entries";
-import { decodeVaultBlob, findPasswordSlot, verifierPrefix } from "@core/vault-format";
+import {
+	decodeVaultBlob,
+	encodeVaultBlob,
+	findPasswordSlot,
+	verifierPrefix,
+} from "@core/vault-format";
 import type { VaultCrypto } from "@core/wasm";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -206,6 +211,7 @@ describe("issue #27 recovery: un-bricking from the pre-write snapshot", () => {
 			{
 				crypto,
 				storage: {
+					readVaultBlob: () => storage.readVaultBlob("A"),
 					readVaultBackup: () => storage.readVaultBackup("A"),
 					restoreVaultFromBackup: () => storage.restoreVaultFromBackup("A"),
 				},
@@ -244,12 +250,15 @@ describe("issue #27 recovery: un-bricking from the pre-write snapshot", () => {
 			entriesIv: damaged.entriesIv,
 			entriesCiphertext: damaged.entriesCiphertext,
 		};
+		const stitchedBytes = encodeVaultBlob(stitched);
+		blobs.set("A", stitchedBytes);
 
 		await expect(
 			decryptEntriesOrRecover(
 				{
 					crypto,
 					storage: {
+						readVaultBlob: () => storage.readVaultBlob("A"),
 						readVaultBackup: () => storage.readVaultBackup("A"),
 						restoreVaultFromBackup: () => storage.restoreVaultFromBackup("A"),
 					},
@@ -259,6 +268,6 @@ describe("issue #27 recovery: un-bricking from the pre-write snapshot", () => {
 		).rejects.toThrow(/aead|decrypt/i);
 
 		// Nothing was swapped in: the live file is still what it was.
-		expect(blobs.get("A")).toEqual(a.bytes);
+		expect(blobs.get("A")).toEqual(stitchedBytes);
 	}, 60_000);
 });

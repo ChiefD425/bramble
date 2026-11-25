@@ -1,6 +1,7 @@
+import { MAX_MEMBERS } from "@vault/core/src/sync/mailbox/protocol.ts";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { createMailbox, memberStatuses, newMailboxId, setup } from "../test/harness.ts";
+import { createMailbox, makeDevice, memberStatuses, newMailboxId, setup } from "../test/harness.ts";
 import { mailboxes } from "./schema.ts";
 
 describe("mailboxes", () => {
@@ -14,6 +15,26 @@ describe("mailboxes", () => {
 			[b!.sigKey]: "eligible",
 			[c!.sigKey]: "eligible",
 		});
+	});
+
+	it("holds at most MAX_MEMBERS members, counting what a request adds and removes", async () => {
+		const {
+			server,
+			devices: [owner],
+		} = await setup(1);
+		if (!owner) throw new Error("no device");
+		const id = await createMailbox(owner);
+		const others = await Promise.all(Array.from({ length: MAX_MEMBERS }, () => makeDevice(server)));
+		const add = (keys: string[], remove: string[] = []) =>
+			owner.request("POST", `/v1/mailboxes/${id}/members`, { add: keys, remove });
+		const fill = others.slice(0, MAX_MEMBERS - 1).map((d) => d.sigKey);
+		expect((await add(fill)).status).toBe(200);
+		const last = others.at(-1)?.sigKey ?? "";
+		const over = await add([last]);
+		expect(over.status).toBe(413);
+		expect(await over.json()).toEqual({ error: "too_large" });
+		// Removing one in the same request makes room.
+		expect((await add([last], [fill[0] ?? ""])).status).toBe(200);
 	});
 
 	it("refuses to create a mailbox that does not list its creator", async () => {
@@ -124,6 +145,18 @@ describe("membership", () => {
 			(await a!.request("POST", `/v1/mailboxes/${id}/members`, { add: [c!.sigKey] })).status,
 		).toBe(200);
 		expect((await memberStatuses(a!, id))[c!.sigKey]).toBe("eligible");
+	});
+
+	it("refuses a non-canonical spelling of a member's key", async () => {
+		const {
+			devices: [a, b],
+		} = await setup(2);
+		const id = await createMailbox(a!, []);
+		const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		const key = b!.sigKey;
+		const respelled = `${key.slice(0, 42)}${b64[b64.indexOf(key[42]!) + 1]}=`;
+		const res = await a!.request("POST", `/v1/mailboxes/${id}/members`, { add: [respelled] });
+		expect(res.status).toBe(400);
 	});
 
 	it("leaves an existing member's status alone when it is added again", async () => {

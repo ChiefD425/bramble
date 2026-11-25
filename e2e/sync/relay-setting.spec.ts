@@ -68,7 +68,11 @@ async function restartSync(phone: Peer): Promise<void> {
 
 const openRelayField = async (phone: Peer) => {
 	await gotoSync(phone.page);
-	await phone.page.getByRole("button", { name: /Advanced/i }).click();
+	// Device sync's, which comes before the mailbox card's.
+	await phone.page
+		.getByRole("button", { name: /Advanced/i })
+		.first()
+		.click();
 	return phone.page.getByLabel(/Nostr relay URL/i);
 };
 

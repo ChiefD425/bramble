@@ -6,6 +6,7 @@ import { type EntriesPayload, type Hlc, nextCausal } from "../sync";
 import { mountVault } from "../test/vault-harness";
 import { withPartStamps } from "../vault/parts";
 import { VAULT_REGISTRY_KEY } from "../vault/vault-registry";
+import { withVaultWriteLock } from "../vault/write-lock";
 import type { EncryptedEntry } from "../vault-format";
 import type { Entry } from "./useVault";
 
@@ -72,12 +73,20 @@ function makePlatform(
 	{
 		failSeal = false,
 		duringSeal,
-	}: { failSeal?: boolean; duringSeal?: (disk: EntriesPayload) => EntriesPayload } = {},
+		holdReadAfterSeal,
+	}: {
+		failSeal?: boolean;
+		duringSeal?: (disk: EntriesPayload) => EntriesPayload;
+		/** Holds the first read after a seal (the combine's read of the disk) until it resolves. */
+		holdReadAfterSeal?: () => Promise<void>;
+	} = {},
 ) {
 	const meta = new Map<string, unknown>([
 		[VAULT_REGISTRY_KEY, { vaults: [{ id: "vault-1", label: "", createdAt: 1 }] }],
 	]);
 	let disk = JSON.stringify(initial);
+	let sealed = false;
+	let hold = holdReadAfterSeal;
 	const platform = {
 		target: "chromium",
 		storage: {
@@ -96,13 +105,22 @@ function makePlatform(
 			onExternalLock: () => () => {},
 			onExternalChange: () => () => {},
 			unwrapVekPassword: async () => true,
-			decryptWithVek: async () => disk,
+			decryptWithVek: async () => {
+				const read = disk;
+				if (sealed && hold) {
+					const wait = hold;
+					hold = undefined;
+					await wait();
+				}
+				return read;
+			},
 			encryptWithVek: async (plaintext: string) => {
 				disk = plaintext;
 				return { iv: "AAAAAAAAAAAAAAAA", ciphertext: "AA==" };
 			},
 			encryptEntry: async (json: string) => {
 				if (failSeal) throw new Error("seal failed");
+				sealed = true;
 				// Another writer (the extension background) lands while this one is sealing.
 				if (duringSeal) disk = JSON.stringify(duringSeal(JSON.parse(disk)));
 				return { ciphertext: `ct:${json}`, iv: "i", wrappedDek: "w", dekIv: "d" };
@@ -119,7 +137,13 @@ function makePlatform(
 		},
 		clipboard: {},
 	} as unknown as Platform;
-	return { platform, disk: () => JSON.parse(disk) as EntriesPayload };
+	return {
+		platform,
+		disk: () => JSON.parse(disk) as EntriesPayload,
+		change: (f: (d: EntriesPayload) => EntriesPayload) => {
+			disk = JSON.stringify(f(JSON.parse(disk)));
+		},
+	};
 }
 
 async function opened(platform: Platform) {
@@ -200,4 +224,45 @@ it("a background write that lands while loading combines is kept", async () => {
 			.sort(),
 	).toEqual(["a", "b"]);
 	expect(disk().conflicts).toBeUndefined();
+});
+
+// Another context's save takes the vault write lock; the combine's read and write hold it too.
+it("a locked save that lands while loading combines is kept", async () => {
+	const saved = version(
+		{ type: "login", name: "B", urls: [], username: "u2", password: "p2" },
+		at(40, "laptop#bg"),
+	);
+	const bg = { ...saved.envelope, id: "b" };
+	let release = () => {};
+	const released = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let arrive = () => {};
+	const reached = new Promise<void>((resolve) => {
+		arrive = resolve;
+	});
+	const { platform, disk, change } = makePlatform(
+		{ entries: [NOTES.envelope], tombstones: [], conflicts: [PASSWORD.envelope] },
+		{
+			holdReadAfterSeal: async () => {
+				arrive();
+				await released;
+			},
+		},
+	);
+	const mounted = mountVault(platform);
+	await waitFor(() => expect(mounted.actions().unlock).toBeTypeOf("function"));
+	const unlocking = mounted.actions().unlock("pw");
+	await reached;
+	const saving = withVaultWriteLock(async () =>
+		change((d) => ({ ...d, entries: [...d.entries, bg] })),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	release();
+	await Promise.all([unlocking, saving]);
+	expect(
+		disk()
+			.entries.map((e) => e.id)
+			.sort(),
+	).toEqual(["a", "b"]);
 });

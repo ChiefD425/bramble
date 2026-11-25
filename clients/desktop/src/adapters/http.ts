@@ -6,24 +6,37 @@
 
 import type { HttpResponse, HttpTransport } from "@core/adapters/http";
 import { invoke } from "@tauri-apps/api/core";
+import { streamInto } from "./stream";
+
+type Reply = { status: number; body: number[] };
+
+const toResponse = (res: Reply): HttpResponse => ({
+	status: res.status,
+	ok: res.status >= 200 && res.status < 300,
+	body: Uint8Array.from(res.body),
+});
 
 export const desktopHttp: HttpTransport = {
 	async send({ method, url, headers, body }): Promise<HttpResponse> {
-		// Alias providers' small JSON calls; a streamed body is a backup's, which goes through
-		// backup-creds instead.
-		if (body && !(body instanceof Uint8Array)) throw new Error("http_send takes a whole body");
+		// Too large to cross whole (a mailbox attachment): the shell opens the request and the body
+		// follows in raw chunks, never as the JSON number arrays below.
+		if (body && !(body instanceof Uint8Array)) {
+			const id = await invoke<number>("http_stream_open", {
+				method,
+				url,
+				headers: headers ?? {},
+				size: body.size,
+			});
+			return toResponse(await streamInto<Reply>(id, body));
+		}
 		// Bytes ride as number arrays, as vault blobs and backup bodies already do over this IPC
 		// (see adapters/storage and adapters/backup-creds): Tauri's channel is JSON.
-		const res = await invoke<{ status: number; body: number[] }>("http_send", {
+		const res = await invoke<Reply>("http_send", {
 			method,
 			url,
 			headers: headers ?? {},
 			body: body ? Array.from(body) : null,
 		});
-		return {
-			status: res.status,
-			ok: res.status >= 200 && res.status < 300,
-			body: Uint8Array.from(res.body),
-		};
+		return toResponse(res);
 	},
 };

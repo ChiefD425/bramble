@@ -63,7 +63,11 @@ export function diskBodies(root: string): BodyStore {
 			await rm(pathOf(key), { force: true });
 		},
 
-		async *keys() {
+		async deleteMany(keys) {
+			for (const key of keys) await rm(pathOf(key), { force: true });
+		},
+
+		async *keys(startAfter) {
 			let entries: Dirent[];
 			try {
 				entries = await readdir(root, { recursive: true, withFileTypes: true });
@@ -71,14 +75,20 @@ export function diskBodies(root: string): BodyStore {
 				if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
 				throw err;
 			}
+			// In key order, as the sweep's resume point needs: a directory lists in its own order.
+			const found: { key: string; full: string }[] = [];
 			for (const entry of entries) {
 				if (!entry.isFile() || entry.name.includes(TEMP)) continue;
 				const full = join(entry.parentPath, entry.name);
-				const { mtimeMs } = await stat(full);
 				const key = relative(root, full)
 					.split(sep)
 					.map((s) => Buffer.from(s, "hex").toString("utf8"))
 					.join("/");
+				if (startAfter === undefined || key > startAfter) found.push({ key, full });
+			}
+			found.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
+			for (const { key, full } of found) {
+				const { mtimeMs } = await stat(full);
 				yield { key, modifiedAt: mtimeMs };
 			}
 		},

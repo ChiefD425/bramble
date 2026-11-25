@@ -30,19 +30,44 @@ interface NativeHttpPlugin {
 		headers: Record<string, string>;
 		path: string;
 	}): Promise<{ status: number; body: string }>;
+	/** The response body streamed into the file at `path`, whatever the status, with the SHA-256
+	 * (hex) of what was written, so a large download never crosses the bridge. */
+	download(options: {
+		method: string;
+		url: string;
+		headers: Record<string, string>;
+		path: string;
+	}): Promise<{ status: number; sha256: string }>;
 }
 
 const Native = registerPlugin<NativeHttpPlugin>("NativeHttp");
 
+/**
+ * Bramble was left and the OS stopped it: iOS's background time ran out, or Android's foreground
+ * service could not hold. Named as such, so a backup is retried rather than backed off from, and
+ * an alias gets an honest message.
+ */
+function named(e: unknown): unknown {
+	return (e as { code?: string } | null)?.code === "interrupted"
+		? new Error(TRANSFER_INTERRUPTED)
+		: e;
+}
+
 const nativeTransport: HttpTransport = {
 	async send({ method, url, headers, body }): Promise<HttpResponse> {
 		let res: { status: number; body: string };
+		// A body already in a file on this device (a stored attachment) is sent from that file.
+		const file = body && !(body instanceof Uint8Array) ? body.path : undefined;
 		// A body too large for one bridge call (a large WebDAV backup) is spooled to a file a chunk
 		// at a time and sent from there; the native side declares its full length.
 		const spooled =
-			body && !(body instanceof Uint8Array) ? `.upload-${globalThis.crypto.randomUUID()}` : null;
+			body && !(body instanceof Uint8Array) && !file
+				? `.upload-${globalThis.crypto.randomUUID()}`
+				: null;
 		try {
-			if (spooled && body && !(body instanceof Uint8Array)) {
+			if (file) {
+				res = await Native.sendFile({ method, url, headers: headers ?? {}, path: file });
+			} else if (spooled && body && !(body instanceof Uint8Array)) {
 				const { path } = await spoolToCache(spooled, body);
 				res = await Native.sendFile({ method, url, headers: headers ?? {}, path });
 			} else {
@@ -56,13 +81,7 @@ const nativeTransport: HttpTransport = {
 				});
 			}
 		} catch (e) {
-			// Bramble was left and the OS stopped it: iOS's background time ran out, or Android's
-			// foreground service could not hold. Named as such, so a backup is retried rather than
-			// backed off from, and an alias gets an honest message.
-			if ((e as { code?: string } | null)?.code === "interrupted") {
-				throw new Error(TRANSFER_INTERRUPTED);
-			}
-			throw e;
+			throw named(e);
 		} finally {
 			if (spooled) await dropSpooled(spooled);
 		}
@@ -73,6 +92,24 @@ const nativeTransport: HttpTransport = {
 		};
 	},
 };
+
+/** A response body downloaded natively into the file at `path`, hashed as written. Native only:
+ * the caller checks the hash before trusting the file. */
+export async function nativeDownload(
+	req: { method: string; url: string; headers?: Record<string, string> },
+	path: string,
+): Promise<{ status: number; sha256: string }> {
+	try {
+		return await Native.download({
+			method: req.method,
+			url: req.url,
+			headers: req.headers ?? {},
+			path,
+		});
+	} catch (e) {
+		throw named(e);
+	}
+}
 
 /**
  * The native transport on a device, plain `fetch` in the dev browser.

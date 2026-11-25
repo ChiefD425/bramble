@@ -2,16 +2,23 @@
 // only from validated ids, never from raw input.
 
 export interface BodyStore {
-	/** With `sha256`, refuses (HashMismatchError) and stores nothing unless the bytes hash to it. */
+	/**
+	 * With `sha256`, refuses (HashMismatchError) and stores nothing unless the bytes hash to it.
+	 * `size` is a stream's declared length: R2 takes only a stream of known length, and refuses one
+	 * that comes out shorter or longer.
+	 */
 	put(
 		key: string,
 		body: ReadableStream<Uint8Array> | Uint8Array,
-		opts?: { sha256?: string },
+		opts?: { sha256?: string; size?: number },
 	): Promise<void>;
 	get(key: string): Promise<{ body: ReadableStream<Uint8Array>; size: number } | null>;
 	/** Deleting a missing key is not an error. */
 	delete(key: string): Promise<void>;
-	keys(): AsyncIterable<{ key: string; modifiedAt: number }>;
+	/** As `delete` for each key, in as few calls as the store allows. */
+	deleteMany(keys: string[]): Promise<void>;
+	/** Every key, in key order, starting after `startAfter` when given. */
+	keys(startAfter?: string): AsyncIterable<{ key: string; modifiedAt: number }>;
 }
 
 export class HashMismatchError extends Error {

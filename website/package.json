@@ -8,16 +8,20 @@
 	"scripts": {
 		"dev": "astro dev",
 		"start": "astro dev",
+		"dev:sandbox": "astro dev --mode sandbox",
 		"build": "astro build",
 		"preview": "astro preview",
 		"typecheck": "astro check",
-		"deploy": "astro build && wrangler pages deploy"
+		"deploy": "astro build && wrangler pages deploy",
+		"deploy:sandbox": "astro build --mode sandbox && wrangler pages deploy --branch sandbox"
 	},
 	"dependencies": {
 		"@astrojs/mdx": "^7.0.8",
 		"@tabler/icons": "^3.46.0",
 		"@tailwindcss/forms": "^0.5.11",
+		"@vault/core": "workspace:*",
 		"@vault/theme": "workspace:*",
+		"altcha-lib": "^2.8.0",
 		"astro": "^7.4.12",
 		"clsx": "^2.1.1",
 		"minisearch": "^7.2.0",

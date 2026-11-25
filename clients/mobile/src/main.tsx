@@ -32,6 +32,7 @@ import { mobileBackupActivity, startBackupRuns } from "./backup";
 import { hasPendingImport, onImportAvailable } from "./credential-exchange";
 import { trackNativeCalls } from "./native-calls";
 import { installNativeWebRtc } from "./native-webrtc";
+import { initMailbox } from "./sync/mailbox";
 import { initRosterSync } from "./sync/sync-manager";
 import { onTotpHandoff } from "./totp-handoff";
 
@@ -134,6 +135,8 @@ function Root() {
 
 	// Run ongoing roster sync while unlocked + enrolled (started on unlock).
 	useEffect(() => initRosterSync(), []);
+	// And the mailbox, for the same vault (docs/mailbox-service.md).
+	useEffect(() => initMailbox(), []);
 	// No background scheduler exists on either OS, so backups happen on unlock and on resume.
 	useEffect(() => startBackupRuns(), []);
 

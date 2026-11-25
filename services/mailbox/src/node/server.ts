@@ -5,6 +5,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { type AppDeps, createApp } from "../core/app.ts";
+import { selfHostedEntitlement } from "../core/entitlement.ts";
 import { sweep } from "../core/sweep.ts";
 import { parseConfig } from "./config.ts";
 import { openDb } from "./db.ts";
@@ -22,11 +23,10 @@ export async function startServer(
 		db,
 		bodies: diskBodies(join(config.dataDir, "bodies")),
 		// A self-hosted mailbox has no billing: posting is never gated.
-		entitlement: { canPost: async () => true },
+		entitlement: selfHostedEntitlement(db, config.quotaBytes),
 		now: Date.now,
 		config: {
 			retentionMaxDays: config.retentionMaxDays,
-			quotaBytes: config.quotaBytes,
 			token: config.token,
 		},
 	};

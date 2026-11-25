@@ -138,3 +138,29 @@ main:focus-visible {
 html {
   scroll-padding-top: 5rem;
 }
+
+/* A button whose action is running (its script sets aria-busy): a spinner before the label, and
+   not faded like a plain disabled button. */
+button[aria-busy="true"] {
+  opacity: 1;
+}
+button[aria-busy="true"]::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: busy-spin 0.75s linear infinite;
+}
+@keyframes busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button[aria-busy="true"]::before {
+    animation-duration: 2s;
+  }
+}

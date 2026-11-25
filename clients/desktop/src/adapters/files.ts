@@ -3,9 +3,10 @@
 //
 // A picked file is sealed from its PATH in the shell, with the VEK that process holds, and a
 // copy to open is decrypted there straight to disk: the attachment's bytes never enter this
-// webview. Only backup and restore move blob bytes across, and an import's files, which were
-// read from the export here; those go as raw IPC bytes, never the JSON number arrays the rest
-// of this IPC uses, which would turn a 90 MB file into several hundred megabytes of JSON.
+// webview. Only backup and restore, an import's files (read from the export here) and a mailbox
+// upload move blob bytes across, and those as raw IPC bytes, never the JSON number arrays the rest
+// of this IPC uses, which would turn a 90 MB file into several hundred megabytes of JSON. A mailbox
+// download never crosses (sync/blob-mover.ts).
 
 import {
 	type BlobBackend,

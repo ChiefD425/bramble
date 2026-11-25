@@ -11,14 +11,24 @@ function notifyMeta(key: string): void {
 	for (const cb of metaListeners.get(key) ?? []) cb();
 }
 
+/** Told after a vault's file is written, by a local edit or a merge alike: the mailbox's cue. */
+const vaultWritten = new Set<(vaultId: string) => void>();
+export function onVaultWritten(cb: (vaultId: string) => void): () => void {
+	vaultWritten.add(cb);
+	return () => vaultWritten.delete(cb);
+}
+
 export const desktopStorage: StorageAdapter = {
 	hasVaultHandle: (vaultId) => invoke<boolean>("storage_has_vault", { vaultId }),
 
 	readVaultBlob: async (vaultId) =>
 		Uint8Array.from(await invoke<number[]>("storage_read_vault", { vaultId })),
 
-	writeVaultBlob: (blob, vaultId) =>
-		invoke<void>("storage_write_vault", { blob: Array.from(blob), vaultId }),
+	writeVaultBlob: async (blob, vaultId) => {
+		await invoke<void>("storage_write_vault", { blob: Array.from(blob), vaultId });
+		// The shell resolves an absent id to the only vault; only a named one can be followed.
+		if (vaultId) for (const cb of vaultWritten) cb(vaultId);
+	},
 
 	// The shell snapshots the previous bytes before every overwrite, so this is a plain read.
 	restoreVaultFromBackup: (vaultId) => invoke<boolean>("storage_restore_vault_backup", { vaultId }),

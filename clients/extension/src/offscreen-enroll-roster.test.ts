@@ -1,4 +1,5 @@
 import {
+	canonicalAdmission,
 	canonicalRosterEntry,
 	decodeRoster,
 	encodeRoster,
@@ -20,7 +21,7 @@ vi.mock("./wasm-loader", () => ({
 	}),
 }));
 
-import { addEnrolledToLocalRoster } from "./offscreen-core";
+import { addEnrolledToLocalRoster, joinerAdmitter } from "./offscreen-core";
 
 const JOINER: RosterEntry = {
 	id: "joiner-id",
@@ -51,12 +52,8 @@ function captureBridge(localRoster = "") {
 describe("addEnrolledToLocalRoster (host-side roster add on enroll)", () => {
 	it("admission-signs the joiner and pushes it into the roster", async () => {
 		const { pushed, vaults, bridge } = captureBridge();
-		await addEnrolledToLocalRoster(
-			bridge,
-			"vault-a",
-			{ password: "hunter2", saltB64: "SALT", adminId: "inviter-id" },
-			JSON.stringify(JOINER),
-		);
+		const admit = joinerAdmitter({ password: "hunter2", saltB64: "SALT", adminId: "inviter-id" });
+		await addEnrolledToLocalRoster(bridge, "vault-a", JSON.stringify(await admit(JOINER)));
 		expect(pushed).toHaveLength(1);
 		const dev = decodeRoster(pushed[0]!).devices.find((d) => d.publicKey === "joinerPub");
 		expect(dev).toBeDefined();
@@ -67,12 +64,13 @@ describe("addEnrolledToLocalRoster (host-side roster add on enroll)", () => {
 		expect(dev?.admission).toEqual({
 			by: "inviter-id",
 			sig: `sig(${canonicalRosterEntry(JOINER)})`,
+			stableSig: `sig(${canonicalAdmission(JOINER)})`,
 		});
 	});
 
 	it("pushes the joiner unsigned when this device can't admit (security-key inviter)", async () => {
 		const { pushed, bridge } = captureBridge();
-		await addEnrolledToLocalRoster(bridge, "vault-a", undefined, JSON.stringify(JOINER));
+		await addEnrolledToLocalRoster(bridge, "vault-a", JSON.stringify(JOINER));
 		expect(pushed).toHaveLength(1);
 		const dev = decodeRoster(pushed[0]!).devices.find((d) => d.publicKey === "joinerPub");
 		expect(dev).toBeDefined();
@@ -82,7 +80,7 @@ describe("addEnrolledToLocalRoster (host-side roster add on enroll)", () => {
 	it("swallows a malformed enrolled entry without pushing or throwing", async () => {
 		const { pushed, bridge } = captureBridge();
 		await expect(
-			addEnrolledToLocalRoster(bridge, "vault-a", undefined, "definitely not json"),
+			addEnrolledToLocalRoster(bridge, "vault-a", "definitely not json"),
 		).resolves.toBeUndefined();
 		expect(pushed).toHaveLength(0);
 	});
@@ -90,7 +88,7 @@ describe("addEnrolledToLocalRoster (host-side roster add on enroll)", () => {
 	it("does not push a joiner that takes a member's id under another key", async () => {
 		const member = { ...JOINER, publicKey: "memberPub" };
 		const { pushed, bridge } = captureBridge(encodeRoster({ devices: [member], revoked: [] }));
-		await addEnrolledToLocalRoster(bridge, "vault-a", undefined, JSON.stringify(JOINER));
+		await addEnrolledToLocalRoster(bridge, "vault-a", JSON.stringify(JOINER));
 		expect(pushed).toHaveLength(0);
 	});
 });

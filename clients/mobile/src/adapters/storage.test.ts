@@ -253,6 +253,36 @@ describe("subscribeMeta", () => {
 	});
 });
 
+describe("onVaultWritten", () => {
+	it("tells listeners which vault was written, once its bytes are on disk", async () => {
+		vi.resetModules();
+		const mod = await import("./storage");
+		const seen: string[] = [];
+		const off = mod.onVaultWritten((id) => seen.push(`${id}:${files.get(nf(id)) ?? "missing"}`));
+		await mod.mobileStorage.writeVaultBlob(new Uint8Array([1]), "a");
+		expect(seen).toEqual([`a:${bytesToBase64(new Uint8Array([1]))}`]);
+
+		off();
+		await mod.mobileStorage.writeVaultBlob(new Uint8Array([2]), "a");
+		expect(seen).toHaveLength(1);
+	});
+
+	it("tells no one about a write that failed", async () => {
+		vi.resetModules();
+		const mod = await import("./storage");
+		const seen: string[] = [];
+		mod.onVaultWritten((id) => seen.push(id));
+		await mod.mobileStorage.hasVaultHandle();
+		tear.on = true;
+		try {
+			await expect(mod.mobileStorage.writeVaultBlob(new Uint8Array([1]), "a")).rejects.toThrow();
+		} finally {
+			tear.on = false;
+		}
+		expect(seen).toEqual([]);
+	});
+});
+
 describe("quarantine", () => {
 	it("keeps a vault's quarantine in its own file and deletes it with the vault", async () => {
 		prefs.set(

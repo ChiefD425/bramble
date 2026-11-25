@@ -17,9 +17,9 @@ import {
 	gotoSync,
 	type Peer,
 	PW,
-	RELAY_URL,
 	reopenMobile,
 	test,
+	useLocalRelay,
 } from "./fixtures";
 
 // Two devices editing one login before they sync (docs/sync-conflicts.md), through the real UI of
@@ -27,13 +27,6 @@ import {
 
 const LOCAL_RELAY_HOST = "localhost:7400";
 const NAME = "Shared login";
-
-/** Point this peer's sync at the local relay, via the Advanced panel a user would use. */
-async function useLocalRelay(page: Page): Promise<void> {
-	await page.getByRole("button", { name: /Advanced/i }).click();
-	await page.getByLabel(/Nostr relay URL/i).fill(RELAY_URL);
-	await page.getByLabel(/TURN \/ ICE servers URL/i).fill("");
-}
 
 /** Run the inviter flow and return the pairing code. */
 async function invite(page: Page): Promise<string> {

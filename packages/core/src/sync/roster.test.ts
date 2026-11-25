@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import { HLC_MAX_DRIFT_MS, type Hlc } from "./hlc";
 import {
 	activeDevices,
+	activeSigKeys,
 	addDevice,
+	admitEntry,
+	alsoRemoved,
+	canonicalAdmission,
 	canonicalRosterEntry,
+	carriesRevokedKey,
 	decodeRoster,
 	emptyRoster,
 	encodeRoster,
@@ -106,6 +111,33 @@ describe("roster entry signing foundation (Item A)", () => {
 		expect(canonicalRosterEntry({ ...base, hlc: hlc(11, "phone") })).not.toBe(
 			canonicalRosterEntry(base),
 		);
+	});
+});
+
+describe("a joiner adding itself to the roster it was sent", () => {
+	const inviter = device("laptop", 1);
+	const own = { ...device("phone", 3), publicKey: "pk-phone", sigKey: "sk-phone" };
+	const admitted = { ...own, admission: { by: "laptop", sig: "s", stableSig: "st" } };
+	const firstTime: RosterPayload = { devices: [inviter], revoked: [] };
+	const removed = revokeDevice(
+		{
+			devices: [inviter, { ...device("old", 1), publicKey: "pk-phone", sigKey: "sk-phone" }],
+			revoked: [],
+		},
+		"old",
+		hlc(2, "laptop"),
+	);
+
+	it("keeps the admitted copy, so its next re-stamp still carries the admission", () => {
+		for (const group of [firstTime, removed]) {
+			const joined = addDevice(addDevice(group, admitted), own);
+			expect(joined.devices.find((d) => d.id === "phone")?.admission?.stableSig).toBe("st");
+		}
+	});
+
+	it("sees a re-added device's own entry at once, not only after gossip", () => {
+		expect(isActiveDevice(addDevice(removed, own), "phone")).toBe(false);
+		expect(isActiveDevice(addDevice(addDevice(removed, admitted), own), "phone")).toBe(true);
 	});
 });
 
@@ -363,6 +395,211 @@ describe("remote-roster future-stamp guard (revocation integrity)", () => {
 			now,
 		);
 		expect(isActiveDevice(merged, "phone")).toBe(true);
+	});
+});
+
+describe("activeSigKeys", () => {
+	it("skips revoked, unkeyed and non-canonical keys, once each", () => {
+		const key = (fill: number) => btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)));
+		const keyed = { ...device("laptop", 1), sigKey: key(1) };
+		const twin = { ...device("tablet", 1), sigKey: key(1) };
+		const unkeyed = device("phone", 1);
+		const gone = { ...device("old", 1), sigKey: key(2) };
+		const respelled = { ...device("odd", 1), sigKey: `${key(3).slice(0, 42)}B=` };
+		const roster = revokeDevice(
+			{ devices: [keyed, twin, unkeyed, gone, respelled], revoked: [] },
+			"old",
+			hlc(2, "laptop"),
+		);
+		expect(activeSigKeys(roster)).toEqual([key(1)]);
+	});
+});
+
+describe("revocation by key", () => {
+	const phone = { ...device("phone", 1), sigKey: "P" };
+	// Planted before the revocation under a new id, with the same signing key.
+	const ghost = { ...device("ghost", 1), sigKey: "P" };
+	const laptop = device("laptop", 1);
+	const revoked = () =>
+		revokeDevice({ devices: [laptop, phone, ghost], revoked: [] }, "phone", hlc(5, "laptop"));
+
+	it("revoking a device revokes its keys", () => {
+		const roster = revoked();
+		expect(ids(roster)).toEqual(["laptop"]);
+		expect(roster.revokedKeys).toEqual(["P", "pk-phone"]);
+		const sameChannelKey = { ...device("other", 1), publicKey: "pk-phone" };
+		expect(ids(mergeRosters(roster, { devices: [sameChannelKey], revoked: [] }))).toEqual([
+			"laptop",
+		]);
+	});
+
+	it("a remote roster can't bring a revoked key back under a new id", () => {
+		const late = { ...device("ghost2", 9), sigKey: "P" };
+		const merged = mergeRemoteRoster(revoked(), { devices: [late], revoked: [] });
+		expect(activeSigKeys(merged)).not.toContain("P");
+		expect(ids(merged)).toEqual(["laptop"]);
+	});
+
+	it("a device re-added with an admission is active again, with its old key", () => {
+		const back = { ...device("phone-2", 9), sigKey: "P", admission: { by: "laptop", sig: "s" } };
+		expect(ids(addDevice(revoked(), back))).toEqual(["laptop", "phone-2"]);
+	});
+
+	it("revoked keys survive a merge with a roster that lacks them", () => {
+		const plain: RosterPayload = { devices: [laptop], revoked: [] };
+		expect(mergeRosters(revoked(), plain).revokedKeys).toEqual(["P", "pk-phone"]);
+		expect(mergeRosters(plain, revoked()).revokedKeys).toEqual(["P", "pk-phone"]);
+	});
+
+	it("a roster with nothing revoked by key encodes as before", () => {
+		const merged = mergeRosters(
+			{ devices: [laptop], revoked: [] },
+			{ devices: [phone], revoked: [] },
+		);
+		expect(JSON.parse(encodeRoster(merged))).not.toHaveProperty("revokedKeys");
+	});
+
+	it("verifyRemoteRoster passes revoked keys through", () => {
+		const remote = revoked();
+		const out = verifyRemoteRoster(
+			emptyRoster(),
+			remote,
+			() => true,
+			() => true,
+		);
+		expect(out.revokedKeys).toEqual(["P", "pk-phone"]);
+	});
+});
+
+describe("admissions on known devices", () => {
+	const alias = { ...device("ghost", 1), sigKey: "P", sig: "s" };
+	const forged = { ...alias, hlc: hlc(2, "ghost"), admission: { by: "laptop", sig: "junk" } };
+
+	it("a known device can't attach an admission that doesn't verify", () => {
+		const out = verifyRemoteRoster(
+			{ devices: [alias], revoked: [] },
+			{ devices: [forged], revoked: [] },
+			() => true,
+			() => false,
+		);
+		expect(out.devices.map((d) => d.id)).toEqual(["ghost"]);
+		expect(out.devices[0]?.admission).toBeUndefined();
+	});
+
+	it("a known device's admission that verifies is taken", () => {
+		const out = verifyRemoteRoster(
+			{ devices: [alias], revoked: [] },
+			{ devices: [forged], revoked: [] },
+			() => true,
+			() => true,
+		);
+		expect(out.devices[0]?.admission).toEqual({ by: "laptop", sig: "junk" });
+	});
+
+	it("a revoked device's alias can't keep its key alive with a made-up admission", () => {
+		const phone = { ...device("phone", 1), sigKey: "P", sig: "s" };
+		const laptop = device("laptop", 1);
+		const local: RosterPayload = { devices: [laptop, phone, alias], revoked: [] };
+		const verified = verifyRemoteRoster(
+			local,
+			{ devices: [forged], revoked: [] },
+			() => true,
+			() => false,
+		);
+		const merged = revokeDevice(mergeRemoteRoster(local, verified), "phone", hlc(5, "laptop"));
+		expect(ids(merged)).toEqual(["laptop"]);
+		expect(activeSigKeys(merged)).not.toContain("P");
+	});
+});
+
+describe("devices that share keys", () => {
+	const phone = { ...device("phone", 1), sigKey: "P" };
+	const again = { ...device("phone-2", 3), publicKey: "pk-phone", sigKey: "P" };
+
+	it("a joiner carrying a removed device's key is spotted, whatever it claims", () => {
+		const roster = revokeDevice({ devices: [phone], revoked: [] }, "phone", hlc(2, "x"));
+		expect(carriesRevokedKey(roster, again)).toBe(true);
+		expect(carriesRevokedKey(roster, { ...again, admission: { by: "x", sig: "y" } })).toBe(true);
+		expect(carriesRevokedKey(roster, device("tablet", 3))).toBe(false);
+	});
+
+	it("removing a device names the others that would go with it", () => {
+		const roster = { devices: [phone, again, device("tablet", 1)], revoked: [] };
+		expect(alsoRemoved(roster, "phone").map((d) => d.id)).toEqual(["phone-2"]);
+		const admitted = { ...again, admission: { by: "laptop", sig: "s" } };
+		expect(alsoRemoved({ devices: [phone, admitted], revoked: [] }, "phone")).toEqual([]);
+	});
+});
+
+describe("devices agree about a re-stamped admitted entry", () => {
+	// An admission here is the admitter's key over the entry's canonical form, checked against the
+	// verifying device's own roster, as the hosts do.
+	const keyed = (
+		id: string,
+		wall: number,
+		pub: string,
+		sig: string,
+		adm?: string,
+	): RosterEntry => ({
+		...device(id, wall),
+		publicKey: pub,
+		sigKey: sig,
+		sig: "s",
+		...(adm ? { admissionKey: adm } : {}),
+	});
+	const admit = (entry: RosterEntry, by: RosterEntry): RosterEntry => ({
+		...entry,
+		admission: { by: by.id, sig: `${by.admissionKey}|${canonicalRosterEntry(entry)}` },
+	});
+	const verify = (local: RosterPayload, remote: RosterPayload) =>
+		verifyRemoteRoster(
+			local,
+			remote,
+			() => true,
+			(e) => {
+				const by = local.devices.find((d) => d.id === e.admission?.by);
+				return (
+					!!by?.admissionKey && e.admission?.sig === `${by.admissionKey}|${canonicalRosterEntry(e)}`
+				);
+			},
+		);
+
+	it("removing a stale twin leaves every device agreeing about the live one", () => {
+		const laptop = keyed("laptop", 1, "pk-laptop", "sk-laptop", "K");
+		const stale = keyed("phoneA", 2, "pk-phone", "sk-phone");
+		const live = keyed("phoneB", 10, "pk-phone", "sk-phone");
+		// One device holds the admitted copy, another the joiner's own unadmitted one.
+		let x: RosterPayload = { devices: [laptop, stale, admit(live, laptop)], revoked: [] };
+		let z: RosterPayload = { devices: [laptop, stale, live], revoked: [] };
+		// The live phone re-stamps its own entry (an invite publishing its admission key).
+		const restamped = { ...live, admissionKey: "KP", hlc: hlc(20, "phoneB") };
+		x = mergeRemoteRoster(x, verify(x, { devices: [restamped], revoked: [] }));
+		z = mergeRemoteRoster(z, verify(z, { devices: [restamped], revoked: [] }));
+		x = revokeDevice(x, "phoneA", hlc(30, "laptop"));
+		for (let round = 0; round < 5; round++) {
+			z = mergeRemoteRoster(z, verify(z, x));
+			x = mergeRemoteRoster(x, verify(x, z));
+		}
+		expect(ids(x)).toEqual(ids(z));
+	});
+});
+
+describe("stable admissions", () => {
+	const phone = { ...device("phone", 1), sigKey: "P" };
+
+	it("the stable form leaves out the stamp and the admission key", () => {
+		const restamped = { ...phone, hlc: hlc(9, "phone"), admissionKey: "AK" };
+		expect(canonicalAdmission(restamped)).toBe(canonicalAdmission(phone));
+		expect(canonicalAdmission({ ...phone, addedAt: 2 })).not.toBe(canonicalAdmission(phone));
+	});
+
+	it("admitEntry signs both forms", async () => {
+		const admitted = await admitEntry(phone, "laptop", async (message) => message);
+		expect(admitted.admission).toEqual({
+			by: "laptop",
+			sig: canonicalRosterEntry(phone),
+			stableSig: canonicalAdmission(phone),
+		});
 	});
 });
 

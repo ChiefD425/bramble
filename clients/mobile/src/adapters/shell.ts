@@ -1,8 +1,8 @@
 import { App } from "@capacitor/app";
-import { Capacitor, SystemBars, SystemBarsStyle } from "@capacitor/core";
+import { SystemBars, SystemBarsStyle } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
-import type { OptionsScreen, ShellAdapter, Target } from "@core/index";
+import type { OptionsScreen, ShellAdapter } from "@core/index";
 import { bytesToBase64 } from "@core/util/bytes";
 import { requestStoreReview } from "../app-review";
 import { armFilePickGrace } from "../auto-lock";
@@ -11,6 +11,7 @@ import { peekPendingLogins, removePendingLogins } from "../autofill-pending-logi
 import { consumePendingPasskeys as drainPendingPasskeys } from "../autofill-pending-passkeys";
 import { pendingNativeCalls } from "../native-calls";
 import { scanQr } from "../qr-scanner";
+import { mailboxDriver, mailboxVaultSwitching } from "../sync/mailbox";
 import {
 	ACTIVE_VAULT_KEY,
 	approveEnrollment,
@@ -33,6 +34,7 @@ import {
 import { uriFromPath } from "./paths";
 import { spoolToCache } from "./spool";
 import { mobileStorage } from "./storage";
+import { mobileTarget } from "./target";
 
 // Single-window in-app navigation to the setup/create-vault and import flows. The
 // root (main.tsx) registers a handler that swaps the mounted view; `openSetup`
@@ -49,8 +51,7 @@ export function registerOpenSetup(fn: OpenSetupHandler): () => void {
 // Mobile is a single-window app: the pop-out / detached-window machinery and the
 // "active browser tab" concept have no meaning here, so those collapse to no-ops.
 // QR scanning is native AVFoundation on iOS (../qr-scanner) and jsQR on Android (../scan).
-/** Build target from the Capacitor runtime. */
-export const mobileTarget: Target = Capacitor.getPlatform() === "ios" ? "ios" : "android";
+export { mobileTarget };
 
 export const mobileShell: ShellAdapter = {
 	appName: "Bramble",
@@ -172,6 +173,7 @@ export const mobileShell: ShellAdapter = {
 	// a merge that lands after the id moves but before the session stops writes into the wrong
 	// vault's file (issue #27). retargetActiveVault stops it and drains any in-flight merge.
 	setActiveVault: async (vaultId) => {
+		mailboxVaultSwitching(vaultId ?? null);
 		await retargetActiveVault(vaultId ?? null);
 		await (vaultId == null
 			? mobileStorage.removeMeta(ACTIVE_VAULT_KEY)
@@ -200,6 +202,8 @@ export const mobileShell: ShellAdapter = {
 	startEnrollInvite,
 	startEnrollJoin,
 	onSyncEvent,
+	mailboxSyncNow: () => mailboxDriver.syncNow(),
+	mailboxMembers: () => mailboxDriver.members(),
 };
 
 // Set the About-row version from the native bundle (App Store / TestFlight / Play).

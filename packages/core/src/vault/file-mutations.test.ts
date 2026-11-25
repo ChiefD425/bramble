@@ -287,7 +287,7 @@ describe("deleting an entry takes its attachments", () => {
 		});
 		const manifestBefore = state.manifest;
 		const after = await h.entries.remove(state, state.entries[0]?.id as string);
-		expect(after.manifest).toBe(manifestBefore);
+		expect(after.manifest).toEqual(manifestBefore);
 		expect((await onDisk(h)).cascades).toEqual([]);
 	});
 

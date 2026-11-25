@@ -5,11 +5,38 @@
 
 import { foreignKey, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const mailboxes = sqliteTable("mailboxes", {
+/** Hosted only: who pays for a mailbox. The number itself is never stored, only its keyed hash. */
+export const accounts = sqliteTable("accounts", {
 	id: text("id").primaryKey(),
-	retentionDays: integer("retention_days").notNull(),
+	keyHash: text("key_hash").notNull().unique(),
+	paidThrough: integer("paid_through").notNull(),
+	frozen: integer("frozen", { mode: "boolean" }).notNull(),
 	createdAt: integer("created_at").notNull(),
 });
+
+/** Credits billing applied, by the operation it names, so a retried credit applies once. `token`
+ * is the applying call's own, which is how that call knows the row is its. */
+export const accountCredits = sqliteTable("account_credits", {
+	op: text("op").primaryKey(),
+	accountId: text("account_id")
+		.notNull()
+		.references(() => accounts.id, { onDelete: "cascade" }),
+	days: integer("days").notNull(),
+	token: text("token").notNull(),
+	at: integer("at").notNull(),
+});
+
+export const mailboxes = sqliteTable(
+	"mailboxes",
+	{
+		id: text("id").primaryKey(),
+		retentionDays: integer("retention_days").notNull(),
+		createdAt: integer("created_at").notNull(),
+		/** Hosted only; null on a self-hosted server. */
+		accountId: text("account_id").references(() => accounts.id),
+	},
+	(t) => [index("mailboxes_account").on(t.accountId)],
+);
 
 export const members = sqliteTable(
 	"members",
@@ -138,3 +165,10 @@ export const expiryMarkers = sqliteTable(
 		}).onDelete("cascade"),
 	],
 );
+
+/** Where the sweep's orphan pass stopped (row `orphans`: the last key listed), so the next run
+ * carries on from there instead of listing the whole store again. */
+export const sweepState = sqliteTable("sweep_state", {
+	name: text("name").primaryKey(),
+	value: text("value").notNull(),
+});

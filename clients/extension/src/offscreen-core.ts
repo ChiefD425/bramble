@@ -20,11 +20,12 @@ import type {
 import { buildCryptoAdapter } from "@core/adapters/crypto-wasm";
 import { decodeEntriesPayload } from "@core/sync/entries-payload";
 import {
-	canonicalRosterEntry,
+	admitEntry,
 	decodeRoster,
 	emptyRoster,
 	encodeRoster,
 	mayEnroll,
+	type RosterEntry,
 	RosterEntrySchema,
 } from "@core/sync/roster";
 import { blobLinkDialer } from "@core/sync/transport/blob-link";
@@ -35,7 +36,11 @@ import {
 } from "@core/sync/transport/blob-sync";
 import { type EnrollWasm, startEnroll } from "@core/sync/transport/enroll-host";
 import type { MeshSession } from "@core/sync/transport/peer-session";
-import { type RosterSyncWasm, startRosterSync } from "@core/sync/transport/roster-sync";
+import {
+	type RosterSyncWasm,
+	startRosterSync,
+	verifyRosterEnvelope,
+} from "@core/sync/transport/roster-sync";
 import { base64ToBytes } from "@core/util/bytes";
 import type { PortableVaultBlob } from "@core/wasm";
 import {
@@ -93,6 +98,8 @@ import {
 	RosterStopMsgSchema,
 	type RosterSyncMsg,
 	RosterSyncMsgSchema,
+	RosterVerifyHostMsgSchema,
+	SigVerifyHostMsgSchema,
 	type SyncEventMsg,
 	type SyncStatusMsg,
 } from "./sync/messages";
@@ -790,37 +797,34 @@ async function decodeQrDataUrl(dataUrl: string): Promise<string | null> {
 	return jsQR(data, width, height)?.data ?? null;
 }
 
+/** Inviter, host-side: admission-sign a joiner's entry with the re-entered master password. */
+export function joinerAdmitter(admission: { password: string; saltB64: string; adminId: string }) {
+	return (entry: RosterEntry) =>
+		admitEntry(entry, admission.adminId, async (message) =>
+			(await getWasm()).roster_admission_sign(admission.password, admission.saltB64, message),
+		);
+}
+
 /**
- * Inviter, host-side: admission-sign a freshly-joined device's entry and add it to the LOCAL roster,
- * in the same host that runs the ongoing sync. The popup does this too (useSyncEnrollment), but on
- * Firefox the event page is kept alive through the enroll while the popup can be gone when enrollment
- * finishes — so its add is lost and the joiner is rejected ("not in roster") when it reconnects for
- * ongoing sync. Doing it here makes the roster write reliable and popup-independent. Idempotent with
- * the UI write (deterministic Ed25519, same canonical entry). Merges as a CRDT union, so it never
- * revokes existing devices. See docs/multiple-vaults.md and docs/p2p-sync-revocation-hardening.md.
+ * Inviter, host-side: add a freshly-joined device's entry, already admission-signed if it could be,
+ * to the LOCAL roster, in the same host that runs the ongoing sync. The popup does this too
+ * (useSyncEnrollment), but on Firefox the event page is kept alive through the enroll while the popup
+ * can be gone when enrollment finishes — so its add is lost and the joiner is rejected ("not in
+ * roster") when it reconnects for ongoing sync. Doing it here makes the roster write reliable and
+ * popup-independent. Idempotent with the UI write. Merges as a CRDT union, so it never revokes
+ * existing devices. See docs/multiple-vaults.md and docs/p2p-sync-revocation-hardening.md.
  * Exported for tests.
  */
 export async function addEnrolledToLocalRoster(
 	bridge: SyncBridge,
 	vaultId: string,
-	admission: { password: string; saltB64: string; adminId: string } | undefined,
 	entryJson: string,
 ): Promise<void> {
 	try {
 		const entry = RosterEntrySchema.parse(JSON.parse(entryJson));
 		const local = await bridge.fetchLocalRoster(vaultId).then(decodeRoster).catch(emptyRoster);
 		if (!mayEnroll(local, entry)) return;
-		let admitted = entry;
-		if (admission) {
-			const w = await getWasm();
-			const sig = w.roster_admission_sign(
-				admission.password,
-				admission.saltB64,
-				canonicalRosterEntry(entry),
-			);
-			admitted = { ...entry, admission: { by: admission.adminId, sig } };
-		}
-		await bridge.pushRemoteRoster(vaultId, encodeRoster({ devices: [admitted], revoked: [] }));
+		await bridge.pushRemoteRoster(vaultId, encodeRoster({ devices: [entry], revoked: [] }));
 	} catch (err) {
 		console.warn("[offscreen] host-side roster add failed", err);
 	}
@@ -1014,6 +1018,24 @@ export async function handleHostMessage(type: string, payload: unknown): Promise
 				const { secretB64, message } = RosterSignHostMsgSchema.parse(payload);
 				return { ok: true, data: w.roster_sign(secretB64, message) };
 			}
+			case "SYNC_SIG_VERIFY": {
+				const w = await getWasm();
+				const { publicB64, message, sigB64 } = SigVerifyHostMsgSchema.parse(payload);
+				try {
+					return { ok: true, data: Boolean(await w.roster_verify?.(publicB64, message, sigB64)) };
+				} catch {
+					return { ok: true, data: false };
+				}
+			}
+			case "SYNC_ROSTER_VERIFY": {
+				const w = await getWasm();
+				const { rosterJson, localJson } = RosterVerifyHostMsgSchema.parse(payload);
+				const local = decodeRoster(localJson);
+				return {
+					ok: true,
+					data: await verifyRosterEnvelope({ roster: local, wasm: w }, rosterJson, local),
+				};
+			}
 			case "SYNC_ROSTER_ADMISSION_PUBKEY": {
 				// Derive this device's admission verify key from the re-entered master password + slot salt
 				// (Item A). Argon2 -> KEK -> HKDF -> Ed25519; the signing key is derived and dropped, never stored.
@@ -1044,6 +1066,7 @@ export async function handleHostMessage(type: string, payload: unknown): Promise
 				const viaLink = role === "joiner" && (opts as { viaLink?: boolean }).viaLink === true;
 				enrollSession = await startEnroll(role, {
 					...opts,
+					admit: admission ? joinerAdmitter(admission) : undefined,
 					wasm: w,
 					report: reportSyncStatus,
 					peerSource: viaLink
@@ -1085,10 +1108,9 @@ export async function handleHostMessage(type: string, payload: unknown): Promise
 					onJoined: (result) => broadcastSyncEvent({ kind: "joined", ...result }),
 					onJoinError: (msg) => broadcastSyncEvent({ kind: "join-error", message: msg }),
 					onEnrolled: (entryJson) => {
-						// Add to the roster in the host (reliable) AND notify the popup (updates its UI +
-						// upgrades the same entry). See addEnrolledToLocalRoster.
-						if (inviteVaultId)
-							void addEnrolledToLocalRoster(bridge, inviteVaultId, admission, entryJson);
+						// Add to the roster in the host (reliable) AND notify the popup (updates its UI).
+						// See addEnrolledToLocalRoster.
+						if (inviteVaultId) void addEnrolledToLocalRoster(bridge, inviteVaultId, entryJson);
 						broadcastSyncEvent({ kind: "enrolled", entryJson });
 					},
 				});

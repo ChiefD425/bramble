@@ -24,6 +24,7 @@ const h = vi.hoisted(() => ({
 	blobStops: 0,
 	blobPokes: 0,
 	stateListener: null as ((locked: boolean) => void) | null,
+	rosterVerify: async (_key: string, _message: string, _sig: string): Promise<boolean> => true,
 	// Swapped per test to drive what a "merge" does.
 	applyRemote: async (_port: unknown, _payload: unknown, _opts?: unknown): Promise<void> => {},
 	/** Links the app was asked to end, and whether it should refuse the next one. */
@@ -68,7 +69,8 @@ vi.mock("@core/vault-format", async (importOriginal) => ({
 	encodeVaultBlob: () => new Uint8Array([1, 2, 3]),
 }));
 
-vi.mock("@core/sync/transport/roster-sync", () => ({
+vi.mock("@core/sync/transport/roster-sync", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@core/sync/transport/roster-sync")>()),
 	startRosterSync: async (opts: Record<string, (...a: never[]) => unknown>) => {
 		h.starts.push(opts);
 		// The relay session is started first; its callbacks are the ones these tests drive. Both
@@ -142,7 +144,11 @@ vi.mock("./keys", () => ({
 	// nothing here depends on it.
 	publishSyncIdentity: async () => {},
 }));
-vi.mock("../sync-crypto", () => ({ desktopSyncCrypto: {} }));
+vi.mock("../sync-crypto", () => ({
+	desktopSyncCrypto: {
+		roster_verify: (key: string, message: string, sig: string) => h.rosterVerify(key, message, sig),
+	},
+}));
 
 /** A schema-valid empty remote payload; decodeEntriesPayload is the real one. */
 const PAYLOAD = JSON.stringify({ entries: [], tombstones: [] });
@@ -195,6 +201,7 @@ beforeEach(() => {
 	h.blobStops = 0;
 	h.blobPokes = 0;
 	h.stateListener = null;
+	h.rosterVerify = async () => true;
 	h.applyRemote = async () => {};
 	h.ended.length = 0;
 	h.endFails = false;
@@ -407,6 +414,320 @@ describe("lock state", () => {
 		h.rosterOpts = null;
 		h.stateListener?.(false);
 		await vi.waitFor(() => expect(h.rosterOpts).not.toBeNull());
+	});
+});
+
+describe("what the mailbox shares with P2P", () => {
+	const KEY = `${"A".repeat(43)}=`;
+	const stamped = {
+		id: "d1",
+		publicKey: "P",
+		label: "Laptop",
+		addedAt: 1,
+		hlc: { wall: 1, counter: 0, node: "d1" },
+	};
+	/** A group with a real, empty roster, which the mailbox merges into. */
+	const group = (vaultId: string) =>
+		h.meta.set(`sync.group:${vaultId}`, { groupKey: "k", roster: { devices: [], revoked: [] } });
+
+	it("queueApply runs merges one at a time, behind P2P's", async () => {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A));
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadRoster();
+		await startSession(mod);
+		const order: string[] = [];
+		let release!: () => void;
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		h.applyRemote = async () => {
+			await gate;
+			order.push("p2p");
+		};
+		const p2p = opts().pushRemotePayload(PAYLOAD);
+		const mailbox = mod.queueApply(async () => {
+			order.push("mailbox");
+			return "done";
+		});
+		await new Promise((r) => setTimeout(r, 0));
+		expect(order).toEqual([]);
+		release();
+		expect(await mailbox).toBe("done");
+		await p2p;
+		expect(order).toEqual(["p2p", "mailbox"]);
+	});
+
+	it("a merge that fails does not stop the ones queued after it", async () => {
+		const mod = await loadRoster();
+		await expect(
+			mod.queueApply(async () => {
+				throw new Error("boom");
+			}),
+		).rejects.toThrow("boom");
+		expect(await mod.queueApply(async () => 1)).toBe(1);
+	});
+
+	it("refusedFor keeps one set per vault, shared with P2P until the vault locks", async () => {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A, VAULT_B));
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadRoster();
+		await startSession(mod);
+		let p2pRejected: unknown;
+		h.applyRemote = async (_port, _payload, mergeOpts) => {
+			p2pRejected = (mergeOpts as { rejected?: unknown }).rejected;
+		};
+		await opts().pushRemotePayload(PAYLOAD);
+		const a = mod.refusedFor(VAULT_A);
+		expect(mod.refusedFor(VAULT_A)).toBe(a);
+		expect(mod.refusedFor(VAULT_B)).not.toBe(a);
+		expect(p2pRejected).toBe(a);
+		h.stateListener?.(true);
+		expect(mod.refusedFor(VAULT_A)).not.toBe(a);
+	});
+
+	it("a vault with no group is never read as an empty roster", async () => {
+		const mod = await loadRoster();
+		await expect(mod.mailboxVaultDeps(VAULT_A).readRoster()).rejects.toThrow(
+			"no sync group for this vault",
+		);
+		expect(await mod.storedGroup(VAULT_A)).toBeUndefined();
+	});
+
+	it("merges into the vault it was built for, even once another is active", async () => {
+		h.meta.set("active-vault", VAULT_A);
+		enrol(VAULT_A);
+		const mod = await loadRoster();
+		const deps = mod.mailboxVaultDeps(VAULT_A);
+		h.meta.set("active-vault", VAULT_B);
+		await (
+			deps.sync as unknown as { store: { writeEntriesBlob: (p: unknown) => Promise<void> } }
+		).store.writeEntriesBlob({ entries: [], tombstones: [] });
+		expect(h.blobWrites).toEqual([{ vaultId: VAULT_A }]);
+	});
+
+	it("writes a roster into the vault's own group and tells the devices list", async () => {
+		group(VAULT_A);
+		const mod = await loadRoster();
+		const { onSyncEvent } = await import("./bus");
+		const events: unknown[] = [];
+		onSyncEvent((e) => events.push(e));
+		await mod.mailboxVaultDeps(VAULT_A).writeRoster({ devices: [stamped], revoked: [] });
+		expect(h.meta.get(`sync.group:${VAULT_A}`)).toMatchObject({
+			groupKey: "k",
+			roster: { devices: [{ id: "d1" }] },
+		});
+		expect(events).toEqual([{ kind: "roster" }]);
+	});
+
+	it("verifies a mailbox roster with this device's sync crypto", async () => {
+		group(VAULT_A);
+		const mod = await loadRoster();
+		const asked: string[] = [];
+		h.rosterVerify = async (key) => {
+			asked.push(key);
+			return false;
+		};
+		const remote = { devices: [{ ...stamped, sigKey: KEY, sig: "S" }], revoked: [] };
+		const verified = await mod.mailboxVaultDeps(VAULT_A).verifyRoster(JSON.stringify(remote));
+		expect(asked).toEqual([KEY]);
+		expect(JSON.parse(verified ?? "{}").devices ?? []).toEqual([]);
+	});
+
+	it("rosterVerify answers the sync crypto's verdict", async () => {
+		const mod = await loadRoster();
+		h.rosterVerify = async (key, message, sig) => key === "K" && message === "m" && sig === "s";
+		expect(await mod.rosterVerify("K", "m", "s")).toBe(true);
+		expect(await mod.rosterVerify("K", "m", "forged")).toBe(false);
+	});
+
+	it("activeVaultId answers the recorded active vault", async () => {
+		h.meta.set("active-vault", VAULT_B);
+		const mod = await loadRoster();
+		expect(await mod.activeVaultId()).toBe(VAULT_B);
+	});
+});
+
+describe("a browser removed from the roster", () => {
+	const wall = Date.now() - 1000;
+	const member = (id: string, publicKey: string) => ({
+		id,
+		publicKey,
+		label: id,
+		addedAt: 1,
+		hlc: { wall, counter: 0, node: id },
+	});
+	const laptop = member("laptop", "P");
+	const browser = member("browser", "browserpub");
+	const tombstone = (id: string) => ({ id, hlc: { wall: wall + 1, counter: 0, node: "laptop" } });
+	const setRoster = (vaultId: string, roster: unknown) =>
+		h.meta.set(`sync.group:${vaultId}`, { groupKey: "k", roster });
+
+	/** A session for `vaultId`, with its browser having passed sync's check over the link. */
+	async function linked(vaultId = VAULT_A) {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A, VAULT_B));
+		h.meta.set("active-vault", vaultId);
+		setRoster(vaultId, { devices: [laptop, browser], revoked: [] });
+		const mod = await loadRoster();
+		await startSession(mod);
+		const linkSession = h.starts[1] as unknown as {
+			onAuthenticated: (pub: string, linkKey: string) => void;
+		};
+		linkSession.onAuthenticated("browserpub", "linkkey");
+		await vi.waitFor(() => expect(h.meta.get(`link.keys:${vaultId}`)).toBeDefined());
+		return mod;
+	}
+
+	it("loses its link when another device's removal arrives", async () => {
+		await linked();
+		const session = h.starts[0] as unknown as { pushRemoteRoster: (json: string) => Promise<void> };
+		await session.pushRemoteRoster(
+			JSON.stringify({ devices: [], revoked: [tombstone("browser")] }),
+		);
+		expect(h.ended).toEqual([{ linkKey: "linkkey", vaultId: VAULT_A }]);
+	});
+
+	it("loses its link when it is removed here", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, { devices: [laptop, browser], revoked: [tombstone("browser")] });
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([{ linkKey: "linkkey", vaultId: VAULT_A }]);
+	});
+
+	it("ends it once, even when asked again", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, { devices: [laptop], revoked: [tombstone("browser")] });
+		await mod.endRemovedLinks(VAULT_A);
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toHaveLength(1);
+	});
+
+	it("loses it at the next start, if the app was closed when the removal landed", async () => {
+		await linked();
+		setRoster(VAULT_A, { devices: [laptop], revoked: [tombstone("browser")] });
+		h.rosterOpts = null;
+		h.starts.length = 0;
+		await startSession(await loadRoster());
+		await vi.waitFor(() => expect(h.ended).toHaveLength(1));
+	});
+
+	it("is tried again next time if the app couldn't end it", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, { devices: [laptop], revoked: [tombstone("browser")] });
+		h.endFails = true;
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([]);
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([{ linkKey: "linkkey", vaultId: VAULT_A }]);
+	});
+
+	it("keeps its link while it is still in the roster", async () => {
+		const mod = await linked();
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([]);
+	});
+
+	it("keeps it when re-added under a new id with the same key", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, {
+			devices: [laptop, member("browser-2", "browserpub")],
+			revoked: [tombstone("browser")],
+		});
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([]);
+	});
+
+	it("keeps it when this device left the group and started a new one", async () => {
+		// Missing from the roster isn't removal: only a tombstone says someone removed it.
+		const mod = await linked();
+		setRoster(VAULT_A, { devices: [laptop], revoked: [] });
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([]);
+	});
+
+	it("leaves another vault's list alone", async () => {
+		const mod = await linked(VAULT_A);
+		setRoster(VAULT_B, { devices: [laptop], revoked: [tombstone("browser")] });
+		await mod.endRemovedLinks(VAULT_B);
+		expect(h.ended).toEqual([]);
+	});
+
+	it("is one of the open vault's sync devices while it is in the roster", async () => {
+		const mod = await linked();
+		expect(await mod.syncingLinkKeys()).toEqual(["linkkey"]);
+	});
+
+	it("isn't once the roster removes it", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, { devices: [laptop], revoked: [tombstone("browser")] });
+		expect(await mod.syncingLinkKeys()).toEqual([]);
+	});
+
+	it("isn't the sync device of another vault that is open now", async () => {
+		const mod = await linked(VAULT_A);
+		h.meta.set("active-vault", VAULT_B);
+		setRoster(VAULT_B, { devices: [laptop, browser], revoked: [] });
+		expect(await mod.syncingLinkKeys()).toEqual([]);
+	});
+
+	it("tells Settings when it is first seen syncing over its link", async () => {
+		h.meta.set(VAULT_REGISTRY_KEY, registry(VAULT_A, VAULT_B));
+		h.meta.set("active-vault", VAULT_A);
+		setRoster(VAULT_A, { devices: [laptop, browser], revoked: [] });
+		const mod = await loadRoster();
+		const kinds: string[] = [];
+		(await import("./bus")).onSyncEvent((e) => kinds.push(e.kind));
+		await startSession(mod);
+		const linkSession = h.starts[1] as unknown as {
+			onAuthenticated: (pub: string, linkKey: string) => void;
+		};
+		linkSession.onAuthenticated("browserpub", "linkkey");
+		await vi.waitFor(() => expect(kinds).toContain("roster"));
+		const seen = kinds.filter((k) => k === "roster").length;
+		linkSession.onAuthenticated("browserpub", "linkkey");
+		await new Promise((r) => setTimeout(r, 20));
+		expect(kinds.filter((k) => k === "roster")).toHaveLength(seen);
+	});
+
+	it("does nothing for a removed device that never synced over the link", async () => {
+		const mod = await linked();
+		setRoster(VAULT_A, {
+			devices: [laptop, browser, member("phone", "phonepub")],
+			revoked: [tombstone("phone")],
+		});
+		await mod.endRemovedLinks(VAULT_A);
+		expect(h.ended).toEqual([]);
+	});
+});
+
+describe("addToLocalRoster", () => {
+	const member = (id: string, publicKey: string) => ({
+		id,
+		publicKey,
+		label: id,
+		addedAt: 1,
+		hlc: { wall: 1, counter: 0, node: id },
+	});
+
+	it("does not let a joiner take a member's id under another key", async () => {
+		const laptop = member("laptop", "laptoppub");
+		h.meta.set(`sync.group:${VAULT_A}`, {
+			groupKey: "k",
+			roster: { devices: [laptop], revoked: [] },
+		});
+		const mod = await loadRoster();
+
+		await mod.addToLocalRoster(VAULT_A, {
+			...member("laptop", "attackerpub"),
+			hlc: { wall: 9, counter: 0, node: "x" },
+		});
+		await mod.addToLocalRoster(VAULT_A, member("phone", "phonepub"));
+
+		const group = h.meta.get(`sync.group:${VAULT_A}`) as {
+			roster: { devices: { publicKey: string }[] };
+		};
+		expect(group.roster.devices.map((d) => d.publicKey).sort()).toEqual(["laptoppub", "phonepub"]);
 	});
 });
 

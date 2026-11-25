@@ -11,6 +11,8 @@
  * docs/desktop-link-onboarding.md.
  */
 
+import type { DesktopVaultSummary } from "./desktop-link";
+
 /** A browser that completed a link and may open authenticated sessions. */
 export interface PairedBrowser {
 	/** The peer's static public key. This is the identity; everything else is display. */
@@ -54,9 +56,7 @@ export interface PairingAdapter {
 	/** Disarm, for a dialog the user dismissed. Dismissing is a refusal. */
 	clearSyncInvite?(): Promise<void>;
 	/** Publish what the open vault holds, for the browser linking now; null clears it. */
-	setVaultSummary?(
-		summary: { name: string; empty: boolean; entries: number; backupTargets?: boolean } | null,
-	): Promise<void>;
+	setVaultSummary?(summary: DesktopVaultSummary | null): Promise<void>;
 	/** Accept an emoji link while the Connect dialog is open. */
 	beginLinkWindow?(): Promise<void>;
 	/** The dialog closed: refuse any link in progress and drop the invite. */

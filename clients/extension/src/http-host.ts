@@ -8,7 +8,7 @@
 // Bodies travel as a Blob in the IndexedDB handoff store (files/idb.ts), never as a message.
 
 import { base64ToBytes, bytesToBase64 } from "@core/util/bytes";
-import { readHandoff } from "./files/idb";
+import { idbBlobStore, readHandoff } from "./files/idb";
 
 export interface HttpJobRequest {
 	method: string;
@@ -16,6 +16,9 @@ export interface HttpJobRequest {
 	headers?: Record<string, string>;
 	/** Small bodies inline as base64; anything larger as a handoff key. */
 	body?: { inline: string } | { handoff: string };
+	/** Write a successful response into this vault's blob store instead of returning it: a mailbox
+	 * attachment can be larger than any message may carry back. */
+	sink?: { vaultId: string; hash: string };
 }
 
 export type HttpJobState =
@@ -50,15 +53,18 @@ export async function startHttpJob(req: HttpJobRequest): Promise<string> {
 		credentials: "omit",
 		redirect: "manual",
 	})
-		.then(async (res) =>
-			finish({
-				done: true,
-				status: res.status,
-				body: bytesToBase64(new Uint8Array(await res.arrayBuffer())),
-				// Lower-cased by Headers. A provider's upload session URL comes back in Location.
-				headers: Object.fromEntries(res.headers),
-			}),
-		)
+		.then(async (res) => {
+			const bytes = new Uint8Array(await res.arrayBuffer());
+			// Lower-cased by Headers. A provider's upload session URL comes back in Location.
+			const headers = Object.fromEntries(res.headers);
+			if (req.sink && res.ok) {
+				// Verified against its hash on the way in; the bytes never cross back as a message.
+				await idbBlobStore(req.sink.vaultId).put(req.sink.hash, bytes);
+				finish({ done: true, status: res.status, body: "", headers });
+				return;
+			}
+			finish({ done: true, status: res.status, body: bytesToBase64(bytes), headers });
+		})
 		.catch((e: unknown) =>
 			finish({ done: true, error: e instanceof Error ? e.message : String(e) }),
 		);

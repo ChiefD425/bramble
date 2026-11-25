@@ -15,6 +15,7 @@
 			"!clients/extension/public/wasm",
 			"!clients/extension/src/fixtures/imports",
 			"!services/mailbox/drizzle",
+			"!**/worker-configuration.d.ts",
 			"!website/src/components/starwind",
 			"!website/dist",
 			"!icon",
