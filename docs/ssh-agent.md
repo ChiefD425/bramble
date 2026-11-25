@@ -51,6 +51,10 @@
   suggestions, entry de-duplication, KeePass export); server addresses must not reach them.
   `hosts` is an ordinary part for sync: concurrent edits on two devices ask the user to choose.
 - **The entry page** lists the hosts, and search matches them.
+- **Exports and imports carry hosts.** KeePass and CXF exports add a `Hosts` field beside the key's
+  other fields; a `.bramble` backup carries both fields as they are. A LastPass `SSH Key` note's
+  `Hostname` becomes the key's host when it is one, and stays a custom field when it isn't.
+  "Use with the SSH agent" is a setting rather than content, so only `.bramble` keeps it.
 
 ### Older apps must keep fields they don't know
 
