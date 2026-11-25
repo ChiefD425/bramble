@@ -44,9 +44,12 @@
      line saying who asked and for which key ("ssh wants to use GitHub from Personal"). The request
      waits. When the vault opens, the signature goes out. Cancel, or two minutes with no unlock,
      answers with a failure and ssh moves on to its next key or method.
-   - **Another vault is open:** the same, on the key's vault. Opening it closes the other one, as
-     choosing a vault in the picker does, because the app keeps one vault open at a time.
-     Cancelling leaves the other vault open.
+   - **Another vault is open:** Bramble comes forward with a card in the open vault ("ssh wants
+     to use Deploy from Work. Open Work?"). Opening it locks the open vault and shows Work's
+     unlock screen, as Lock then Choose a different vault does today; Cancel answers with a
+     failure and leaves the open vault as it was. The card is there because the app holds one
+     vault's key at a time: showing Work's unlock screen without locking first would leave the
+     window on one vault while Rust holds another's key, the shape of issue #27.
 
 Several requests waiting on the same vault share one unlock.
 
@@ -63,14 +66,18 @@ Several requests waiting on the same vault share one unlock.
   into can ask for signatures. OpenSSH 8.9 and later say when a request was forwarded
   (`session-bind@openssh.com`), and those requests bring Bramble forward with a confirmation even
   while unlocked ("A server you're connected to wants to use GitHub"). Older clients don't say, so
-  their requests count as local.
+  their requests count as local. The flag sticks to the connection: the local ssh client binds a
+  forwarded connection before relaying anything from the server, so a later bind can't clear it.
 - **Public keys and key names sit outside the vault.** Listing a locked vault's keys needs them in
   the clear, so each vault gets a small file in the app's data folder, written while that vault is
   open: public keys, entry names and their order, no timestamps. These are what servers already
   hold. The files exist only while the agent is switched on: switching it off deletes them all,
   deleting a vault deletes its file, and a vault no longer in the picker is pruned on the next
   write, as with the AutoFill copies. A vault never opened since the switch went on has no file,
-  so its keys aren't offered until it's opened once.
+  so its keys aren't offered until it's opened once. Only keys Bramble can sign with go in the
+  file, so a key with a wrong passphrase is never offered and never brings Bramble forward.
+- **The same key in two vaults** is offered once. Signing uses the open vault's copy if it holds
+  one.
 - **The vault is the only source of keys.** `ssh-add` of a file, removing a key and the agent's own
   lock are refused. The keys come and go with the vault.
 - **SHA-1 RSA signatures are refused.** OpenSSH has asked for `rsa-sha2-256` or `rsa-sha2-512`
@@ -97,10 +104,11 @@ entry's own public key field is display only.
 |---|---|---|
 | macOS | `~/Library/Application Support/app.bramble.desktop/ssh-agent.sock` | `IdentityAgent "~/Library/Application Support/app.bramble.desktop/ssh-agent.sock"` under `Host *` |
 | Linux | `~/.local/share/app.bramble.desktop/ssh-agent.sock` (under `$XDG_DATA_HOME` when set) | the same, with that path |
-| Windows | `\\.\pipe\bramble-ssh-agent` | `IdentityAgent \\.\pipe\bramble-ssh-agent` `[unverified]` |
+| Windows | `\\.\pipe\app.bramble.desktop.ssh-agent.<id>` | `IdentityAgent` with that pipe, shown in Settings `[unverified]` |
 
-- Beside the browser link's `bramble.sock`, so `socket_addr.rs` owns both paths. Owner-only
-  permissions, as there.
+- Beside the browser link's `bramble.sock`, through the same `ipc::Listener` with its own name, so
+  one piece of code owns both endpoints. Owner-only permissions, as there. Windows pipes share one
+  machine-wide namespace, so the name carries the per-user tag the browser pipe already uses.
 - Settings shows the line with a copy button. Setting `SSH_AUTH_SOCK` works too.
 - A Unix socket path is capped at 104 bytes on macOS and 108 on Linux. A home folder long enough to
   hit it gets a plain message in Settings rather than a silent failure.
@@ -136,7 +144,11 @@ apps never link it. No `core-rust` change.
   on macOS, `SO_PEERCRED` on Linux, `GetNamedPipeClientProcessId` on Windows). The name is a
   label for the user, not a security check: anything running as the user can name itself `ssh`.
 - `store.rs`: the open vault's keys, the per-vault public lists, and requests waiting for an
-  unlock.
+  unlock. Whether to sign, ask or fail is one pure function of the key, the lock state, the open
+  vault and the forwarded flag, re-run on every wake, so a lock while a request waits can't
+  sign with keys that are gone.
+- `commands.rs`: the Tauri commands, and the on/off switch, kept in the app's meta like the Quick
+  Access shortcut rather than as a webview pref.
 
 **New crates:** `ssh-key` 0.6 (the OpenSSH container, bcrypt-pbkdf decryption, the wire encodings)
 without its `rsa` feature, which pins `rsa` 0.9 and RUSTSEC-2023-0071; `rsa` 0.10 directly, the
@@ -149,7 +161,8 @@ first release that fixes it (2026-11-08); `p384` and `p521` for the larger ECDSA
   refused ones. Each signature checks against the public key.
 - Against the real client without a server: `SSH_AUTH_SOCK=<socket> ssh-add -L` lists the keys,
   and `ssh-keygen -Y sign` then `-Y verify` round-trips a signature.
-- A login through `sshd` in the Linux Docker harness, with and without `-A`.
+- A login through a throwaway `sshd` run as the user on a high port (macOS ships one), with and
+  without `-A`, so the forwarded flag is checked against real OpenSSH.
 - The desktop e2e: a locked app, a sign request, the unlock screen with the line, unlock, the
   signature arrives; and Cancel answering a failure.
 - On a Mac by hand: Touch ID and a YubiKey unlock from a terminal request, git commit signing, and
