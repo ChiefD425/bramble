@@ -92,6 +92,7 @@ pub fn autolock_touch() {
 fn lock_now(app: &AppHandle) {
     vault_crypto::lock();
     index_store::clear();
+    crate::ssh_agent::forget_keys();
     if let Err(e) = app.emit(LOCKED_EVENT, ()) {
         log::warn!("auto-lock event not delivered: {e}");
     }

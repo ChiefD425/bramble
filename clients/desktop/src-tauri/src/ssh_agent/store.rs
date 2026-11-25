@@ -319,6 +319,14 @@ impl Store {
         self.changed.notify_all();
     }
 
+    pub fn enabled(&self) -> bool {
+        self.state().enabled
+    }
+
+    pub fn ask_each_use(&self) -> bool {
+        self.state().ask_each_use
+    }
+
     pub fn set_ask_each_use(&self, on: bool) {
         self.state().ask_each_use = on;
     }

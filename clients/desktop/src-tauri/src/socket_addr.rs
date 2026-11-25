@@ -16,6 +16,9 @@ pub const APP_IDENTIFIER: &str = "app.bramble.desktop";
 
 pub const SOCKET_NAME: &str = "bramble.sock";
 
+/// The SSH agent's endpoint name, beside the browser's: `ssh-agent.sock`, or a pipe on Windows.
+pub const SSH_AGENT_NAME: &str = "ssh-agent";
+
 /// The app's data directory, derived the way Tauri derives it, from the values Tauri reads.
 ///
 /// Taken as arguments rather than read here so the rule itself can be tested: this has to agree

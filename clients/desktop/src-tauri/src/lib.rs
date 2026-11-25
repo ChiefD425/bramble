@@ -37,8 +37,6 @@ mod socket;
 #[allow(dead_code)]
 mod socket_addr;
 mod spotlight;
-// Wired into the app in its own commit; until then only its tests use it.
-#[allow(dead_code)]
 mod ssh_agent;
 mod storage;
 mod stream;
@@ -241,6 +239,8 @@ pub fn run() {
                     if let Err(e) = socket::listen(&root) {
                         log::error!("browser socket unavailable: {e}");
                     }
+                    // The SSH agent's socket, beside it, when the agent is switched on.
+                    ssh_agent::start(app.handle().clone(), &root);
                 }
                 Err(e) => log::error!("browser socket: no data dir: {e}"),
             }
@@ -377,6 +377,12 @@ pub fn run() {
             index_store::spotlight_copy_password,
             index_store::link_set_index,
             index_store::link_clear_index,
+            ssh_agent::commands::ssh_agent_status,
+            ssh_agent::commands::ssh_agent_set,
+            ssh_agent::commands::ssh_agent_add_include,
+            ssh_agent::commands::ssh_agent_set_keys,
+            ssh_agent::commands::ssh_agent_forget_vault,
+            ssh_agent::commands::ssh_agent_answer,
             autolock::autolock_touch,
             socket::link_sync_send,
             socket::link_sync_peers,

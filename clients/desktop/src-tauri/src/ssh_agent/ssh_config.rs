@@ -297,7 +297,12 @@ pub fn server_label(home: &Path, host_key: &[u8]) -> String {
             return name.to_string();
         }
     }
-    let digest = Sha256::digest(host_key);
+    fingerprint(host_key)
+}
+
+/// `SHA256:<base64>`, as `ssh-keygen -l` prints a key.
+pub fn fingerprint(key: &[u8]) -> String {
+    let digest = Sha256::digest(key);
     format!(
         "SHA256:{}",
         base64::engine::general_purpose::STANDARD_NO_PAD.encode(digest)
@@ -320,9 +325,14 @@ fn is_our_include(keyword: &str, args: &str, home: &Path) -> bool {
     if !keyword.eq_ignore_ascii_case("include") {
         return false;
     }
-    let absolute = bramble_dir(home).join("config").display().to_string();
+    // Separators normalised: on Windows the same path may be written either way.
+    let absolute = bramble_dir(home)
+        .join("config")
+        .display()
+        .to_string()
+        .replace('\\', "/");
     args.split_whitespace()
-        .map(|a| a.trim_matches('"'))
+        .map(|a| a.trim_matches('"').replace('\\', "/"))
         .any(|a| a == "~/.ssh/bramble/config" || a == absolute)
 }
 

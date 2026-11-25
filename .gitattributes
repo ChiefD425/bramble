@@ -1,3 +1,6 @@
 # Captured third-party site HTML used as autofill/detection test fixtures.
 # Not code we wrote; exclude from GitHub's language stats.
 clients/extension/src/fixtures/sites/*.html linguist-vendored
+
+# SSH agent test keys: byte for byte on every platform, no CRLF conversion on Windows.
+clients/desktop/src-tauri/src/ssh_agent/fixtures/* -text

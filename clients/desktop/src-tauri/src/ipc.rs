@@ -35,11 +35,11 @@ use std::{
 // compiled into.
 #[allow(unused_imports)]
 #[cfg(unix)]
-pub use unix::{endpoint as unix_endpoint, Listener, Stream};
+pub use unix::{endpoint as unix_endpoint, named_endpoint, Listener, Stream};
 
 #[allow(unused_imports)]
 #[cfg(windows)]
-pub use windows::{Listener, Stream};
+pub use windows::{named_endpoint, Listener, Stream};
 
 /// A stable, per-user, per-vault-root name for the endpoint.
 ///
@@ -101,19 +101,31 @@ mod unix {
         root.join(crate::socket_addr::SOCKET_NAME)
     }
 
+    /// Another endpoint beside it, such as the SSH agent's.
+    pub fn named_endpoint(root: &Path, name: &str) -> PathBuf {
+        root.join(format!("{name}.sock"))
+    }
+
     impl Listener {
         /// Removes a stale socket first: a crash leaves the file behind and bind would
         /// otherwise fail forever. Safe here because the containing directory is the app's
         /// own data dir, so nothing else has standing to have put a socket there.
         pub fn bind(root: &Path) -> io::Result<Self> {
-            let path = endpoint(root);
+            Self::bind_path(&endpoint(root))
+        }
+
+        pub fn bind_named(root: &Path, name: &str) -> io::Result<Self> {
+            Self::bind_path(&named_endpoint(root, name))
+        }
+
+        fn bind_path(path: &Path) -> io::Result<Self> {
             if path.exists() {
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
-            let listener = UnixListener::bind(&path)?;
+            let listener = UnixListener::bind(path)?;
             // Owner-only. Does not stop a process running as this user, which is the threat
             // the pairing handshake exists for; it stops every *other* account on the machine.
-            fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
+            fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
             Ok(Self(listener))
         }
 
@@ -154,9 +166,26 @@ mod windows {
         )
     }
 
+    /// Another pipe beside it, such as the SSH agent's, carrying the same per-user tag.
+    pub fn named_endpoint(root: &Path, name: &str) -> String {
+        format!(
+            r"\\.\pipe\{}.{}.{}",
+            crate::socket_addr::APP_IDENTIFIER,
+            name,
+            endpoint_tag(root)
+        )
+    }
+
     impl Listener {
         pub fn bind(root: &Path) -> io::Result<Self> {
-            let name = endpoint(root);
+            Self::bind_name(&endpoint(root))
+        }
+
+        pub fn bind_named(root: &Path, name: &str) -> io::Result<Self> {
+            Self::bind_name(&named_endpoint(root, name))
+        }
+
+        fn bind_name(name: &str) -> io::Result<Self> {
             // Built before the pipe, and a hard failure: falling back to the default
             // descriptor would silently open the pipe to `Everyone` for read, which is
             // exactly the thing this is here to prevent.
@@ -368,6 +397,17 @@ mod tests_windows {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn named_endpoints_sit_beside_the_browser_socket() {
+        let root = Path::new("/data/app");
+        assert_eq!(
+            named_endpoint(root, "ssh-agent"),
+            root.join("ssh-agent.sock")
+        );
+        assert_eq!(unix_endpoint(root), root.join("bramble.sock"));
+    }
 
     #[cfg(windows)]
     #[test]
