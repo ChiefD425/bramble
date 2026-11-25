@@ -77,7 +77,7 @@ A native app for macOS and Linux, not a browser tab in a costume. It is built wi
 
 Install it the way you install everything else: a signed and notarized `.dmg` or `brew install --cask bramble` on macOS, and an APT repository, an AppImage, `.deb` and `.rpm` packages, or a Nix flake on Linux. The disk image and the AppImage update themselves; the package-manager routes update along with the rest of your system.
 
-What it cannot do yet, and says so rather than failing quietly: Touch ID unlock, creating and using passkeys, exporting to KeePass, auto-type into native apps, and the SSH agent for the SSH keys the vault already stores. Importing is a different story and already works: bring in passkeys, or a whole KeePass database, and they land in the vault like anything else.
+What it cannot do yet, and says so rather than failing quietly: Touch ID unlock, creating and using passkeys, exporting to KeePass, and auto-type into native apps. Importing is a different story and already works: bring in passkeys, or a whole KeePass database, and they land in the vault like anything else.
 
 ## Features
 
@@ -86,7 +86,7 @@ What it cannot do yet, and says so rather than failing quietly: Touch ID unlock,
 - **Everything is encrypted.** Site names, usernames, notes, all of it. The only readable part of the stored vault is its header.
 - **Smart autofill everywhere.** `www.ikea.com`, `ca.accounts.ikea.com`, and `ikea.com` all match the same login. One entry, several URLs. On the browser it's an on-page dropdown that reaches forms inside iframes and shadow DOM; on mobile it's the OS autofill bar across apps and browsers; on the desktop app it's the quick-access panel, filling the browser through the extension it is paired with.
 - **Passkeys.** Bramble is your own WebAuthn authenticator: create and sign in with passkeys, in the extension and on both mobile apps. Passkeys are stored as vault entries, so they sync across your devices with no vendor cloud.
-- **More than logins.** Logins, payment cards, secure notes, and SSH keys, each with their own fields.
+- **More than logins.** Logins, payment cards, secure notes, and SSH keys, each with their own fields. The desktop app is an SSH agent too: `ssh` and `git` sign with the keys in your vaults, each key offered only to the hosts it names.
 - **Encrypted backups.** Export your whole vault to an encrypted `.bramble` file whenever you want a copy in your own hands. It still needs your master password to open.
 - **Export to KeePass** (browser extension). Save your vault as a standard `.kdbx` (KDBX4) under a password you choose for the file, and open it in KeePassXC or any other KeePass app. No lock-in: the door out is as easy as the door in.
 - **Scheduled cloud backups.** Set-and-forget encrypted backups to Dropbox (one-click, extension only), any S3-compatible bucket, or self-hosted WebDAV, each on the cadence you choose. Ciphertext only, so the provider can't read a thing. The browser extension and the desktop app both do this, and the desktop app keeps its schedules even while the vault is locked.
@@ -181,7 +181,7 @@ Parts of Bramble were written with AI assistance (Claude Opus), but every line w
 
 - **Cloud backups on mobile.** The browser extension and the desktop app back up to cloud storage on a schedule today; bringing those scheduled uploads to the iOS and Android apps is next (mobile can already restore from a backup file).
 - **Windows.** The desktop app ships for macOS and Linux. A Windows build now exists and is in testing, waiting on code signing before release: an unsigned installer makes Windows warn every person who downloads it, which is not the first impression a password manager should make.
-- **Filling in more places from the desktop app.** Auto-type into native apps, so the quick-access panel reaches windows that are not a browser, and an SSH agent that serves the SSH keys your vault already holds.
+- **Filling in more places from the desktop app.** Auto-type into native apps, so the quick-access panel reaches windows that are not a browser.
 
 ## Contributing
 

@@ -1,6 +1,9 @@
 # SSH agent in the desktop app
 
-**Status: designed 2026-11-25, not built.** Phase 6 of [desktop-port.md](desktop-port.md).
+**Status: built 2026-11-25, unreleased.** Phase 6 of [desktop-port.md](desktop-port.md). Checked on
+macOS against OpenSSH 10.2 (`ssh-add`, `ssh-keygen -Y`, a real `sshd` login, `ssh -A`) and in the
+desktop e2e (`e2e/desktop-link/ssh-agent.spec.ts`). Not yet run on Windows or Linux, and the Mac
+checks with Touch ID and a security key are owed.
 
 ## Bottom line
 
@@ -331,9 +334,10 @@ first release that fixes it (2026-11-08); `p384` and `p521` for the larger ECDSA
 - On a Mac by hand: Touch ID and a YubiKey unlock from a terminal request, git commit signing, a
   key in a second vault, and `ssh -A`.
 
-## To check while building
+## Still to check
 
-- Whether macOS lets a background app bring its window to the front for an unlock request. If it
-  can't reliably, a notification or a bouncing Dock icon is the fallback.
+- Whether macOS brings the window to the front for an unlock request when another app has focus.
+  The e2e raises the window itself, so it doesn't prove this. If it can't reliably, a notification
+  or a bouncing Dock icon is the fallback.
 - Whether Windows OpenSSH reads `Include` and a pipe in `IdentityAgent`. If not, Windows sets
-  `SSH_AUTH_SOCK` and has no hosts.
+  `SSH_AUTH_SOCK` and has no hosts. The Windows code compiles; it hasn't run on a Windows machine.
