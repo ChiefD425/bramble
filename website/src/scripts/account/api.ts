@@ -23,6 +23,12 @@ const BILLING_CODES = [
 /** A card through Stripe, or Bitcoin or Monero through BTCPay. */
 export type PaymentMethod = "card" | "bitcoin" | "monero";
 
+/** Where a crypto buyer says they live: a country, and a province where one is needed. */
+export interface Where {
+	country: string;
+	province?: string;
+}
+
 export type AccountErrorCode = (typeof BILLING_CODES)[number] | "network" | "unexpected";
 
 export class AccountError extends Error {
@@ -85,12 +91,19 @@ export function accountApi(opts: { billing: string; mailbox: string; fetch?: typ
 		challenge: async () => (await call(`${opts.billing}/v1/challenge`)) as Challenge,
 		openAccount: async (altcha: string) =>
 			field(await post("/v1/accounts", { altcha }), "number", isString),
+		/** `where` is a crypto buyer's own answer, for tax; a card's comes from Stripe's checkout. */
 		checkout: async (
 			number: string,
 			months: number,
 			altcha: string,
 			method: PaymentMethod = "card",
-		) => field(await post("/v1/checkout", { number, months, altcha, method }), "url", isString),
+			where?: Where,
+		) =>
+			field(
+				await post("/v1/checkout", { number, months, altcha, method, ...where }),
+				"url",
+				isString,
+			),
 		purchases: async (number: string) =>
 			field(await post("/v1/purchases", { number }), "purchases", Array.isArray) as Purchase[],
 		refund: async (number: string, purchase: string): Promise<Refunded> => {

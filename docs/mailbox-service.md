@@ -726,14 +726,17 @@ deleted early because of payment. The app warns before `paid_through` arrives.
 - **No crypto refunds** in v1 (design call). A refund would mean collecting a return address, a
   new data point.
 - **As built** (billing's plan 6). The account page offers **Credit/Debit card**, **Bitcoin** and
-  **Monero** as three buttons of equal weight. A coin asks billing for a BTCPay invoice of the
-  months at $2, with nothing added, payable in that coin only, and opens it. The invoice carries
+  **Monero** as three buttons of equal weight. A coin first asks where the buyer lives (a country,
+  and a province in Canada; nothing is guessed from the connection), then asks billing for a BTCPay
+  invoice of the months at $2 plus the tax Stripe Tax calculates for that place (none in the United
+  States, where there's no registration), payable in that coin only, and opens it. The invoice carries
   only the reference, the coin and the months, and returns the buyer to the paid page, which says
   the time lands once the payment confirms. BTCPay's signed `InvoiceSettled` webhook makes billing read the
-  invoice back and record the sale as a card's is recorded, never refundable, with the country
-  `ZZ`, no tax and the coin in the ledger; a daily catch-up records any settled invoice whose
+  invoice back, report a taxed sale to Stripe Tax, and record it as a card's is recorded, never
+  refundable, with the declared country, its tax and the coin in the ledger; a daily catch-up records any settled invoice whose
   webhook never landed. The sandbox offers no crypto: BTCPay runs on mainnet only.
-- **Tax** for a payer whose country is unknown is an open question for the accountant.
+- **Tax** (owner, 2026-11-25): on top of the price as for cards, from the country (and Canadian
+  province) the buyer picks, calculated by Stripe Tax; no US tax without a state registration.
 
 ### Buying from the apps
 

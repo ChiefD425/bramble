@@ -134,9 +134,9 @@ test("the page says card refunds take off the days since buying, and crypto has 
 	page,
 }) => {
 	await fromApp(page);
-	await expect(page.getByText(/In Bitcoin or Monero,[^.]*can't be refunded/)).toBeVisible();
+	await expect(page.getByText(/A Bitcoin or Monero payment can't be refunded/)).toBeVisible();
 	await expect(
-		page.getByText(/refunded within 14 days, less the\s+days since you bought it/),
+		page.getByText(/can be refunded within 14\s+days, less the days since you bought it/),
 	).toBeVisible();
 });
 
@@ -420,16 +420,51 @@ for (const [name, method] of [
 	["Bitcoin", "bitcoin"],
 	["Monero", "monero"],
 ] as const) {
-	test(`${name} asks billing for an invoice in ${name} and opens it`, async ({ page }) => {
+	test(`${name} asks where the buyer lives, then for an invoice in ${name}`, async ({ page }) => {
 		services.checkout = () => ({ code: 200, body: { url: "https://pay.bramble.sh/i/test" } });
 		await fromApp(page);
 		await page.getByRole("button", { name: "12", exact: true }).click();
 		await page.getByRole("button", { name, exact: true }).click();
+		const go = page.getByRole("button", { name: `Continue to ${name}` });
+		await expect(go).toBeDisabled();
+		expect(callsTo("/v1/checkout")).toHaveLength(0);
+		await page.getByLabel("Country").selectOption({ label: "Germany" });
+		await expect(page.getByLabel("Province or territory")).toBeHidden();
+		await go.click();
 		await expect(page.getByText("BTCPay test invoice")).toBeVisible();
-		const [call] = callsTo("/v1/checkout");
-		expect(JSON.parse(call?.body ?? "{}")).toMatchObject({ months: 12, method });
+		const body = JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}");
+		expect(body).toMatchObject({ months: 12, method, country: "DE" });
+		expect(body).not.toHaveProperty("province");
 	});
 }
+
+test("in Canada, the province is asked for too", async ({ page }) => {
+	services.checkout = () => ({ code: 200, body: { url: "https://pay.bramble.sh/i/test" } });
+	await fromApp(page);
+	await page.getByRole("button", { name: "Monero", exact: true }).click();
+	await page.getByLabel("Country").selectOption({ label: "Canada" });
+	const go = page.getByRole("button", { name: "Continue to Monero" });
+	await expect(go).toBeDisabled();
+	await page.getByLabel("Province or territory").selectOption({ label: "Ontario" });
+	await go.click();
+	await expect(page.getByText("BTCPay test invoice")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).toMatchObject({
+		method: "monero",
+		country: "CA",
+		province: "ON",
+	});
+});
+
+test("Cancel closes the question, and a card never asks it", async ({ page }) => {
+	await fromApp(page);
+	await page.getByRole("button", { name: "Bitcoin", exact: true }).click();
+	await expect(page.getByLabel("Country")).toBeVisible();
+	await page.getByRole("button", { name: "Cancel" }).click();
+	await expect(page.getByLabel("Country")).toBeHidden();
+	await page.getByRole("button", { name: "Credit/Debit card" }).click();
+	await expect(page.getByText("Stripe test checkout")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).not.toHaveProperty("country");
+});
 
 test("the card button still asks for a card", async ({ page }) => {
 	await fromApp(page);
@@ -443,13 +478,15 @@ test("where crypto isn't offered, the page says so and both buttons work again",
 }) => {
 	services.checkout = () => ({ code: 404, body: { error: "method_unavailable" } });
 	await fromApp(page);
-	const crypto = page.getByRole("button", { name: "Monero", exact: true });
-	await crypto.click();
+	await page.getByRole("button", { name: "Monero", exact: true }).click();
+	await page.getByLabel("Country").selectOption({ label: "Germany" });
+	const go = page.getByRole("button", { name: "Continue to Monero" });
+	await go.click();
 	await expect(
 		page.getByText(/Paying with Bitcoin or Monero isn't available right now/),
 	).toBeVisible();
-	await expect(crypto).toBeEnabled();
-	await expect(crypto).not.toHaveAttribute("aria-busy");
+	await expect(go).toBeEnabled();
+	await expect(go).not.toHaveAttribute("aria-busy");
 	await expect(page.getByRole("button", { name: "Credit/Debit card" })).toBeEnabled();
 });
 

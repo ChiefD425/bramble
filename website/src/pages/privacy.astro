@@ -248,7 +248,11 @@ import { SITE } from "@/consts";
 		<li>
 			<strong>Bitcoin and Monero go through our own payment server.</strong> They are handled by
 			BTCPay Server, which we run ourselves on a server we rent in Germany, at pay.bramble.sh, with
-			no payment company involved. It asks for no email, name, or address. Its invoice holds the
+			no payment company involved. It asks for no email, name, or address. For tax, the account page
+			asks which country you live in, and your province in Canada, and guesses nothing from your
+			connection. Bramble sends only those and the amount to Stripe to work out the tax, and reports
+			a taxed sale to Stripe for its tax records; nothing else about you reaches Stripe. Its invoice
+			holds the
 			amount, the coin, a payment address made for that invoice, the transaction that paid it, and
 			the same random reference a card payment carries, never your account number. Its web server
 			keeps no log of visitors' network addresses. The server can see payments arrive but cannot spend them: the keys that
@@ -264,8 +268,8 @@ import { SITE } from "@/consts";
 			and a keyed hash of the payment's identifier, so a repeat or a dispute can find its account.
 			These are deleted after 120 days, after which nothing on our side connects a payment to an
 			account. For our accounts and tax returns, Bramble keeps a record of each sale, refund, and
-			lost dispute with its date, country (unknown for crypto), currency, amount, tax, and how it was
-			paid, and no account. The payment server keeps its invoices for the same purpose; once a
+			lost dispute with its date, country, currency, amount, tax, and how it was paid, and no
+			account. The payment server keeps its invoices for the same purpose; once a
 			payment arrives, nothing there names an account.
 		</li>
 		<li>

@@ -14,7 +14,9 @@ import {
 	type PaymentMethod,
 	type Purchase,
 	solveAltcha,
+	type Where,
 } from "./api";
+import { countries, PROVINCES } from "./countries";
 import { BILLING_URL, MAILBOX_URL } from "./endpoints";
 import { forget, PAID_THROUGH_KEY, remember, rememberedNumber, takeNumberFromUrl } from "./session";
 
@@ -96,6 +98,14 @@ export function start(
 	const months = part<HTMLInputElement>("months");
 	/** The three ways to pay, each its own button of the same weight. */
 	const payButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-pay]")];
+	// A coin asks where the buyer lives first, for tax; a card's checkout asks for its address.
+	const where = part("where");
+	const countrySelect = part<HTMLSelectElement>("country");
+	const provinceField = part("province-field");
+	const provinceSelect = part<HTMLSelectElement>("province");
+	const whereContinue = part<HTMLButtonElement>("where-continue");
+	let coin: PaymentMethod | null = null;
+	for (const { code, name } of countries()) countrySelect.add(new Option(name, code));
 	let number: string | null = null;
 	let shown = false;
 	let paidThrough = 0;
@@ -259,6 +269,7 @@ export function start(
 	function paintMonths() {
 		const chosen = chosenMonths(months.value);
 		for (const button of payButtons) button.disabled = busy || chosen === null;
+		paintWhere();
 		part("months-error").hidden = chosen !== null;
 		const total = part("total");
 		total.hidden = chosen === null;
@@ -272,9 +283,33 @@ export function start(
 		});
 	}
 
+	/** The location step: a province only where one is needed, and Continue once it's answered. */
+	function paintWhere() {
+		const provinces = PROVINCES[countrySelect.value];
+		provinceField.hidden = !provinces;
+		const answered = !!countrySelect.value && (!provinces || !!provinceSelect.value);
+		whereContinue.disabled = busy || chosenMonths(months.value) === null || !answered;
+	}
+	countrySelect.addEventListener("change", () => {
+		provinceSelect.length = 1;
+		for (const { code, name } of PROVINCES[countrySelect.value] ?? [])
+			provinceSelect.add(new Option(name, code));
+		paintWhere();
+	});
+	provinceSelect.addEventListener("change", paintWhere);
+	part("where-cancel").addEventListener("click", () => {
+		coin = null;
+		where.hidden = true;
+	});
+	whereContinue.addEventListener("click", () => {
+		if (!coin) return;
+		const province = PROVINCES[countrySelect.value] ? provinceSelect.value : undefined;
+		void checkout(coin, whereContinue, { country: countrySelect.value, province });
+	});
+
 	/** Checkout by card or crypto: the processor's page, with the paid time remembered for the paid
 	 * page to tell when the new time lands. */
-	async function checkout(method: PaymentMethod, button: HTMLButtonElement) {
+	async function checkout(method: PaymentMethod, button: HTMLButtonElement, at?: Where) {
 		const chosen = chosenMonths(months.value);
 		if (busy || !number || chosen === null) return;
 		busy = true;
@@ -287,6 +322,7 @@ export function start(
 				chosen,
 				await solveAltcha(await api.challenge()),
 				method,
+				at,
 			);
 			if (!url.startsWith("https://")) throw new AccountError("unexpected");
 			sessionStorage.setItem(PAID_THROUGH_KEY, String(paidThrough));
@@ -299,10 +335,15 @@ export function start(
 		}
 	}
 	for (const button of payButtons) {
-		button.addEventListener(
-			"click",
-			() => void checkout(button.dataset.pay as PaymentMethod, button),
-		);
+		const method = button.dataset.pay as PaymentMethod;
+		button.addEventListener("click", () => {
+			if (method === "card") return void checkout(method, button);
+			coin = method;
+			whereContinue.textContent = `Continue to ${button.textContent?.trim()}`;
+			where.hidden = false;
+			paintWhere();
+			countrySelect.focus();
+		});
 	}
 
 	part("show").addEventListener("click", () => {
@@ -348,6 +389,7 @@ export function start(
 		if (!event.persisted) return;
 		busy = false;
 		for (const button of payButtons) working(button, false);
+		working(whereContinue, false);
 		paintMonths();
 		working(create, false);
 		checking.hidden = true;
