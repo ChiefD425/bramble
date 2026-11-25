@@ -109,6 +109,11 @@ msgstr "{0} (dominio personale)"
 msgid "{0} more look like entries you already have (the same site, username and password, or the same card number), so they are held back."
 msgstr "{0} ulteriori elementi sembrano voci già presenti (lo stesso sito, nome utente e password o lo stesso numero di carta), quindi vengono trattenuti."
 
+#. placeholder {0}: current.caller
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
+msgstr "{0} vuole usare {keyName} da {vaultName}. {openVault} si bloccherà."
+
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "{affected, plural, one {Tag # entry} other {Tag # entries}}"
 msgstr "{affected, plural, one {Aggiungere tag a # voce} other {Aggiungere tag a # voci}}"
@@ -140,6 +145,18 @@ msgstr "{browserName} si sincronizza anche con {others}. La combinazione sposta 
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 #~ msgid "{browserName} stays, as \"{browserName} (before linking)\", until you delete it."
 #~ msgstr "{browserName} rimane, come \"{browserName} (prima del collegamento)\", finché non viene eliminato."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a git commit with {keyName}"
+msgstr "{caller} vuole firmare un commit git con {keyName}"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a message with {keyName}"
+msgstr "{caller} vuole firmare un messaggio con {keyName}"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign in to a server with {keyName}"
+msgstr "{caller} vuole accedere a un server con {keyName}"
 
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "{conflicted, plural, one {# entry has a sync conflict. Only the version shown came across.} other {# entries have a sync conflict. Only the version shown came across.}}"
@@ -270,6 +287,10 @@ msgstr "{remaining} secondi rimasti"
 msgid "{rp} wants to use your passkey. Confirm it's you to continue."
 msgstr "{rp} vuole usare la sua chiave di accesso. Confermi la sua identità per continuare."
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{server} wants to use {keyName}"
+msgstr "{server} vuole usare {keyName}"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{skippedFiles, plural, one {# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app.} other {# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app.}}"
 msgstr "{skippedFiles, plural, one {# allegato in questo file è stato omesso: questo browser può aggiungere file solo dopo essere collegato all'app desktop Bramble.} other {# allegati in questo file sono stati omessi: questo browser può aggiungere file solo dopo essere collegato all'app desktop Bramble.}}"
@@ -293,6 +314,10 @@ msgstr "{uncarried, plural, one {# file non è stato copiato. È ancora nella ve
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "{used} of {quota} used"
 msgstr "{used} di {quota} utilizzati"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{who} wants to use your SSH keys"
+msgstr "{who} vuole usare le sue chiavi SSH"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #~ msgid "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
@@ -383,6 +408,10 @@ msgstr "È stato trovato un codice QR, ma non è un codice di configurazione per
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "A security code is 3 or 4 digits."
 msgstr "Il codice di sicurezza è di 3 o 4 cifre."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "A server you're connected to with ssh -A wants to see and use your keys until Bramble locks."
+msgstr "Un server a cui è connesso tramite ssh -A vuole vedere e usare le sue chiavi finché Bramble non si blocca."
 
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "A token is at least 16 letters, digits, dashes or underscores"
@@ -590,6 +619,10 @@ msgstr "Tutti"
 msgid "all your devices"
 msgstr "tutti i dispositivi"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow"
+msgstr "Consentire"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Allow again"
 msgstr "Consentire di nuovo"
@@ -602,6 +635,10 @@ msgstr "Consentire e continuare"
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "Consentire il fallback con codice dispositivo"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow this use of {keyName}?"
+msgstr "Consentire questo utilizzo di {keyName}?"
 
 #. placeholder {0}: entries.length
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
@@ -1021,6 +1058,7 @@ msgid "Can't use {0}: {1}"
 msgstr "Impossibile usare {0}: {1}"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
+#: packages/core/src/app/components/SshAgentRequests.tsx
 #: packages/core/src/app/components/ui/confirm-dialog.tsx
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
 #: packages/core/src/app/components/ui/inline-confirm.tsx
@@ -1711,6 +1749,10 @@ msgstr "Elimina vault"
 #: packages/core/src/app/screens/VaultPicker/VaultPicker.tsx
 msgid "Deleting…"
 msgstr "Eliminazione in corso..."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Deny"
+msgstr "Negare"
 
 #: packages/core/src/app/screens/VaultHome/SelectionBar.tsx
 msgid "Deselect all"
@@ -2655,6 +2697,10 @@ msgstr "Escluso {0} su {1}: non è un nome host"
 msgid "Length"
 msgstr "Lunghezza"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Let {server} use your SSH keys?"
+msgstr "Consentire a {server} di usare le sue chiavi SSH?"
+
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Light"
 msgstr "Luce"
@@ -3142,6 +3188,14 @@ msgstr "Aprire"
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Open {name}"
 msgstr "Apri {name}"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}"
+msgstr "Aprire {vaultName}"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}?"
+msgstr "Aprire {vaultName}?"
 
 #. placeholder {0}: picked.name
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -4031,7 +4085,6 @@ msgstr "Impostato da un criterio o da un'altra estensione"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Set password"
 msgstr "Imposta password"
-
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Set up {brand} on this device to use this."

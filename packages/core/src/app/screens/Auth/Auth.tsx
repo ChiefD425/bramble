@@ -23,6 +23,7 @@ import { effectiveAllowPasscode, StaleBiometricCacheError } from "../../../vault
 import { displayLabel } from "../../../vault/vault-registry";
 import { BrambleGlyph } from "../../components/BrambleGlyph";
 import { CryptoErrorText } from "../../components/CryptoErrorText";
+import { SshAgentRequestLine } from "../../components/SshAgentRequests";
 import { Button } from "../../components/ui/button";
 import { PasswordField } from "../../components/ui/password-field";
 import { usePopOut } from "../../hooks/usePopOut";
@@ -391,6 +392,7 @@ export function Auth() {
 								<Trans>Set up a vault to start saving your passwords, cards, and notes.</Trans>
 							</p>
 						)}
+						<SshAgentRequestLine />
 					</div>
 
 					{firstRun && (
