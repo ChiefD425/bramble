@@ -73,6 +73,23 @@ chrono = "0.4"
 # handled while the vault may be locked; zeroize keeps freed copies from lingering.
 zeroize = { version = "1.8", features = ["derive"] }
 sys-locale = "0.3"
+# The SSH agent (src/ssh_agent): the OpenSSH key container, its bcrypt-pbkdf decryption and the
+# agent's wire encodings. Not its `rsa` feature, which pins rsa 0.9 and RUSTSEC-2023-0071.
+ssh-key = { version = "0.6.7", default-features = false, features = ["std", "ecdsa", "ed25519", "p256", "p384", "p521", "encryption"] }
+# RSA signatures for the agent, used directly: 0.10 is the first release with the Marvin fix.
+rsa = { version = "0.10", features = ["pkcs1v15"] }
+# SSH keys pasted as SEC1 or PKCS#8 PEM. p256 is already in the tree via vault-crypto; p384 and
+# p521 are the larger curves SSH uses.
+p256 = "0.13"
+p384 = "0.13"
+p521 = "0.13"
+# Ed25519 SSH keys stored as PKCS#8, which is what a CXF import writes. Already in the tree via
+# vault-crypto.
+ed25519-dalek = { version = "2", default-features = false, features = ["pkcs8", "zeroize"] }
+# The traits ssh-key signs and encodes through, which it does not re-export. Already in the tree
+# via ssh-key.
+signature = "2"
+ssh-encoding = { version = "0.2", features = ["alloc"] }
 # Updating the app in place. Desktop-gated as the plugin's own docs show, so a future mobile
 # target does not try to build an updater that has no meaning there.
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]

@@ -37,6 +37,9 @@ mod socket;
 #[allow(dead_code)]
 mod socket_addr;
 mod spotlight;
+// Wired into the app in its own commit; until then only its tests use it.
+#[allow(dead_code)]
+mod ssh_agent;
 mod storage;
 mod stream;
 mod sync_crypto;
