@@ -3,4 +3,5 @@
 
 pub mod keys;
 pub mod protocol;
+pub mod ssh_config;
 pub mod store;
