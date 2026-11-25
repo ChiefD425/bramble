@@ -82,7 +82,7 @@ Any of these is a failure even if everything else works:
 | Hosted on a Cloudflare Worker with D1 and Drizzle | owner |
 | Mullvad-style random account number as the only customer identifier | owner |
 | Cards through Stripe directly, not a merchant of record; tax handled with an accountant | owner |
-| Crypto payments accepted: Bitcoin, Lightning, Monero | owner |
+| Crypto payments accepted: Bitcoin on-chain and Monero; no Lightning (2026-11-24) | owner |
 | BTCPay Server as the crypto processor | design call |
 | No mailed cash or reseller codes for now | owner |
 | Payment-to-account link kept 120 days | owner |
@@ -714,8 +714,10 @@ deleted early because of payment. The app warns before `paid_through` arrives.
 
 ### Crypto: BTCPay Server
 
-- **Self-hosted BTCPay Server.** No KYC, no third party, Bitcoin on-chain and Lightning, and
-  Monero through a plugin. Lightning matters because on-chain fees swamp a few-dollar payment.
+- **Self-hosted BTCPay Server.** No KYC, no third party, Bitcoin on-chain, and Monero through a
+  plugin. No Lightning (owner, 2026-11-24): a node needs inbound channel capacity bought and
+  looked after, and the smallest purchase is $12, so the on-chain fee, which the buyer pays,
+  stays a small share of it.
 - **It cannot run on Cloudflare.** It needs a VM, and Monero needs a full node (one source puts
   it at about 180 GB). The Monero plugin's current state is unconfirmed; check it before
   committing.
