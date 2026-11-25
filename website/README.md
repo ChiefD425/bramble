@@ -93,6 +93,8 @@ next to the old, and name the commit the change landed in:
   each app's part on its own target.
 - A whole new article: `since: "<commit>"` in the frontmatter (and `sinceOn` for `on`) instead of
   `draft: true`. Quote the hash: YAML reads some as numbers.
+- A blog post about a change takes the same `since` and `sinceOn`. It shows in `astro dev` only
+  until the release, then publishes dated by that release.
 
 Released means a release tag (`1.41.0-chromium`, `0.20.0-desktop`, `1.27.0-build...-ios`)
 contains the commit, so there is no list to keep. Every finished release workflow redeploys the

@@ -1,6 +1,7 @@
 // node scripts/docs-gates.ts [--fix | --pre-push]
 //
-// Help-article text that waits for a release (website/README.md, "Text that waits for a release").
+// Help-article and blog text that waits for a release (website/README.md, "Text that waits for a
+// release").
 //
 // - No flag: where each gate stands. Still waiting, out on some targets, or out everywhere, which
 //   means the gate can go: keep the Since text and delete the Until and Rollout. The deploy prints
@@ -26,6 +27,10 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DOCS = "website/src/content/docs";
+/** Everywhere text can wait for a release: help articles, and blog posts about a change. */
+const GATED = [DOCS, "website/src/content/blog"];
+/** A file's name in what this prints: blog posts say so, help articles keep their bare name. */
+const label = (dir: string, name: string) => (/(^|\/)blog$/.test(dir) ? `blog/${name}` : name);
 
 type Article = { name: string; mdx: string };
 
@@ -149,20 +154,31 @@ export function unreachableGates(files: Article[], tip: string, cwd = ROOT): Unr
 	return out;
 }
 
-/** Point the working tree's gates at the commits a rebase rewrote theirs as. */
-export function fixGates(dir = DOCS, cwd = ROOT): { fixed: Unreachable[]; left: Unreachable[] } {
-	const articles = readdirSync(join(cwd, dir))
+/** The working tree's articles in `dir`, as `label` names them. */
+function filesIn(dir: string, cwd: string): Article[] {
+	return readdirSync(join(cwd, dir))
 		.filter((f) => /\.mdx?$/.test(f))
 		.sort()
-		.map((name) => ({ name, mdx: readFileSync(join(cwd, dir, name), "utf8") }));
-	const found = unreachableGates(articles, "HEAD", cwd);
-	for (const { file, commit, rewrittenAs: next } of found) {
-		if (!next) continue;
-		const path = join(cwd, dir, file);
-		const text = readFileSync(path, "utf8")
-			.replaceAll(`commit="${commit}"`, `commit="${next}"`)
-			.replace(new RegExp(`^(since:\\s*["']?)${commit}(["']?\\s*)$`, "m"), `$1${next}$2`);
-		writeFileSync(path, text);
+		.map((name) => ({ name: label(dir, name), mdx: readFileSync(join(cwd, dir, name), "utf8") }));
+}
+
+/** Point the working tree's gates at the commits a rebase rewrote theirs as. */
+export function fixGates(
+	dirs: string | string[] = GATED,
+	cwd = ROOT,
+): { fixed: Unreachable[]; left: Unreachable[] } {
+	const found: Unreachable[] = [];
+	for (const dir of [dirs].flat()) {
+		const inDir = unreachableGates(filesIn(dir, cwd), "HEAD", cwd);
+		for (const { file, commit, rewrittenAs: next } of inDir) {
+			if (!next) continue;
+			const path = join(cwd, dir, file.slice(file.lastIndexOf("/") + 1));
+			const text = readFileSync(path, "utf8")
+				.replaceAll(`commit="${commit}"`, `commit="${next}"`)
+				.replace(new RegExp(`^(since:\\s*["']?)${commit}(["']?\\s*)$`, "m"), `$1${next}$2`);
+			writeFileSync(path, text);
+		}
+		found.push(...inDir);
 	}
 	return { fixed: found.filter((g) => g.rewrittenAs), left: found.filter((g) => !g.rewrittenAs) };
 }
@@ -177,12 +193,15 @@ function describeUnreachable({ file, commit, rewrittenAs: next }: Unreachable): 
  * The pre-push check, over git's protocol on stdin: one `<local ref> <local sha> <remote ref>
  * <remote sha>` line per ref. Returns the exit code: 1 to refuse the push.
  */
-export function prePush(stdin: string, dir = DOCS, cwd = ROOT): number {
+export function prePush(stdin: string, dirs: string | string[] = GATED, cwd = ROOT): number {
 	const blocked: Unreachable[] = [];
 	for (const line of stdin.split("\n").filter(Boolean)) {
 		const [localRef = "", localSha = ""] = line.split(" ");
 		if (!localRef.startsWith("refs/heads/") || /^0+$/.test(localSha)) continue;
-		blocked.push(...unreachableGates(filesAt(localSha, dir, cwd), localSha, cwd));
+		for (const dir of [dirs].flat()) {
+			const files = filesAt(localSha, dir, cwd).map((f) => ({ ...f, name: label(dir, f.name) }));
+			blocked.push(...unreachableGates(files, localSha, cwd));
+		}
 	}
 	if (blocked.length === 0) return 0;
 	console.error(
@@ -204,10 +223,7 @@ function main(): number {
 		if (!fixed.length && !left.length) console.log("Every gate names a commit in this history.");
 		return left.length ? 1 : 0;
 	}
-	const files = readdirSync(join(ROOT, DOCS))
-		.filter((f) => /\.mdx?$/.test(f))
-		.sort()
-		.map((name) => ({ name, mdx: readFileSync(join(ROOT, DOCS, name), "utf8") }));
+	const files = GATED.flatMap((dir) => filesIn(dir, ROOT));
 	const lines = describeGates(files, gateStatus);
 	console.log(lines.length ? lines.join("\n") : "No help article waits for a release.");
 	return 0;

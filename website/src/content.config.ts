@@ -3,6 +3,17 @@ import { glob } from "astro/loaders";
 import { z } from "astro/zod";
 import { DOC_SECTION_IDS } from "./docs-sections";
 
+/**
+ * Publish once a release containing this commit is out on every target in `sinceOn` (README, "Text
+ * that waits for a release"). Quote it: YAML reads some hashes as numbers.
+ */
+const since = z
+	.string()
+	.regex(/^[0-9a-f]{7,40}$/, "since takes a commit hash")
+	.optional();
+/** The targets `since` waits for: `all` (the default), or a comma-separated list. */
+const sinceOn = z.string().optional();
+
 const blog = defineCollection({
 	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/blog" }),
 	schema: z.object({
@@ -16,6 +27,9 @@ const blog = defineCollection({
 		draft: z.boolean().default(false),
 		/** The release tags a "What's new" post covers, for /whats-new/<target>/<version>. */
 		releases: z.array(z.string()).default([]),
+		/** A post about a change waits for its release, then takes that release's date. */
+		since,
+		sinceOn,
 	}),
 });
 
@@ -34,16 +48,8 @@ const docs = defineCollection({
 		updatedDate: z.coerce.date(),
 		/** Shown by `astro dev` only, left out of the build. */
 		draft: z.boolean().default(false),
-		/**
-		 * Publish once a release containing this commit is out on every target in `sinceOn`
-		 * (README, "Text that waits for a release"). Quote it: YAML reads some hashes as numbers.
-		 */
-		since: z
-			.string()
-			.regex(/^[0-9a-f]{7,40}$/, "since takes a commit hash")
-			.optional(),
-		/** The targets `since` waits for: `all` (the default), or a comma-separated list. */
-		sinceOn: z.string().optional(),
+		since,
+		sinceOn,
 	}),
 });
 

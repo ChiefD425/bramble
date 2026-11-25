@@ -343,6 +343,7 @@ describe("describeGates", () => {
 // subject and author date, which is how the rewritten one is found.
 describe("after a rebase", () => {
 	const DOCS = "docs";
+	const BLOG = "blog";
 	let repo: string;
 	let base: string;
 	let feature: string;
@@ -366,7 +367,9 @@ describe("after a rebase", () => {
 		writeFileSync(join(repo, DOCS, "d.mdx"), "No gates.");
 		// Named by a commit the rebase leaves alone.
 		writeFileSync(join(repo, DOCS, "e.mdx"), `<Since commit="${base}">kept</Since>`);
-		git(repo, "add", DOCS);
+		mkdirSync(join(repo, BLOG));
+		writeFileSync(join(repo, BLOG, "post.mdx"), `---\nsince: "${feature}"\n---\n\nNews.`);
+		git(repo, "add", DOCS, BLOG);
 		git(repo, "commit", "-q", "-m", "docs: the change");
 		git(repo, "checkout", "-q", "upstream");
 		writeFileSync(join(repo, "other"), "x");
@@ -422,6 +425,21 @@ describe("after a rebase", () => {
 		assert.equal(
 			readFileSync(join(repo, DOCS, "b.mdx"), "utf8"),
 			`---\nsince: "${rebased}"\n---\n\nBody.`,
+		);
+	});
+
+	it("covers a blog post that waits for a release, named as one", () => {
+		const head = git(repo, "rev-parse", "HEAD");
+		const push = `refs/heads/main ${head} refs/heads/main ${"0".repeat(40)}\n`;
+		assert.equal(prePush(push, BLOG, repo), 1);
+		const { fixed } = fixGates([BLOG], repo);
+		assert.deepEqual(
+			fixed.map((g) => g.file),
+			["blog/post.mdx"],
+		);
+		assert.equal(
+			readFileSync(join(repo, BLOG, "post.mdx"), "utf8"),
+			`---\nsince: "${rebased}"\n---\n\nNews.`,
 		);
 	});
 });
