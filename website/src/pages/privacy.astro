@@ -5,18 +5,20 @@ import { SITE } from "@/consts";
 
 <LegalLayout
 	title="Privacy Policy"
-	description="Bramble is a local-first password manager. It stores everything encrypted on your device. Its network use is limited to optional, off-by-default features you control (a password breach check, peer-to-peer sync between your own devices, encrypted backups to a storage provider you choose, and email aliases from a provider you already use), plus an update check in the desktop and mobile apps that you can turn off."
+	description="Bramble is a local-first password manager. It stores everything encrypted on your device. Its network use is limited to optional, off-by-default features you control (a password breach check, peer-to-peer sync between your own devices, a mailbox that holds encrypted changes for devices that are never online together, encrypted backups to a storage provider you choose, and email aliases from a provider you already use), plus an update check in the desktop and mobile apps that you can turn off."
 	path="/privacy"
-	meta="Effective date: 20 November 2026"
+	meta="Effective date: 24 November 2026"
 >
 	<p class="lead">
 		<strong>The short version:</strong> Bramble is a local-first password manager, available as a
 		browser extension, as mobile apps, and as a desktop app. It does not collect, sell, or share any
-		of your data. There is no account and no Bramble server that holds your vault. Everything stays
-		on your device, encrypted. Bramble makes network connections only for a few optional features
-		that are off by default and that you turn on yourself: a password breach check, peer-to-peer
-		sync between your own devices, encrypted backups to a storage provider you choose, and email
-		aliases from a provider you already use. The one exception is a check for updates in the desktop
+		of your data. There is no Bramble server that holds your vault, and no account unless you choose
+		Bramble's paid mailbox, whose account is just a number. Everything stays on your device,
+		encrypted. Bramble makes network connections only for a few optional features that are off by
+		default and that you turn on yourself: a password breach check, peer-to-peer sync between your
+		own devices, a mailbox that holds encrypted changes for devices that are never online together,
+		encrypted backups to a storage provider you choose, and email aliases from a provider you
+		already use. The one exception is a check for updates in the desktop
 		and mobile apps; you can turn that off. None of these ever exposes your passwords or your
 		vault in a form that Bramble, a provider, or anyone else could read. Details below.
 	</p>
@@ -41,7 +43,8 @@ import { SITE } from "@/consts";
 		available (the macOS Keychain, the Windows Credential Manager, or the Secret Service or kernel
 		keyring on Linux), and never the key to your vault. Bramble has no vault server, so your data is not
 		stored off your devices unless you turn on cloud backups (below), which keep an encrypted copy
-		with a storage provider you choose.
+		with a storage provider you choose. The optional mailbox (below) holds encrypted changes only
+		until your devices collect them, never your vault.
 	</p>
 
 	<h2>How it is protected</h2>
@@ -55,7 +58,10 @@ import { SITE } from "@/consts";
 	<h2>What Bramble does not do</h2>
 	<ul>
 		<li>No data collection, tracking, analytics, telemetry, or advertising.</li>
-		<li>No accounts, sign-up, or login to any service.</li>
+		<li>
+			No accounts, sign-up, or login to any service, except the optional Bramble Mailbox account,
+			which is a number with no email, name, or password (see "The mailbox" below).
+		</li>
 		<li>
 			No Bramble vault server or cloud. Bramble runs no server that stores your vault. If you turn
 			on backups, only an encrypted copy goes to a storage provider you choose and control (see
@@ -68,9 +74,9 @@ import { SITE } from "@/consts";
 	<h2>Network connections, in full</h2>
 	<p>
 		The browser extension works entirely offline by default, and its updates come through the store
-		you installed it from. There are four features that make network connections, all optional and
-		all off until you turn them on: the password breach check, device sync, cloud backups, and email
-		aliases. The desktop and mobile apps add one more, on by default: a check for updates. They are
+		you installed it from. There are five features that make network connections, all optional and
+		all off until you turn them on: the password breach check, device sync, the mailbox, cloud
+		backups, and email aliases. The desktop and mobile apps add one more, on by default: a check for updates. They are
 		described next. Bramble makes no other network requests.
 	</p>
 
@@ -167,6 +173,91 @@ import { SITE } from "@/consts";
 			relay. To keep that free service from being abused, the signaling relay limits how often an
 			address may ask for TURN access, and for that keeps a salted hash of the address that asked
 			(never the address itself) for at most a day.
+		</li>
+	</ul>
+
+	<h2>The mailbox (optional)</h2>
+	<p>
+		Devices that are never online at the same time can sync through a mailbox: a server that holds
+		your encrypted changes until each of your devices has collected them, and then deletes them. It
+		is off until you turn it on, and it only works alongside device sync. You can use Bramble's
+		mailbox, which is paid, or run the open-source mailbox server yourself, in which case none of
+		what follows involves us.
+	</p>
+	<p>What Bramble's mailbox holds, and what it can see:</p>
+	<ul>
+		<li>
+			<strong>Encrypted changes, never your vault in readable form.</strong> Each change, and each
+			file attachment that travels with one, is encrypted on your device under a key only your
+			devices hold. The mailbox cannot read them, and never receives your master password or any key
+			that could decrypt them.
+		</li>
+		<li>
+			<strong>Your devices, by key only.</strong> The mailbox knows each of your devices by the
+			public key it signs its requests with, and keeps the day each one last checked in. For each
+			change waiting for delivery it keeps which device sent it, its size, and when. It has no device
+			names and cannot tell which vault the changes belong to.
+		</li>
+		<li>
+			<strong>Delivered means deleted.</strong> A change is deleted as soon as every device it was
+			meant for has collected it, and after 365 days at the most. A mailbox none of whose devices
+			has checked in for 365 days is deleted with everything in it.
+		</li>
+		<li>
+			<strong>Where it runs.</strong> On Cloudflare Workers, with its data stored in Cloudflare's EU
+			jurisdiction. Cloudflare sees the network address each request comes from, as any host does.
+			Bramble keeps no request logs: when something fails, it records the error, never the request,
+			a network address, or an account.
+		</li>
+		<li>
+			<strong>Rate limits.</strong> To stop account numbers from being guessed, requests that name
+			an account are limited per network address. The limiter is given a hash of the address keyed
+			with a secret, never the address itself.
+		</li>
+	</ul>
+	<p>The Bramble Mailbox account and paying for it:</p>
+	<ul>
+		<li>
+			<strong>The account is a number.</strong> An account is a random 25-digit number, with no
+			email, name, or password. The mailbox stores a keyed hash of the number, never the number
+			itself, together with when the account was opened, its paid time, whether it is paused over
+			a disputed payment, and each time that was added to it (when, and how many days). It keeps
+			these until you delete the account.
+		</li>
+		<li>
+			<strong>Where the number is kept.</strong> In the apps, it is kept in your vault's settings,
+			encrypted with the rest of your vault, and synced to your devices. On bramble.sh it is kept
+			only in that browser tab, for the trip to the payment page and back. It is sent only in the
+			body of a request, or in the part of a link that browsers never send to a server, so it never
+			appears in a web address a server sees, or in a cookie.
+		</li>
+		<li>
+			<strong>No CAPTCHA.</strong> Opening an account or starting a payment asks your browser to
+			solve a small puzzle, so no third party is involved. To limit abuse, those requests are also
+			rate-limited using a hash of your network address keyed with a secret and the day; neither
+			the address nor the hash is stored.
+		</li>
+		<li>
+			<strong>Payments go through Stripe.</strong> You pay on Stripe's checkout page. Stripe
+			collects your card or wallet details, your email address, and the billing address details it
+			needs for the card and for tax, and handles them under its own privacy policy. Stripe is never
+			given your account number: the payment carries a random reference, which Bramble deletes once
+			the payment arrives. Bramble never receives your card details, and does not keep your email
+			address.
+		</li>
+		<li>
+			<strong>What Bramble keeps about a payment.</strong> To handle refunds and disputes, a record
+			of each purchase with its account (the days bought, the amount, tax, currency, and country, and
+			any refund or dispute), with the payment's identifier encrypted for the 14-day refund window
+			and a keyed hash of it, so a dispute can find its account. These are deleted after 120 days,
+			after which nothing on our side connects a payment to an account. For our accounts and tax
+			returns, Bramble keeps a record of each sale, refund, and lost dispute with its date, country,
+			currency, amount, and tax, and no account.
+		</li>
+		<li>
+			<strong>Deleting the account.</strong> Deleting it on bramble.sh removes the account, its
+			purchase records, and every mailbox it pays for with everything they hold, straight away.
+			Deleting does not refund paid time; a purchase can be refunded within 14 days first.
 		</li>
 	</ul>
 
@@ -413,15 +504,17 @@ import { SITE } from "@/consts";
 		or the app, deleting your vault file, and clearing the app's or extension's storage removes your
 		data. For the desktop app, that means deleting its data folder too; the Windows uninstaller
 		offers to do that for you, along with the credentials it stored in the Windows Credential
-		Manager. Bramble retains nothing on your behalf because it holds nothing about you anywhere else. If
-		you turned on cloud backups, delete the encrypted backup files from your storage provider too,
-		since those live in your account there, not with Bramble.
+		Manager. Apart from Bramble's mailbox, Bramble retains nothing on your behalf because it holds
+		nothing about you anywhere else. If you use the mailbox, see "The mailbox" above for what it
+		keeps, for how long, and how deleting your account removes it. If you turned on cloud backups,
+		delete the encrypted backup files from your storage provider too, since those live in your
+		account there, not with Bramble.
 	</p>
 
 	<h2>Children</h2>
 	<p>
 		Bramble is a general-purpose tool, not directed at children, and collects no information from
-		anyone.
+		anyone beyond what the optional mailbox needs, described above.
 	</p>
 
 	<h2>Changes to this policy</h2>
