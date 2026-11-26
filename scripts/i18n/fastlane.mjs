@@ -2,10 +2,12 @@
 // en-US source so `deliver` uploads localized App Store listings. Idempotent: a
 // target is rewritten only when the English it was translated from has changed
 // (see source-hash.mjs), so manual fixes survive but an edit to en-US propagates.
+// The search fields (SEARCH) are the exception: each store's are written for what
+// people there type, so they are seeded once and never overwritten.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FASTLANE_DIR, LOCALES, SOURCE } from "./locales.mjs";
+import { APP_STORE_MIRRORS, FASTLANE_DIR, LOCALES, SOURCE } from "./locales.mjs";
 import { fitToLimit, translateText } from "./ollama.mjs";
 import { flushSources, recordSource, sourceChanged } from "./source-hash.mjs";
 
@@ -16,6 +18,8 @@ const PROSE = new Set(["description.txt", "promotional_text.txt", "release_notes
 const VERBATIM = new Set(["name.txt", "privacy_url.txt", "support_url.txt"]);
 // keywords.txt: comma-separated, hard 100-char App Store cap — special handling.
 const KEYWORDS = "keywords.txt";
+// What App Store search indexes. Per-locale once written; see docs/i18n.md.
+const SEARCH = new Set(["name.txt", "subtitle.txt", KEYWORDS]);
 // App Store hard character limits; fields over these are rejected at upload.
 const LIMITS = { "keywords.txt": 100, "subtitle.txt": 30, "promotional_text.txt": 170 };
 
@@ -34,6 +38,7 @@ export async function run() {
 		for (const file of files) {
 			const target = join(dir, file);
 			const en = readFileSync(join(src, file), "utf8");
+			if (SEARCH.has(file) && existsSync(target)) continue;
 			// Present AND still matching the English it came from: leave it (a manual fix wins).
 			if (existsSync(target) && !sourceChanged(target, en)) continue;
 			let value;
@@ -42,13 +47,37 @@ export async function run() {
 			else if (PROSE.has(file)) value = await translateText(name, en);
 			else value = en; // unknown file: copy through
 			writeFileSync(target, value);
-			recordSource(target, en);
+			if (!SEARCH.has(file)) recordSource(target, en);
 			wrote++;
 		}
 		console.log(`  ${appStore}: ${wrote ? `wrote ${wrote} file(s)` : "up to date"}`);
 	}
 	flushSources();
 	await fitPass();
+	linkMirrors();
+}
+
+// Each mirror holds its `own` files (seeded from `from` when missing) and a relative symlink to
+// `from` for everything else. A real file where a link belongs is reported, not replaced.
+function linkMirrors() {
+	for (const { appStore, from, own } of APP_STORE_MIRRORS) {
+		const dir = join(FASTLANE_DIR, appStore);
+		mkdirSync(dir, { recursive: true });
+		for (const file of readdirSync(join(FASTLANE_DIR, from)).filter((f) => f.endsWith(".txt"))) {
+			const target = join(dir, file);
+			const link = `../${from}/${file}`;
+			if (own.includes(file)) {
+				if (!existsSync(target)) writeFileSync(target, readFileSync(join(FASTLANE_DIR, from, file)));
+				continue;
+			}
+			const stat = lstatSync(target, { throwIfNoEntry: false });
+			if (!stat) symlinkSync(link, target);
+			else if (!stat.isSymbolicLink() || readlinkSync(target) !== link) {
+				console.warn(`  ${appStore}/${file} should be a symlink to ${link}; left as is`);
+			}
+		}
+		console.log(`  ${appStore}: mirrors ${from} (own: ${own.join(", ")})`);
+	}
 }
 
 // Second AI pass: shorten any field that overruns its App Store cap. Idempotent

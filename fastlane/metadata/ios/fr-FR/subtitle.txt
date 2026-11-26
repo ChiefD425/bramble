@@ -1,1 +1,1 @@
-Coffre privé et local
+Gestionnaire, passkeys et 2FA

@@ -1,1 +1,1 @@
-KeePass,TOTP,Sicherheit,Anmeldedaten,Passkeys,2FA,Offline,Generator,Autofill
+Authenticator,TOTP,KeePass,Generator,Autofill,sicher,Passwörter,Kennwort,Zugangsdaten,Open,Source

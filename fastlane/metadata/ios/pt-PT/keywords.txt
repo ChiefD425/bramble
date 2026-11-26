@@ -1,0 +1,1 @@
+palavras,passe,autenticador,TOTP,chaves,acesso,KeePass,gerador,encriptação,código,aberto,senha

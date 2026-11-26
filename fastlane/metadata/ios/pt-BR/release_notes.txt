@@ -1,9 +1,9 @@
-O que há de novo nesta versão:
+Novidades desta versão:
 
-- O bloqueio automático do aplicativo não bloqueia mais o preenchimento automático, que mantém seu próprio temporizador e o reinicia a cada preenchimento.
-- Com a opção Verificar senhas por violações ativada, o Bramble agora verifica todos os logins em segundo plano, não apenas os que você abre, e cada login mostra quando foi verificado pela última vez.
-- Duplique um item ou anexe um arquivo a ele pelo menu ⋮ na lista.
-- Um cofre que você não consegue abrir agora pode ser excluído da lista de cofres sem a senha: escolha Excluir um cofre.
-- As cópias agora são apagadas após o tempo definido em Configurações → Geral → Limpar automaticamente a área de transferência, em vez de sempre após 30 segundos.
+- O bloqueio automático do app não bloqueia mais o preenchimento automático, que mantém o próprio temporizador e o reinicia a cada preenchimento.
+- Com a opção Verificar senhas em vazamentos ativada, o Bramble agora verifica todos os logins em segundo plano, não apenas os que você abre, e cada login mostra quando foi verificado pela última vez.
+- Duplicar um item ou anexar um arquivo a ele no menu ⋮ da lista.
+- Um cofre que você não consegue abrir agora pode ser excluído da lista de cofres, sem a senha dele: escolha Excluir um cofre.
+- As cópias agora são apagadas após o tempo definido em Configurações → Geral → Limpeza automática da área de transferência, em vez de sempre após 30 segundos.
 
-Sem conta, sem nuvem. Tudo fica nos seus dispositivos.
+Não é necessário criar uma conta, e tudo o que sai do seu dispositivo é criptografado de ponta a ponta.

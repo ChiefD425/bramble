@@ -6,4 +6,4 @@ What's new in this release:
 - A vault you can't open can now be deleted from the list of vaults, without its password: choose Delete a vault.
 - Copies are now cleared after the time set in Settings → General → Clipboard auto-clear, instead of always after 30 seconds.
 
-No account, no cloud. Everything stays on your devices.
+No account needed, and anything that leaves your device is end-to-end encrypted.

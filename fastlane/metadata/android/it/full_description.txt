@@ -1,19 +1,20 @@
-Bramble è un gestore di password local-first. Le tue password risiedono in un vault crittografato sul tuo dispositivo, non su un server di terze parti. Non è necessario creare alcun account e nessun dato viene trasmesso a server esterni.
+Bramble è un gestore di password local-first. Le sue password sono conservate in una cassaforte cifrata sul suo dispositivo e non è necessario un account per utilizzarlo. Tutto ciò che lascia il dispositivo, per la sincronizzazione o il backup, viene prima cifrato end-to-end, quindi nessun server può leggerlo.
 
-Tutte le operazioni crittografiche sono eseguite da un core in Rust: Argon2id deriva la tua chiave, AES-256-GCM crittografa i tuoi dati e la crittografia envelope assegna una chiave univoca a ogni voce. Nomi dei siti, nomi utente e note sono tutti crittografati, e i segreti vengono cancellati dalla memoria dopo l'uso.
+Tutta la crittografia viene eseguita in un core Rust: Argon2id deriva la sua chiave, AES-256-GCM cifra i suoi dati e la cifratura a busta assegna a ogni voce la propria chiave. I nomi dei siti, i nomi utente e le note sono tutti cifrati e i segreti vengono azzerati dalla memoria dopo l'uso.
 
 FUNZIONALITÀ
-- Compilazione automatica di password e codici monouso in app e browser.
-- Passkey: crea e accedi con passkey, utilizzando Bramble come tuo autenticatore personale, per siti e app che le supportano.
-- Sblocco tramite impronta digitale o volto, password principale o codice di recupero.
-- Archiviazione di credenziali di accesso, carte di pagamento, note sicure e chiavi SSH, ciascuna con i propri campi.
-- Generatore di password forti integrato.
-- TOTP / 2FA: aggiungi un URI otpauth o un segreto e Bramble genera i codici a sei cifre.
-- Importazione da KeePass (KDBX4), inclusi i file di chiave.
-- Codice di recupero: un backup stampabile ad alta entropia che sblocca il tuo vault indipendentemente dalla password principale.
-- Controllo opzionale delle violazioni tramite k-anonymity, in modo che nessuna informazione sulla tua password lasci il dispositivo.
+- Riempimento automatico di password e codici monouso nelle app e nel browser.
+- Passkey: creare e accedere con le passkey, con Bramble come proprio autenticatore, per siti e app che le supportano.
+- Sblocco con l'impronta digitale o il viso, la password principale o un codice di ripristino.
+- Archiviazione di credenziali, carte di pagamento, note sicure e chiavi SSH, con i rispettivi campi.
+- Generatore di password robuste integrato.
+- TOTP / 2FA: aggiungere un URI otpauth o un segreto e Bramble genera i codici a sei cifre.
+- Importazione da KeePass (KDBX4), inclusi i file chiave.
+- Codice di ripristino: un backup stampabile ad alta entropia che sblocca la cassaforte indipendentemente dalla password principale.
+- Verifica facoltativa delle violazioni tramite k-anonymity: viene inviato solo un breve prefisso dell'hash della password, mai la password.
 - Blocco automatico dopo inattività.
-- Sincronizzazione peer-to-peer tra i tuoi dispositivi. Nessun cloud, nessun relay che conserva i tuoi dati.
+- Sincronizzazione tra i propri dispositivi, cifrata end-to-end: direttamente peer-to-peer o tramite un server mailbox facoltativo che conserva solo dati sigillati.
+- Backup cifrati facoltativi su storage a scelta, ad esempio un bucket compatibile con S3 o un server WebDAV.
 
 PRIVACY
-Bramble non ha account, abbonamento né telemetria. Il tuo vault non lascia mai il tuo controllo e il codice viene eseguito interamente sul tuo dispositivo.
+Bramble è gratuito e open source (GPLv3) e non ha telemetria. Non è necessario un account, tutta la cifratura avviene sul suo dispositivo e solo i suoi dispositivi possono leggere la sua cassaforte. L'unica richiesta che Bramble effettua in autonomia è un controllo giornaliero degli aggiornamenti, che può disattivare nelle Impostazioni.

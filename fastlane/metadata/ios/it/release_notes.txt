@@ -1,9 +1,9 @@
-Novità in questa versione:
+Novità di questa versione:
 
-- Il blocco automatico dell'app non blocca più la compilazione automatica, che mantiene un proprio timer e lo riavvia a ogni compilazione.
-- Con l'opzione Controllare le password per violazioni attiva, Bramble ora controlla ogni accesso in background, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
-- È possibile duplicare un elemento o allegarvi un file dal suo menu ⋮ nell'elenco.
-- Una cassaforte che non è possibile aprire ora può essere eliminata dall'elenco delle casseforti, senza la sua password: selezionare Eliminare una cassaforte.
-- Le copie ora vengono cancellate dopo il tempo impostato in Impostazioni → Generale → Auto-cancellazione della clipboard, invece che sempre dopo 30 secondi.
+- Il blocco automatico dell'app non blocca più il riempimento automatico, che dispone di un proprio timer e lo riavvia a ogni riempimento.
+- Con l'opzione Verifica password nelle violazioni attiva, Bramble ora controlla in background tutti gli accessi, non solo quelli aperti, e ogni accesso mostra quando è stato controllato l'ultima volta.
+- Duplica un elemento o allega un file dal relativo menu ⋮ nell'elenco.
+- Una cassaforte che non si può aprire può ora essere eliminata dall'elenco delle casseforti, senza la relativa password, scegliendo Eliminare una cassaforte.
+- Le copie ora vengono cancellate dopo il tempo impostato in Impostazioni → Generali → Cancellazione automatica degli appunti, anziché sempre dopo 30 secondi.
 
-Nessun account, nessun cloud. Tutto resta sui propri dispositivi.
+Non è necessario alcun account e tutto ciò che lascia il dispositivo è crittografato end-to-end.

@@ -1,1 +1,1 @@
-Kein Konto, keine Cloud, kein Unternehmen hinter Ihrem Tresor. Passwörter bleiben lokal verschlüsselt. Passkeys, AutoFill, TOTP und Import von KeePass, Apple oder Google.
+Passwörter bleiben lokal verschlüsselt, kein Konto nötig. Synchronisierung/Backups Ende-zu-Ende-verschlüsselt. Passkeys, AutoFill, 2FA, Import aus KeePass, Apple, Google.

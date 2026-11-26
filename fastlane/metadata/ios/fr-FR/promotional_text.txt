@@ -1,1 +1,1 @@
-Coffre-fort sans compte, cloud ni entreprise : vos mots de passe restent chiffrés sur l’appareil. Passkeys, AutoFill, TOTP et import depuis KeePass, Apple, Google.
+Mots de passe chiffrés localement, sans compte. Synchro et sauvegardes chiffrées de bout en bout. Clés d’accès, remplissage automatique, 2FA, import KeePass/Apple/Google.
