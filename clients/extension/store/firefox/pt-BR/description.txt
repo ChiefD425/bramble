@@ -1,49 +1,49 @@
-O Bramble é um gerenciador de senhas gratuito e de código aberto que mantém seus segredos nos seus próprios dispositivos. Sem conta, sem servidor guardando seu cofre, sem empresa para ser violada e vazar tudo. Você guarda o cofre, você guarda a senha, e é só isso.
+O Bramble é um gerenciador de senhas gratuito e de código aberto que mantém seus segredos nos seus próprios dispositivos. Sem conta, sem servidor de empresa no qual você precise confiar seu cofre, e sem banco de dados central para ser violado e vazar tudo. Você detém o cofre, você detém a senha, e é só isso.
 
-Funciona no Firefox, LibreWolf, Waterfox, Zen e em outros navegadores Firefox. Instale e em cerca de um minuto você já está usando. O Bramble também tem aplicativos para macOS, Linux, iOS e Android, e seu cofre sincroniza entre todos eles.
+Funciona no Firefox, LibreWolf, Waterfox, Zen e outros navegadores baseados no Firefox. Instale e você estará usando em cerca de um minuto. O Bramble também tem aplicativos para macOS, Linux, iOS e Android, e seu cofre sincroniza entre todos eles.
 
-O QUE ELE FAZ
+O QUE O BRAMBLE FAZ
 
-Suas senhas são criptografadas no seu dispositivo e armazenadas no armazenamento da própria extensão do navegador. Configure uma vez e você já preenche logins automaticamente, salva novos e gera senhas imediatamente.
+Suas senhas são criptografadas no seu dispositivo e armazenadas no próprio armazenamento da extensão do navegador. Configure uma vez e você já estará preenchendo logins automaticamente, salvando novos e gerando senhas imediatamente.
 
-Você tem mais de um dispositivo? Emparelhe-os e o Bramble sincroniza seu cofre diretamente entre eles, com criptografia de ponta a ponta. O retransmissor que conecta seus dispositivos só vê texto cifrado e não armazena nada, então seus segredos nunca chegam aos servidores de ninguém.
+Tem mais de um dispositivo? Emparelhe-os e o Bramble sincroniza seu cofre diretamente entre eles, com criptografia de ponta a ponta. O retransmissor que conecta seus dispositivos só vê texto cifrado e não armazena nada, então nada legível jamais chega ao servidor de ninguém.
 
 RECURSOS
 
-- Local primeiro, sempre. Seu cofre criptografado permanece no seu dispositivo, no armazenamento do navegador. Sem conta, sem cópia no servidor.
-- Sincronização ponto a ponto. Seus dispositivos permanecem sincronizados por uma conexão criptografada de ponta a ponta, mesclando item por item. O retransmissor que os conecta só vê texto cifrado e não armazena nada.
-- Criptografia de verdade. Argon2id para sua chave, AES-256-GCM para os dados, criptografia de envelope para que cada item tenha sua própria chave. Segredos são apagados da memória após o uso.
+- Local-first, sempre. Seu cofre criptografado permanece no seu dispositivo, no armazenamento do navegador. Sem conta e sem cópia em nenhum outro lugar, a menos que você faça backup para um armazenamento de sua escolha.
+- Sincronização ponto a ponto. Seus dispositivos permanecem sincronizados por uma conexão com criptografia de ponta a ponta, mesclados entrada por entrada. O retransmissor que os conecta só vê texto cifrado e não armazena nada.
+- Criptografia robusta. Argon2id para sua chave, AES-256-GCM para os dados, criptografia de envelope para que cada entrada tenha sua própria chave. Segredos são apagados da memória após o uso.
 - Tudo criptografado. Nomes de sites, nomes de usuário, notas, tudo.
-- Preenchimento automático inteligente por domínio. www.example.com, ca.accounts.example.com e example.com correspondem ao mesmo login. O menu suspenso na página alcança formulários dentro de iframes e shadow DOM.
-- Passkeys. O Bramble é seu próprio autenticador de passkeys: crie e entre com passkeys, armazenadas no seu cofre e sincronizadas como todo o resto.
+- Preenchimento automático inteligente por domínio. www.example.com, ca.accounts.example.com e example.com correspondem a um único login. O menu suspenso na página alcança formulários dentro de iframes e shadow DOM.
+- Passkeys. O Bramble é o seu autenticador de passkeys: crie e entre com passkeys, armazenadas no seu cofre e sincronizadas como tudo o mais.
 - Mais do que logins. Logins, cartões de pagamento, notas seguras e chaves SSH, cada um com seus próprios campos.
-- Aliases de e-mail. Tenha um endereço de encaminhamento exclusivo para cada site por meio do Addy.io, SimpleLogin ou Fastmail, ou a partir de um domínio que você possui, oferecido diretamente no formulário de cadastro.
-- Toque para desbloquear. Use o Touch ID ou o Windows Hello junto com sua senha mestra, ou torne-o seu único meio de acesso.
-- Códigos de recuperação. Cada cofre recebe um código de recuperação seguro durante a configuração: um backup imprimível que o desbloqueia independentemente da sua senha mestra.
-- Códigos TOTP / 2FA. Cole um URI otpauth:// ou um segredo e o Bramble gera os códigos.
+- Aliases de e-mail. Obtenha um endereço de encaminhamento exclusivo para cada site por meio do Addy.io, SimpleLogin ou Fastmail, ou de um domínio que você possui, oferecido diretamente no formulário de cadastro.
+- Toque para desbloquear. Use o Touch ID ou o Windows Hello junto com a sua senha mestre, ou torne essa a sua única forma de entrar.
+- Códigos de recuperação. Cada cofre recebe um código de recuperação seguro na configuração: um backup imprimível que o desbloqueia independentemente da sua senha mestre.
+- Códigos TOTP / 2FA. Cole um URI otpauth:// ou segredo e o Bramble gera os códigos.
 - Backups criptografados. Exporte seu cofre para um arquivo criptografado a qualquer momento ou agende backups criptografados para o Dropbox, um bucket compatível com S3 ou WebDAV. O provedor só vê texto cifrado.
-- Sem dependência. Exporte para um arquivo KeePass (.kdbx) padrão sempre que quiser sair.
-- Múltiplos cofres. Mantenha cofres separados lado a lado, cada um protegido por sua própria senha mestra.
+- Sem aprisionamento. Exporte para um arquivo KeePass (.kdbx) padrão sempre que desejar sair.
+- Múltiplos cofres. Mantenha cofres separados lado a lado, cada um protegido por sua própria senha mestre.
 - Gerador de senhas integrado.
-- Verificação opcional de vazamentos. Consulta ao Have I Been Pwned usando k-anonimato, para que nada sobre sua senha saia da sua máquina. Desativada por padrão.
+- Verificação opcional de vazamentos. Consulta ao Have I Been Pwned usando k-anonymity: apenas um pequeno prefixo do hash da senha é enviado, nunca a senha. Desativada por padrão.
 - Bloqueio automático após 15 minutos de inatividade (configurável).
-- Importação de 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords e Google Password Manager.
+- Importe de 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords e Google Password Manager.
 
-POR QUE LOCAL PRIMEIRO
+POR QUE LOCAL-FIRST
 
-Os gerenciadores na nuvem mantêm os cofres de todos em seus servidores, o que é um alvo gigante. Quando um é violado, não é um cofre que vaza, mas milhões de uma só vez, muitas vezes divulgado meses depois.
+Os gerenciadores em nuvem mantêm os cofres de todos em seus servidores, o que é um alvo gigante. Quando um é violado, não é apenas um cofre que vaza, mas milhões de uma vez, muitas vezes divulgado meses depois.
 
 O Bramble inverte isso:
 
-- Nenhum servidor para violar. Seu cofre nunca sai do seu controle.
+- Nenhum depósito central de cofres para violar. Seu cofre nunca sai dos seus dispositivos sem criptografia.
 - Sem conta, sem assinatura, sem anúncios, sem telemetria. Nada para cadastrar.
-- Seus dados, seus dispositivos. Sincronize-os entre seus próprios dispositivos, mantenha-os em uma máquina ou faça backup criptografado no armazenamento que você escolher. Nada legível jamais fica armazenado no servidor de outra pessoa.
-- Nada para confiar além do código. O Bramble é código aberto sob a GPL, e o código é público no GitHub.
+- Seus dados, seus dispositivos. Sincronize entre seus próprios dispositivos, mantenha em uma máquina ou faça backup criptografado para o armazenamento que você escolher. Nada legível jamais fica estacionado no servidor de outra pessoa.
+- Nada em que confiar além do código. O Bramble é de código aberto sob a GPL, e o código é público no GitHub.
 
-COMO A CRIPTOGRAFIA FUNCIONA
+COMO FUNCIONA A CRIPTOGRAFIA
 
-O Bramble usa slots de chave no estilo LUKS e criptografia de envelope. Uma única Chave do Cofre aleatória protege seus dados. Cada método de desbloqueio (senha mestra, Touch ID ou Windows Hello, código de recuperação) deriva sua própria Chave de Criptografia de Chave, que desembrulha uma cópia dessa mesma Chave do Cofre; assim, adicionar ou revogar um método de desbloqueio nunca recriptografa um único item. A Chave do Cofre então desembrulha uma nova chave por item para cada registro do cofre. Tudo usa AES-256-GCM.
+O Bramble usa slots de chave no estilo LUKS e criptografia de envelope. Uma Vault Key aleatória protege seus dados. Cada método de desbloqueio (senha mestre, Touch ID ou Windows Hello, código de recuperação) deriva sua própria Key-Encryption Key que desempacota uma cópia da mesma Vault Key, de modo que adicionar ou revogar um método de desbloqueio nunca recriptografa uma única entrada. Em seguida, a Vault Key desempacota uma nova chave por entrada para cada item. Tudo é AES-256-GCM.
 
 VINDO DO KEEPASS?
 
-Você se sentirá em casa: seu cofre criptografado, seu controle, sem intermediário na nuvem. O Bramble importa seus arquivos KDBX4 (incluindo arquivos-chave) e exporta de volta para .kdbx sempre que você quiser. As diferenças: o preenchimento automático é integrado, com correspondência de domínio e um menu suspenso na página, portanto, não há ponte de plugin; a sincronização entre seus dispositivos também é integrada; e ele traz uma única versão moderna com Argon2id e AES-256-GCM, em vez de uma profusão de plugins. Interface limpa, com modo escuro incluído.
+Você se sentirá em casa: seu cofre criptografado, seu controle e nenhum servidor de terceiros necessário. O Bramble importa seus arquivos KDBX4 (incluindo arquivos-chave) e exporta de volta para .kdbx sempre que quiser. As diferenças: o preenchimento automático é integrado, com correspondência de domínio e um menu suspenso na página, então não há ponte de plugin; a sincronização entre seus dispositivos também é integrada; e ele vem com uma build moderna com Argon2id e AES-256-GCM, em vez de uma proliferação de plugins. Interface limpa, com modo escuro incluído.

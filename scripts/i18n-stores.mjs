@@ -2,7 +2,7 @@
 // Translate the web store listings (Chrome Web Store + AMO) via local Ollama, or
 // DeepSeek if DEEPSEEK_API_KEY is set. Source English lives in
 // clients/extension/store/<store>/en/*.txt; this fans it out to the other
-// locales, idempotently (existing translations are kept). `i18n:native` runs this
+// locales, re-translating a file only when its English changed. `i18n:native` runs this
 // alongside every other surface; use this when only the store copy changed.
 
 import { modelInfo } from "./i18n/ollama.mjs";

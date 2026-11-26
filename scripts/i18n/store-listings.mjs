@@ -1,6 +1,7 @@
 // Web store listing adapter: generates store/<store>/<code>/*.txt from the en
 // source so the Chrome Web Store and AMO listings can localize. Idempotent: a
-// target file that already exists is left alone (manual edits win).
+// target is rewritten only when the English it was translated from has changed
+// (see source-hash.mjs), so manual fixes survive but an edit to en propagates.
 //
 // Chrome: the name + short description already localize from the package _locales
 // (see chrome-manifest.mjs); only the dashboard-only detailed_description lives here.
@@ -10,6 +11,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from "node:path";
 import { LOCALES, STORE_DIR } from "./locales.mjs";
 import { fitToLimit, translateText } from "./ollama.mjs";
+import { flushSources, recordSource, sourceChanged } from "./source-hash.mjs";
 
 const SOURCE = "en";
 const STORES = ["chrome", "firefox"];
@@ -34,13 +36,16 @@ export async function run() {
 			let wrote = 0;
 			for (const file of files) {
 				const target = join(dir, file);
-				if (existsSync(target)) continue; // don't clobber existing/edited translations
-				writeFileSync(target, await translateText(name, readFileSync(join(src, file), "utf8")));
+				const en = readFileSync(join(src, file), "utf8");
+				if (existsSync(target) && !sourceChanged(target, en)) continue;
+				writeFileSync(target, await translateText(name, en));
+				recordSource(target, en);
 				wrote++;
 			}
 			console.log(`  ${store}/${code}: ${wrote ? `wrote ${wrote} file(s)` : "up to date"}`);
 		}
 	}
+	flushSources();
 	await fitPass();
 }
 

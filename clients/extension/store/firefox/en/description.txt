@@ -1,4 +1,4 @@
-Bramble is a free, open source password manager that keeps your secrets on your own devices. No account, no server holding your vault, no company to get breached and leak everything. You hold the vault, you hold the password, and that's it.
+Bramble is a free, open source password manager that keeps your secrets on your own devices. No account, no company server you have to trust with your vault, and no central database to get breached and leak everything. You hold the vault, you hold the password, and that's it.
 
 Works in Firefox, LibreWolf, Waterfox, Zen and other Firefox browsers. Install it and you're running in about a minute. Bramble also has apps for macOS, Linux, iOS and Android, and your vault syncs between all of them.
 
@@ -6,11 +6,11 @@ WHAT IT DOES
 
 Your passwords are encrypted on your device and stored in the browser's own extension storage. Set up once and you're autofilling logins, saving new ones, and generating passwords right away.
 
-Got more than one device? Pair them and Bramble syncs your vault directly between them, end-to-end encrypted. The relay that introduces your devices only ever sees ciphertext and stores nothing, so your secrets never land on anyone's server.
+Got more than one device? Pair them and Bramble syncs your vault directly between them, end-to-end encrypted. The relay that introduces your devices only ever sees ciphertext and stores nothing, so nothing readable ever lands on anyone's server.
 
 FEATURES
 
-- Local-first, always. Your encrypted vault stays on your device, in the browser's storage. No account, no server copy.
+- Local-first, always. Your encrypted vault stays on your device, in the browser's storage. No account, and no copy anywhere else unless you back it up to storage you choose.
 - Peer-to-peer sync. Your devices stay in sync over an end-to-end encrypted connection, merged entry by entry. The relay that connects them only ever sees ciphertext and stores nothing.
 - Serious crypto. Argon2id for your key, AES-256-GCM for data, envelope encryption so every entry has its own key. Secrets wiped from memory after use.
 - Everything encrypted. Site names, usernames, notes, all of it.
@@ -25,7 +25,7 @@ FEATURES
 - No lock-in. Export to a standard KeePass (.kdbx) file whenever you want to leave.
 - Multiple vaults. Keep separate vaults side by side, each behind its own master password.
 - Built-in password generator.
-- Optional breach checking. Have I Been Pwned lookup using k-anonymity, so nothing about your password leaves your machine. Off by default.
+- Optional breach checking. Have I Been Pwned lookup using k-anonymity: only a short prefix of the password's hash is sent, never the password. Off by default.
 - Auto-lock after 15 minutes idle (configurable).
 - Import from 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords and Google Password Manager.
 
@@ -35,7 +35,7 @@ Cloud managers keep everyone's vaults on their servers, which is one giant targe
 
 Bramble flips that around:
 
-- No server to breach. Your vault never leaves your control.
+- No central pile of vaults to breach. Your vault never leaves your devices unencrypted.
 - No account, no subscription, no ads, no telemetry. Nothing to sign up for.
 - Your data, your devices. Sync it across your own devices, keep it on one machine, or back it up encrypted to storage you choose. Nothing readable is ever parked on someone else's server.
 - Nothing to trust but the code. Bramble is open source under the GPL, and the code is public on GitHub.
@@ -46,4 +46,4 @@ Bramble uses LUKS-style key slots and envelope encryption. One random Vault Key 
 
 COMING FROM KEEPASS?
 
-You'll feel at home: your encrypted vault, your control, no cloud middleman. Bramble imports your KDBX4 files (key files included) and exports back to .kdbx whenever you like. The differences: autofill is built in, with domain matching and an on-page dropdown, so there's no plugin bridge; sync between your devices is built in too; and it ships one modern build with Argon2id and AES-256-GCM rather than a sprawl of plugins. Clean UI, dark mode included.
+You'll feel at home: your encrypted vault, your control, and no one else's server required. Bramble imports your KDBX4 files (key files included) and exports back to .kdbx whenever you like. The differences: autofill is built in, with domain matching and an on-page dropdown, so there's no plugin bridge; sync between your devices is built in too; and it ships one modern build with Argon2id and AES-256-GCM rather than a sprawl of plugins. Clean UI, dark mode included.
