@@ -69,25 +69,6 @@ function SshKeyFields() {
 	return (
 		<>
 			<TextField label={t`Name`} type="text" {...register("name")} />
-			<TextArea label={t`Public key`} rows={2} className="font-mono" {...register("publicKey")} />
-			<SecretArea label={t`Private key`} rows={6} autoComplete="off" {...register("privateKey")} />
-			<TextField
-				label={t`Passphrase (optional)`}
-				type={showPassphrase ? "text" : "password"}
-				autoComplete="off"
-				endAdornment={
-					<Button
-						variant="ghost"
-						size="none"
-						onClick={() => setShowPassphrase((v) => !v)}
-						className="p-1.5 rounded-md"
-						aria-label={showPassphrase ? t`Hide passphrase` : t`Show passphrase`}
-					>
-						{showPassphrase ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-					</Button>
-				}
-				{...register("passphrase")}
-			/>
 			<div>
 				<div className="flex items-center justify-between mb-2">
 					<span className="block text-sm">{t`Hosts`}</span>
@@ -139,6 +120,25 @@ function SshKeyFields() {
 					</p>
 				)}
 			</div>
+			<TextArea label={t`Public key`} rows={2} className="font-mono" {...register("publicKey")} />
+			<SecretArea label={t`Private key`} rows={6} autoComplete="off" {...register("privateKey")} />
+			<TextField
+				label={t`Passphrase (optional)`}
+				type={showPassphrase ? "text" : "password"}
+				autoComplete="off"
+				endAdornment={
+					<Button
+						variant="ghost"
+						size="none"
+						onClick={() => setShowPassphrase((v) => !v)}
+						className="p-1.5 rounded-md"
+						aria-label={showPassphrase ? t`Hide passphrase` : t`Show passphrase`}
+					>
+						{showPassphrase ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+					</Button>
+				}
+				{...register("passphrase")}
+			/>
 			<ToggleRow
 				title={t`Use with the SSH agent`}
 				subtitle={t`Off: Bramble never offers or signs with this key.`}
@@ -211,6 +211,29 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 	const hosts = hostList(key.hosts);
 	return (
 		<>
+			{hosts.length > 0 && (
+				<DetailField.Group label={hosts.length > 1 ? t`Hosts` : t`Host`}>
+					{hosts.map((host, i) => {
+						const copyName = hosts.length === 1 ? "host" : `host-${i}`;
+						return (
+							<DetailField.Item
+								// biome-ignore lint/suspicious/noArrayIndexKey: index disambiguates a host listed twice
+								key={`${host}-${i}`}
+								label={t`Host`}
+								copied={copied}
+								copyName={copyName}
+								onCopy={() => copy(copyName, host)}
+							>
+								<div className="flex items-center gap-2 text-sm">
+									<Server className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+									<span className="truncate font-mono">{host}</span>
+								</div>
+							</DetailField.Item>
+						);
+					})}
+				</DetailField.Group>
+			)}
+
 			{fingerprint && (
 				<DetailField
 					label={t`Fingerprint`}
@@ -267,29 +290,6 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 						{showPassphrase ? key.passphrase : "•".repeat(Math.min(key.passphrase.length, 16))}
 					</DetailValue>
 				</DetailField>
-			)}
-
-			{hosts.length > 0 && (
-				<DetailField.Group label={hosts.length > 1 ? t`Hosts` : t`Host`}>
-					{hosts.map((host, i) => {
-						const copyName = hosts.length === 1 ? "host" : `host-${i}`;
-						return (
-							<DetailField.Item
-								// biome-ignore lint/suspicious/noArrayIndexKey: index disambiguates a host listed twice
-								key={`${host}-${i}`}
-								label={t`Host`}
-								copied={copied}
-								copyName={copyName}
-								onCopy={() => copy(copyName, host)}
-							>
-								<div className="flex items-center gap-2 text-sm">
-									<Server className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-									<span className="truncate font-mono">{host}</span>
-								</div>
-							</DetailField.Item>
-						);
-					})}
-				</DetailField.Group>
 			)}
 
 			{key.agentDisabled && (

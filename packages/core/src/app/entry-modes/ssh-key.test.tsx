@@ -84,6 +84,35 @@ describe("SSH key hosts and agent switch", () => {
 		expect(save().hosts).toEqual(["github.com", "10.0.0.5"]);
 	});
 
+	// Hosts are what changes after a key is pasted, so they sit first, as a login's Websites do.
+	it("the form puts Hosts right after the name", () => {
+		mount();
+		const hosts = screen.getByText("Hosts");
+		const name = screen.getByLabelText("Name");
+		const publicKey = screen.getByLabelText("Public key");
+		expect(name.compareDocumentPosition(hosts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(
+			hosts.compareDocumentPosition(publicKey) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
+	it("the entry page shows the hosts first", () => {
+		const Detail = sshKeyMode.Detail;
+		const entry = { ...KEY, id: "k", hosts: ["github.com"] };
+		render(
+			<I18nProvider i18n={i18n}>
+				<Detail
+					entry={entry as unknown as EntryDetailBodyProps["entry"]}
+					copied={null}
+					copy={vi.fn()}
+				/>
+			</I18nProvider>,
+		);
+		const host = screen.getByText("github.com");
+		const publicKey = screen.getByText("Public key");
+		expect(host.compareDocumentPosition(publicKey) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
 	it("Remove host takes out its row", () => {
 		mount({ ...KEY, hosts: ["a.example", "b.example"] });
 		fireEvent.click(screen.getAllByRole("button", { name: "Remove host" })[0]!);

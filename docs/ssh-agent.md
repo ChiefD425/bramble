@@ -50,7 +50,7 @@ Not yet run on Windows or Linux.
 
 | Field | Form | Stored | Meaning |
 |---|---|---|---|
-| Hosts | **Hosts**, one field per host with **Add host** and a remove button, as a login's **Websites**; empty, "Add the servers ssh uses this key for, like github.com or 10.0.0.5." | `hosts?: string[]` | What you type after `ssh`: `github.com`, `123.123.123.123`, `*.example.com`, or an alias like `prod` or `github-work`. |
+| Hosts | **Hosts**, right under Name, one field per host with **Add host** and a remove button, as a login's **Websites**; empty, "Add the servers ssh uses this key for, like github.com or 10.0.0.5." | `hosts?: string[]` | What you type after `ssh`: `github.com`, `123.123.123.123`, `*.example.com`, or an alias like `prod` or `github-work`. |
 | Use with the SSH agent | A switch, on by default | `agentDisabled?: true` only when off | Off: the key is never listed or written to the config. For keys that must never sign silently, such as an SSH certificate authority. |
 
 - **A host is only a host.** Letters, digits and `. - _ * ? : %` (wildcards, IPv6, zone ids). The
@@ -61,8 +61,9 @@ Not yet run on Windows or Linux.
 - **Hosts are their own field, not `urls`.** About ten places read `urls` as websites (TOTP setup
   suggestions, entry de-duplication, KeePass export); server addresses must not reach them.
   `hosts` is an ordinary part for sync: concurrent edits on two devices ask the user to choose.
-- **The entry page** lists the hosts, one row each with its own copy button, as a login's
-  websites, and search matches them.
+- **The entry page** lists the hosts first, one row each with its own copy button, as a login's
+  websites, and search matches them. Hosts lead the form and the page because they change after a
+  key is pasted; the key fields rarely do.
 - **Exports and imports carry hosts.** KeePass and CXF exports add a `Hosts` field beside the key's
   other fields; a `.bramble` backup carries both fields as they are. A LastPass `SSH Key` note's
   `Hostname` becomes the key's host when it is one, and stays a custom field when it isn't.
