@@ -78,6 +78,25 @@ describe("sealPortableVaultFile", () => {
 		expect(JSON.parse(arg.entriesJson).entries[0]).toEqual(login("a"));
 	});
 
+	it("keeps an SSH key's hosts and agent switch", async () => {
+		const crypto = fakeCrypto();
+		const key: EntryData = {
+			type: "ssh-key",
+			name: "Deploy",
+			publicKey: "",
+			privateKey: "k",
+			hosts: ["github.com"],
+			agentDisabled: true,
+		};
+		await sealPortableVaultFile(crypto, [key], "pw");
+		const arg = crypto.sealPortableVault.mock.calls[0]?.[0];
+		if (!arg) throw new Error("the core was never asked to seal anything");
+		expect(JSON.parse(arg.entriesJson).entries[0]).toMatchObject({
+			hosts: ["github.com"],
+			agentDisabled: true,
+		});
+	});
+
 	it("refuses where the platform has no sealing call", async () => {
 		await expect(sealPortableVaultFile({}, [login("a")], "pw")).rejects.toThrow(/isn't available/);
 	});

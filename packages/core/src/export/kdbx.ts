@@ -127,6 +127,7 @@ function toFields(e: EntryData): Pair[] {
 		f.add("Public Key", e.publicKey);
 		f.add("Private Key", e.privateKey, true);
 		f.add("Passphrase", e.passphrase, true);
+		f.add("Hosts", e.hosts?.join("\n"));
 	}
 
 	for (const c of e.customFields ?? []) f.add(c.key, c.value, c.hidden === true);

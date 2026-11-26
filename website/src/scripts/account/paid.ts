@@ -39,7 +39,11 @@ export async function waitForTime(
 		if (Date.now() + POLL_MS > deadline) break;
 		await sleep(POLL_MS);
 	}
-	message.textContent = "Payment received. Your time will show up in a few minutes.";
+	// A crypto payment returns here once it's seen, and its time lands when it confirms.
+	message.textContent =
+		new URLSearchParams(location.search).get("via") === "crypto"
+			? "Payment received. Your time shows up once the payment confirms, which can take up to an hour."
+			: "Payment received. Your time will show up in a few minutes.";
 }
 
 /** The number and what to do with it: on a first payment, how to add it in Bramble. */

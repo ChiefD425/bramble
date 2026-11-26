@@ -1,4 +1,5 @@
 import type { PasskeyCredential } from "../hooks/useVault";
+import type { SshKeyForAgent } from "../vault/ssh-keys";
 
 export type SubdomainMatchMode = "etld1" | "exact" | "subdomain";
 
@@ -228,6 +229,12 @@ export interface AutofillAdapter {
 	beginIndexUpdate?(): Promise<unknown>;
 	/** Popup-side: push the unlocked vault's searchable index to the background so autofill works while the popup is closed. */
 	setIndex(entries: IndexEntry[], lease?: unknown): Promise<void>;
+	/**
+	 * Desktop only: the vault's SSH keys for the app's SSH agent, at the same moments as
+	 * `setIndex`. Absent everywhere else, so no other platform ever receives a private key.
+	 * See docs/ssh-agent.md.
+	 */
+	setSshKeys?(keys: SshKeyForAgent[], lease?: unknown): Promise<void>;
 	/**
 	 * A view whose `setIndex` is for `vaultId`, as `CryptoAdapter.withVault` is for keys. A native
 	 * credential provider (macOS, iOS) keeps a copy of one vault, and the copy must name its own

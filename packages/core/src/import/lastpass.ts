@@ -5,7 +5,7 @@
 
 import type { EntryData } from "../hooks/useVault";
 import { cardBrand, cardBrandNamed } from "../util/card";
-import { deriveKeyType } from "../util/ssh";
+import { deriveKeyType, normalizeHost } from "../util/ssh";
 import { normalizeTags } from "../vault/tags";
 import { assertFormat, headerLabels, LASTPASS_CSV } from "./csv-format";
 import {
@@ -307,6 +307,8 @@ function fromNoteBlock(block: NoteBlock, name: string, tags: string[] | undefine
 	const publicKey = f.get("Public Key") ?? "";
 	const privateKey = f.get("Private Key") ?? "";
 	if (block.noteType === "SSH Key" && (publicKey || privateKey)) {
+		// The note's hostname becomes the key's host when it is one; else it stays a field.
+		const host = normalizeHost(f.get("Hostname") ?? "");
 		return {
 			type: "ssh-key",
 			name,
@@ -315,7 +317,8 @@ function fromNoteBlock(block: NoteBlock, name: string, tags: string[] | undefine
 			privateKey,
 			passphrase: f.get("Passphrase") || undefined,
 			keyType: deriveKeyType(publicKey, privateKey),
-			customFields: toCustomFields(leftovers(f, SSH_FIELDS)),
+			...(host ? { hosts: [host] } : {}),
+			customFields: toCustomFields(leftovers(f, host ? [...SSH_FIELDS, "Hostname"] : SSH_FIELDS)),
 			tags,
 		};
 	}

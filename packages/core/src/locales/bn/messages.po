@@ -109,6 +109,11 @@ msgstr "{0} (আপনার ডোমেইন)"
 msgid "{0} more look like entries you already have (the same site, username and password, or the same card number), so they are held back."
 msgstr "আরও {0}টি দেখে মনে হচ্ছে আপনার আগের এন্ট্রির মতোই (একই সাইট, ইউজারনেম আর পাসওয়ার্ড, অথবা একই কার্ড নম্বর), তাই এগুলো আলাদা রাখা হয়েছে।"
 
+#. placeholder {0}: current.caller
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
+#~ msgstr "{0} {vaultName}-এর {keyName} ব্যবহার করতে চায়। {openVault} লক হয়ে যাবে।"
+
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "{affected, plural, one {Tag # entry} other {Tag # entries}}"
 msgstr "{affected, plural, one {#টি এন্ট্রিতে ট্যাগ যোগ করুন} other {#টি এন্ট্রিতে ট্যাগ যোগ করুন}}"
@@ -140,6 +145,34 @@ msgstr "{browserName} {others}-এর সাথেও সিঙ্ক হয়�
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 #~ msgid "{browserName} stays, as \"{browserName} (before linking)\", until you delete it."
 #~ msgstr "{browserName} stays, as \"{browserName} (before linking)\", until you delete it."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign a git commit with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি git commit সাইন করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a git commit with <0>{keyName}</0>"
+msgstr "{caller} একটি git commit <0>{keyName}</0> দিয়ে স্বাক্ষর করতে চায়"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign a message with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি বার্তা সাইন করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a message with <0>{keyName}</0>"
+msgstr "{caller} একটি বার্তা <0>{keyName}</0> দিয়ে স্বাক্ষর করতে চায়"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign in to a server with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি সার্ভারে সাইন ইন করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign in to a server with <0>{keyName}</0>"
+msgstr "{caller} একটি সার্ভারে <0>{keyName}</0> দিয়ে সাইন ইন করতে চায়"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to use <0>{keyName}</0> from <1>{vaultName}</1>. <2>{openVault}</2> will lock."
+msgstr "{caller} <0>{keyName}</0> <1>{vaultName}</1> থেকে ব্যবহার করতে চায়। <2>{openVault}</2> লক হবে।"
 
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "{conflicted, plural, one {# entry has a sync conflict. Only the version shown came across.} other {# entries have a sync conflict. Only the version shown came across.}}"
@@ -270,6 +303,14 @@ msgstr "আর {remaining} সেকেন্ড বাকি"
 msgid "{rp} wants to use your passkey. Confirm it's you to continue."
 msgstr "{rp} আপনার পাসকি ব্যবহার করতে চায়। চালিয়ে যেতে আপনার পরিচয় নিশ্চিত করুন।"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{server} wants to use {keyName}"
+#~ msgstr "{server} {keyName} ব্যবহার করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{server} wants to use <0>{keyName}</0>"
+msgstr "{server} <0>{keyName}</0> ব্যবহার করতে চায়"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{skippedFiles, plural, one {# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app.} other {# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app.}}"
 msgstr "{skippedFiles, plural, one {এই ফাইলের #টি সংযুক্তি বাদ পড়েছে: ফাইল যোগ করতে এই ব্রাউজারকে আগে Bramble ডেস্কটপ অ্যাপের সাথে যুক্ত করতে হবে।} other {এই ফাইলের #টি সংযুক্তি বাদ পড়েছে: ফাইল যোগ করতে এই ব্রাউজারকে আগে Bramble ডেস্কটপ অ্যাপের সাথে যুক্ত করতে হবে।}}"
@@ -293,6 +334,10 @@ msgstr "{uncarried, plural, one {#টি ফাইল কপি হয়নি�
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "{used} of {quota} used"
 msgstr "{quota} এর মধ্যে {used} ব্যবহৃত"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{who} wants to use your SSH keys"
+msgstr "{who} আপনার SSH কীগুলো ব্যবহার করতে চায়।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #~ msgid "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
@@ -384,6 +429,10 @@ msgstr "QR কোড পাওয়া গেছে, তবে সেটি অ
 msgid "A security code is 3 or 4 digits."
 msgstr "সিকিউরিটি কোড ৩ বা ৪ ডিজিটের হয়।"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "A server you're connected to with ssh -A wants to see and use your keys until Bramble locks."
+msgstr "আপনি ssh -A দিয়ে যে সার্ভারে সংযুক্ত আছেন, সেটি Bramble লক না হওয়া পর্যন্ত আপনার কীগুলো দেখতে এবং ব্যবহার করতে চায়।"
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "A token is at least 16 letters, digits, dashes or underscores"
 msgstr "একটি টোকেনে কমপক্ষে ১৬টি বর্ণ, অঙ্ক, ড্যাশ বা আন্ডারস্কোর থাকে"
@@ -472,6 +521,14 @@ msgstr "বাড়তি তথ্য রাখতে কাস্টম ফ�
 msgid "Add field"
 msgstr "ফিল্ড যোগ করুন"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add host"
+msgstr "হোস্ট যোগ করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add it for me"
+msgstr "আমার জন্য এটি যোগ করুন"
+
 #: packages/core/src/app/components/AddDropdown.tsx
 msgid "Add New"
 msgstr "নতুন যোগ করুন"
@@ -489,9 +546,17 @@ msgstr "2FA কোডটি {0}-এ যোগ করুন"
 msgid "Add the desktop's vault"
 msgstr "ডেস্কটপের ভল্ট যোগ করুন"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add the servers ssh uses this key for, like github.com or 10.0.0.5."
+msgstr "SSH এই কীটি যে সার্ভারগুলির জন্য ব্যবহার করে, সেগুলি যোগ করুন, যেমন github.com বা 10.0.0.5।"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "এই লগইন কোন কোন ওয়েবসাইটের জন্য, সেগুলো যোগ করুন। কোনো সাইটের সাথে যুক্ত নয় এমন লগইনের জন্য ফাঁকা রাখুন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add this line to the top of ~/.ssh/config"
+msgstr "এই লাইনটি ~/.ssh/config-এর শুরুতে যোগ করুন"
 
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Add time"
@@ -517,6 +582,10 @@ msgstr "{added} যোগ করা হয়েছে"
 #: packages/core/src/app/entry-modes/tags.tsx
 msgid "Added tag {added}. {0} tags."
 msgstr "{added} ট্যাগ যোগ হয়েছে। মোট {0}টি ট্যাগ।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Added to ~/.ssh/config"
+msgstr "~/.ssh/config-এ যোগ করা হয়েছে"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Added when you create a passkey on a site with Bramble. Remove to delete."
@@ -578,6 +647,10 @@ msgstr "সব"
 msgid "all your devices"
 msgstr "আপনার সব ডিভাইসে"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow"
+msgstr "অনুমতি দিন"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Allow again"
 msgstr "আবার অনুমতি দিন"
@@ -590,6 +663,10 @@ msgstr "অনুমতি দিন ও চালিয়ে যান"
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "বিকল্প হিসেবে পাসকোড ব্যবহারের অনুমতি দিন"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow this use of {keyName}?"
+msgstr "{keyName}-এর এই ব্যবহারের অনুমতি দেবেন?"
 
 #. placeholder {0}: entries.length
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
@@ -677,6 +754,10 @@ msgstr "আর্কাইভ করা আইটেম"
 #: packages/core/src/app/bulk-actions/archive.tsx
 msgid "Archiving…"
 msgstr "আর্কাইভ করা হচ্ছে…"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Ask before each use"
+msgstr "প্রতিটি ব্যবহারের আগে জিজ্ঞাসা করুন"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Ask for {brand} as soon as the unlock screen appears, with no tap."
@@ -854,6 +935,18 @@ msgstr "বই"
 msgid "Bramble {version} is available. Updating downloads it and restarts the app. Your vault is not touched."
 msgstr "Bramble {version} এসেছে। আপডেট করলে এটি ডাউনলোড হবে এবং অ্যাপ আবার চালু হবে। আপনার ভল্টে কোনো পরিবর্তন হবে না।"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble asks every time a key is used, even while unlocked."
+msgstr "Bramble প্রতিবার একটি কী ব্যবহারের সময় জিজ্ঞাসা করে, এমনকি আনলক অবস্থায়ও।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble can't read it"
+msgstr "Bramble এটি পড়তে পারে না"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't change ~/.ssh/config. Add the line yourself."
+msgstr "Bramble ~/.ssh/config পরিবর্তন করতে পারেনি। লাইনটি নিজে যোগ করুন।"
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
@@ -869,6 +962,14 @@ msgstr "Bramble এই মুহূর্তে এই ভল্ট খুলত
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "Bramble এই ডিভাইসের কি স্টোরেজ নিরাপদে আপডেট করতে পারেনি, তাই ভল্ট লক অবস্থাতেই আছে। আবার চেষ্টা করুন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't write its files in ~/.ssh/bramble."
+msgstr "Bramble ~/.ssh/bramble-এ নিজের ফাইলগুলো লিখতে পারেনি।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble doesn't support its size or settings"
+msgstr "Bramble এটির আকার বা সেটিংস সমর্থন করে না"
 
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Bramble hit an unexpected error. Your vault is safe — it stays encrypted on this device. Try reloading; if it keeps happening, reopen the app."
@@ -916,6 +1017,10 @@ msgstr "ডেস্কটপ অ্যাপের সাথে যোগায
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
 msgid "Bramble needs your permission to talk to the desktop app on this computer. Your browser will ask you to confirm."
 msgstr "এই কম্পিউটারের ডেস্কটপ অ্যাপের সাথে যোগাযোগ করতে Bramble-এর আপনার অনুমতি লাগবে। আপনার ব্রাউজার আপনাকে নিশ্চিত করতে বলবে।"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+#~ msgid "Bramble offers this key only to these hosts."
+#~ msgstr "Bramble এই হোস্টগুলিতে কেবল এই কীটি অফার করে।"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
@@ -978,7 +1083,14 @@ msgstr "মেইলবক্সে পৌঁছানো যাচ্ছে ন
 msgid "Can't save this code"
 msgstr "এই কোড সেভ করা যাচ্ছে না"
 
+#. placeholder {0}: k.name
+#. placeholder {1}: problem[k.reason]
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Can't use {0}: {1}"
+msgstr "{0} ব্যবহার করা যাবে না: {1}"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
+#: packages/core/src/app/components/SshAgentRequests.tsx
 #: packages/core/src/app/components/ui/confirm-dialog.tsx
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
 #: packages/core/src/app/components/ui/inline-confirm.tsx
@@ -1415,6 +1527,14 @@ msgstr "লগ কপি করুন"
 msgid "Copy previous password"
 msgstr "আগের পাসওয়ার্ড কপি করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy shell line"
+msgstr "শেল লাইন কপি করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy SSH config line"
+msgstr "SSH কনফিগ লাইন কপি করুন"
+
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "Copy them anyway"
 msgstr "তবুও কপি করুন"
@@ -1666,6 +1786,10 @@ msgstr "ভল্ট মুছুন"
 msgid "Deleting…"
 msgstr "মোছা হচ্ছে…"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Deny"
+msgstr "প্রত্যাখ্যান করুন"
+
 #: packages/core/src/app/screens/VaultHome/SelectionBar.tsx
 msgid "Deselect all"
 msgstr "সব বাছাই বাতিল করুন"
@@ -1798,6 +1922,10 @@ msgstr "ডাউনলোড হচ্ছে…"
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Downloads and restarts Bramble. Your vault is untouched."
 msgstr "আপডেট ডাউনলোড করে Bramble আবার চালু হবে। আপনার ভল্টে কোনো পরিবর্তন হবে না।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "DSA keys aren't supported"
+msgstr "DSA কী সমর্থিত নয়"
 
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 #~ msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click \"Generate Private Duck Address\", and copy the token after \"authorization: Bearer\" in the Network tab."
@@ -2262,6 +2390,18 @@ msgstr "একটি পাসকি আছে"
 msgid "Horse"
 msgstr "ঘোড়া"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Host"
+msgstr "হোস্ট"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts"
+msgstr "হোস্ট"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+#~ msgid "Hosts (optional)"
+#~ msgstr "হোস্ট (ঐচ্ছিক)"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
 msgstr "বালুঘড়ি"
@@ -2409,6 +2549,10 @@ msgstr "এতে একটি পাসকি আছে যা দেখান�
 #~ msgid "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 #~ msgstr "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "it's in an old encrypted format"
+msgstr "এটি পুরোনো এনক্রিপ্টেড ফর্ম্যাটে আছে"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "item"
 msgstr "আইটেম"
@@ -2437,6 +2581,10 @@ msgstr "এর লগইন তথ্য অন্য একটি ভল্ট�
 #: packages/core/src/app/screens/EntryDetail/ConflictBanner.tsx
 msgid "Its password is different from the version shown."
 msgstr "এর পাসওয়ার্ড দেখানো ভার্সন থেকে আলাদা।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "its private key is on a security key"
+msgstr "এর প্রাইভেট কী একটি সিকিউরিটি কী-তে আছে"
 
 #: packages/core/src/app/screens/VaultSetup/components/ModeTabs.tsx
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
@@ -2583,9 +2731,19 @@ msgstr "আপনার অ্যাকাউন্টের ডিফল্ট 
 msgid "Leave unset to use your provider account's own default."
 msgstr "আপনার প্রোভাইডার অ্যাকাউন্টের নিজস্ব ডিফল্ট ব্যবহার করতে খালি রাখুন।"
 
+#. placeholder {0}: l.host
+#. placeholder {1}: l.name
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Left out {0} on {1}: not a host name"
+msgstr "{0} বাদ দেওয়া হয়েছে {1}-এ: হোস্ট নাম নয়"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Length"
 msgstr "দৈর্ঘ্য"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Let {server} use your SSH keys?"
+msgstr "{server}-কে আপনার SSH কীগুলো ব্যবহার করতে দেবেন?"
 
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Light"
@@ -2769,6 +2927,10 @@ msgstr "চাঁদ"
 msgid "More options"
 msgstr "আরও অপশন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Move this line to the top of ~/.ssh/config"
+msgstr "এই লাইনটি ~/.ssh/config-এর শুরুতে সরান"
+
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 msgid "Moves {browserName}'s entries and files into {desktopName}. Exact duplicates are skipped; near-duplicates are held for you to review."
 msgstr "{browserName}-এর এন্ট্রি আর ফাইল {desktopName}-এ সরিয়ে নেয়। হুবহু একই জিনিস বাদ দেওয়া হয়; প্রায় একই জিনিসগুলো আপনার রিভিউয়ের জন্য রেখে দেওয়া হয়।"
@@ -2950,6 +3112,10 @@ msgstr "সিঙ্ক হচ্ছে না: এই ডিভাইস এখ
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "সিঙ্ক হচ্ছে না: আপনার অন্য ডিভাইসগুলো আর এই ডিভাইসটিকে চিনছে না। সংযোগ বিচ্ছিন্ন করুন, তারপর অন্য ডিভাইসের কোড দিয়ে আবার যুক্ত হোন।"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Not used by the SSH agent"
+msgstr "SSH agent দ্বারা ব্যবহৃত হয় না"
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Not using the mailbox"
 msgstr "মেইলবক্স ব্যবহার করা হচ্ছে না"
@@ -3006,6 +3172,10 @@ msgstr "বন্ধ"
 msgid "Off on this device"
 msgstr "এই ডিভাইসে বন্ধ"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Off: Bramble never offers or signs with this key."
+msgstr "বন্ধ: Bramble কখনো এই কীটি অফার করে না বা এই কী দিয়ে স্বাক্ষর করে না।"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
 msgstr "বন্ধ। আপনি সিকিউরিটি কি-তে ট্যাপ করে আনলক করবেন।"
@@ -3013,6 +3183,10 @@ msgstr "বন্ধ। আপনি সিকিউরিটি কি-তে �
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Off. You unlock with a security key."
 #~ msgstr "Off. You unlock with a security key."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Offer keys only to their hosts"
+#~ msgstr "কীগুলো কেবল তাদের হোস্টে অফার করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3058,6 +3232,14 @@ msgstr "খুলুন"
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Open {name}"
 msgstr "{name} খুলুন"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}"
+msgstr "{vaultName} খুলুন"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}?"
+msgstr "{vaultName} খুলবেন?"
 
 #. placeholder {0}: picked.name
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -3436,6 +3618,10 @@ msgstr "Bramble-কে রেটিং দিন"
 msgid "Re-enter the password"
 msgstr "পাসওয়ার্ডটি আবার দিন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."
+msgstr "ssh-keygen -p -f <file> ব্যবহার করে কীটি OpenSSH ফর্ম্যাটে পুনরায় সংরক্ষণ করুন।"
+
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Read more"
 msgstr "আরও পড়ুন"
@@ -3536,6 +3722,10 @@ msgstr "সংযুক্তি সরান"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Remove field"
 msgstr "ফিল্ড বাদ দিন"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Remove host"
+msgstr "হোস্ট সরান"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Remove passkey"
@@ -3924,6 +4114,18 @@ msgstr "সার্ভার URL"
 #~ msgid "Server URL (self-hosted only)"
 #~ msgstr "Server URL (self-hosted only)"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers no key names, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+#~ msgstr "কোনো কী-নাম নেই এমন সার্ভার এবং git কমিট স্বাক্ষরের জন্য আপনার স্বাভাবিক SSH এজেন্ট ব্যবহার করুন। সেগুলির জন্যও Bramble ব্যবহার করতে, এই লাইনটি আপনার শেল প্রোফাইলে যোগ করুন, যেমন ~/.zshrc।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+msgstr "কি-তে নাম দেওয়া নেই এমন সার্ভার এবং git কমিট সাইনিংয়ের জন্য আপনার স্বাভাবিক SSH এজেন্ট ব্যবহার করুন। সেগুলোর জন্যও Bramble ব্যবহার করতে, আপনার শেল প্রোফাইলে এই লাইনটি যোগ করুন, যেমন ~/.zshrc।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers not named on any key see none of your keys."
+#~ msgstr "কোনো কী-তে নাম নেই এমন সার্ভারগুলো আপনার কোনো কী দেখতে পায় না।"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
 msgstr "কোনো পলিসি বা অন্য এক্সটেনশন দিয়ে সেট করা"
@@ -4102,6 +4304,14 @@ msgstr "স্পেস"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Spanner"
 msgstr "স্প্যানার"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "SSH agent"
+msgstr "SSH এজেন্ট"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "ssh and git sign with the keys in your vaults. Their public keys, names and hosts are stored outside your vaults while this is on."
+msgstr "ssh এবং git আপনার ভল্টের কী দিয়ে সাইন করে। এটি চালু থাকলে তাদের পাবলিক কী, নাম এবং হোস্ট আপনার ভল্টের বাইরে সংরক্ষণ করা হয়।"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "SSH key"
@@ -4463,9 +4673,21 @@ msgstr "এই ফাইলে নতুন বলতে শুধু সংয�
 msgid "The other version"
 msgstr "অন্য ভার্সনটি"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "the saved passphrase doesn't open it"
+msgstr "সংরক্ষিত পাসফ্রেজ দিয়ে এটি খোলে না"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The setting didn't change. Try again."
+msgstr "সেটিংটি পরিবর্তন হয়নি। আবার চেষ্টা করুন।"
+
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."
 msgstr "যে সিগন্যালিং রিলে ডিভাইসগুলোর পরিচয় করিয়ে দেয়। ডিফল্ট হিসেবে হোস্টেড রিলে ব্যবহার হয়; চাইলে আপনার নিজের বা যেকোনো পাবলিক Nostr রিলে দিতে পারেন।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The SSH agent couldn't start. Restart Bramble to try again."
+msgstr "SSH এজেন্ট চালু করা যায়নি। আবার চেষ্টা করতে Bramble পুনরায় চালু করুন।"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "The vault locked, so the attachments read from that file were cleared. Open it again to import them."
@@ -4796,6 +5018,10 @@ msgstr "লগইন সেভ করার প্রস্তাব চাল�
 msgid "Toggle passcode fallback"
 msgstr "বিকল্প হিসেবে পাসকোড চালু বা বন্ধ করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Toggle SSH agent"
+msgstr "SSH এজেন্ট টগল করুন"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "কম্পিউটার চালু হলে Bramble চালু করার অপশন চালু বা বন্ধ করুন"
@@ -5102,6 +5328,10 @@ msgstr "{currentSite} ব্যবহার করুন"
 msgid "Use a different language from your system"
 msgstr "সিস্টেমের ভাষার বদলে অন্য ভাষা ব্যবহার করুন"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use Bramble for every server"
+msgstr "প্রতিটি সার্ভারে Bramble ব্যবহার করুন"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Use Bramble for passkeys"
 msgstr "পাসকির জন্য Bramble ব্যবহার করুন"
@@ -5121,6 +5351,10 @@ msgstr "লাইট বা ডার্ক থিম ব্যবহার ক�
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Use only digits, spaces or dashes."
 msgstr "শুধু সংখ্যা, স্পেস বা ড্যাশ ব্যবহার করুন।"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use only the host, like github.com or 10.0.0.5"
+msgstr "কেবল হোস্ট ব্যবহার করুন, যেমন github.com বা 10.0.0.5"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Use password"
@@ -5158,6 +5392,10 @@ msgstr "মাস্টার পাসওয়ার্ড টাইপ কর
 msgid "Use Touch ID, Windows Hello or a security key like a YubiKey instead of typing your master password."
 msgstr "মাস্টার পাসওয়ার্ড টাইপ করার বদলে Touch ID, Windows Hello বা YubiKey-এর মতো সিকিউরিটি কি ব্যবহার করুন।"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use with the SSH agent"
+msgstr "SSH agent এর সাথে ব্যবহার"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your master password instead"
 msgstr "এর বদলে আপনার মাস্টার পাসওয়ার্ড ব্যবহার করুন"
@@ -5165,6 +5403,10 @@ msgstr "এর বদলে আপনার মাস্টার পাসও�
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your recovery code instead"
 msgstr "এর বদলে আপনার রিকভারি কোড ব্যবহার করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use your SSH keys in the terminal"
+msgstr "টার্মিনালে আপনার SSH কী ব্যবহার করুন"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "username"
@@ -5439,6 +5681,10 @@ msgstr "আপনার ডিভাইসগুলি কেবল তখনই
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "আপনার ডোমেইন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Your home folder's path is too long for the agent's socket."
+msgstr "আপনার হোম ফোল্ডারের পাথ এজেন্টের সকেটের জন্য খুব দীর্ঘ।"
 
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
 msgid "Your new recovery code"

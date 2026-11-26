@@ -17,12 +17,14 @@ import {
 } from "../../../adapters/biometric";
 import { usePlatform } from "../../../context/PlatformContext";
 import { usePrefs } from "../../../hooks/usePrefs";
+import { useSshAgentRequests } from "../../../hooks/useSshAgentRequests";
 import { useVault } from "../../../hooks/useVault";
 import { useVaultRegistry } from "../../../hooks/useVaultRegistry";
 import { effectiveAllowPasscode, StaleBiometricCacheError } from "../../../vault/biometric-unlock";
 import { displayLabel } from "../../../vault/vault-registry";
 import { BrambleGlyph } from "../../components/BrambleGlyph";
 import { CryptoErrorText } from "../../components/CryptoErrorText";
+import { SshAgentRequestLine } from "../../components/SshAgentRequests";
 import { Button } from "../../components/ui/button";
 import { PasswordField } from "../../components/ui/password-field";
 import { usePopOut } from "../../hooks/usePopOut";
@@ -259,6 +261,13 @@ export function Auth() {
 	// Opt-in fast unlock: present the gate as soon as this screen is up, one attempt per mount
 	// (= per lock episode, since the guard bounces here on every lock). docs/auth-and-unlock.md.
 	const autoPromptedRef = useRef(false);
+	// The terminal request this screen is showing, by the same test as its line. Running ssh asks
+	// for the unlock, so each request gets one prompt of its own, even after the Lock button.
+	const { current: sshRequest } = useSshAgentRequests();
+	const requestId =
+		sshRequest && (!sshRequest.vaultId || sshRequest.vaultId === activeId) ? sshRequest.id : null;
+	const promptedForRef = useRef<string | null>(null);
+	const keyPromptedForRef = useRef<string | null>(null);
 	// The retry sequence outlives the effect that starts it: this effect re-runs on nearly every
 	// render (handleBiometric is rebuilt whenever Lingui's `t` is), and hanging the loop off its
 	// cleanup silently cancelled the retries after the first attempt.
@@ -274,9 +283,10 @@ export function Auth() {
 			enabled: prefs.biometricAutoPrompt,
 			offered: showBiometric,
 			lockedByUser,
+			requested: requestId !== null,
 			visible,
 			appActive,
-			attempted: autoPromptedRef.current,
+			attempted: requestId ? promptedForRef.current === requestId : autoPromptedRef.current,
 		});
 		if (!fire) return;
 		// A hidden document is not rendered, so its rAF never runs: this holds the prompt until
@@ -285,6 +295,7 @@ export function Auth() {
 		let frame = requestAnimationFrame(() => {
 			frame = requestAnimationFrame(() => {
 				autoPromptedRef.current = true;
+				promptedForRef.current = requestId;
 				void (async () => {
 					// Painting is not the same as being able to present system UI: on iOS the gate
 					// is refused for a moment after a resume. Ask again rather than dropping the
@@ -298,7 +309,15 @@ export function Auth() {
 			});
 		});
 		return () => cancelAnimationFrame(frame);
-	}, [prefs.biometricAutoPrompt, showBiometric, lockedByUser, visible, appActive, handleBiometric]);
+	}, [
+		prefs.biometricAutoPrompt,
+		showBiometric,
+		lockedByUser,
+		requestId,
+		visible,
+		appActive,
+		handleBiometric,
+	]);
 	// The same opt-in, under the same rules, for the browser's Touch ID / Windows Hello passkey (#180).
 	const keyAutoOffered = platformKeyAutoOffered({
 		keyAvailable: webauthnKeyAvailable,
@@ -312,15 +331,17 @@ export function Auth() {
 			enabled: prefs.biometricAutoPrompt,
 			offered: keyAutoOffered,
 			lockedByUser,
+			requested: requestId !== null,
 			visible,
 			appActive,
-			attempted: autoPromptedKeyRef.current,
+			attempted: requestId ? keyPromptedForRef.current === requestId : autoPromptedKeyRef.current,
 		});
 		if (!fire) return;
 		// After a paint, as above: a passkey prompt from a document that isn't up yet is refused.
 		let frame = requestAnimationFrame(() => {
 			frame = requestAnimationFrame(() => {
 				autoPromptedKeyRef.current = true;
+				keyPromptedForRef.current = requestId;
 				void runWebauthnUnlock(true);
 			});
 		});
@@ -329,6 +350,7 @@ export function Auth() {
 		prefs.biometricAutoPrompt,
 		keyAutoOffered,
 		lockedByUser,
+		requestId,
 		visible,
 		appActive,
 		runWebauthnUnlock,
@@ -391,6 +413,7 @@ export function Auth() {
 								<Trans>Set up a vault to start saving your passwords, cards, and notes.</Trans>
 							</p>
 						)}
+						<SshAgentRequestLine />
 					</div>
 
 					{firstRun && (

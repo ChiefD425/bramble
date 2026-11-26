@@ -6,7 +6,10 @@
 //! anything is read, and only Bramble's own extension gets an answer. Answers come from the
 //! index the browser link serves (`index_store`), set on unlock and cleared on lock: one login's
 //! secret per fetch, and a list with no secrets for the sheet. The VEK never leaves the app.
-//! See docs/macos-credential-provider.md.
+//!
+//! The other way round, an unlock in the extension unlocks the app: the extension hands over the
+//! key it just unwrapped, and a locked app takes it for its active vault, so a two-step sign-in's
+//! password page fills without a second unlock. See docs/macos-credential-provider.md.
 
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +33,29 @@ enum Request {
     Fetch { vault_id: String, id: String },
     /// The open vault's logins with no secrets, for the sheet. `vault_id` pins the vault.
     List { vault_id: Option<String> },
+    /// The extension unlocked `vault_id`: its key, for a locked app to unlock with.
+    Unlock { vault_id: String, vek: String },
+}
+
+/// The app as a request finds it.
+struct Snapshot {
+    locked: bool,
+    /// The vault the app has open, locked or not.
+    active: Option<String>,
+    index: Vec<IndexEntry>,
+}
+
+/// What answering asks of the app besides the reply.
+#[derive(Debug, PartialEq)]
+enum Effect {
+    None,
+    /// A secret went out, which counts as using the app.
+    Used,
+    /// Unlock the app with the extension's key. The reply says whether it took.
+    Unlock {
+        vault_id: String,
+        vek: String,
+    },
 }
 
 #[derive(Serialize, Default, Debug, PartialEq)]
@@ -89,17 +115,23 @@ pub fn start(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
             let root = root.clone();
+            let app = app.clone();
             std::thread::spawn(move || {
                 let mut stream = stream;
                 let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
                 let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
-                let state = || {
-                    let open = if vault_crypto::is_locked() {
-                        None
-                    } else {
-                        crate::pairing::open_vault_id(&root).ok().flatten()
-                    };
-                    (open, crate::index_store::snapshot())
+                let state = || Snapshot {
+                    locked: vault_crypto::is_locked(),
+                    active: crate::pairing::open_vault_id(&root).ok().flatten(),
+                    index: crate::index_store::snapshot(),
+                };
+                let apply = |effect: &Effect| match effect {
+                    Effect::None => true,
+                    Effect::Used => {
+                        crate::autolock::touch();
+                        true
+                    }
+                    Effect::Unlock { vault_id, vek } => unlock_app(&app, vault_id, vek),
                 };
                 let trusted = |s: &std::os::unix::net::UnixStream| {
                     let ok = peer_satisfies(s, EXTENSION_REQUIREMENT);
@@ -108,22 +140,62 @@ pub fn start(app: tauri::AppHandle) {
                     }
                     ok
                 };
-                match serve(&mut stream, trusted, state) {
-                    Ok(true) => crate::autolock::touch(),
-                    Ok(false) => {}
-                    Err(e) => log::warn!("[autofill] fill socket: {e}"),
+                if let Err(e) = serve(&mut stream, trusted, state, apply) {
+                    log::warn!("[autofill] fill socket: {e}");
                 }
             });
         }
     });
 }
 
-/// What to send back, and whether a secret went out (which counts as using the app). `open` is
-/// the vault the app has unlocked, None while locked.
-fn answer(request: Request, open: Option<&str>, index: &[IndexEntry]) -> (Reply, bool) {
-    let Some(open) = open else {
-        return (Reply::default(), false);
+/// Unlock the app with a key the extension unwrapped for `vault_id`, the vault the app has open.
+/// The key must open that vault's AutoFill copy, or the app stays locked. The window then opens
+/// the vault as after its own Touch ID, and auto-lock counts from now.
+#[cfg(target_os = "macos")]
+fn unlock_app(app: &tauri::AppHandle, vault_id: &str, vek: &str) -> bool {
+    use tauri::Emitter;
+
+    // Checked again here: the window may have unlocked since the request was read.
+    if !vault_crypto::is_locked() || vault_crypto::unlock_with_vek(vek.to_string()).is_err() {
+        return false;
+    }
+    let opens = crate::autofill_provider::group_dir().is_some_and(|dir| {
+        crate::autofill_provider::copy_opens(&dir, vault_id, |iv, ct| {
+            vault_crypto::decrypt_with_vek(iv.to_string(), ct.to_string()).is_ok()
+        })
+    });
+    if !opens {
+        vault_crypto::lock();
+        log::warn!("[autofill] the key AutoFill sent does not open the open vault");
+        return false;
+    }
+    crate::autolock::touch();
+    if let Err(e) = app.emit(AUTOFILL_UNLOCKED_EVENT, vault_id) {
+        log::warn!("[autofill] unlock not delivered to the window: {e}");
+    }
+    true
+}
+
+/// Heard by the main window (src/auto-lock.ts).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+const AUTOFILL_UNLOCKED_EVENT: &str = "vault://autofill-unlocked";
+
+/// What to send back, and what else to do.
+fn answer(request: Request, now: &Snapshot) -> (Reply, Effect) {
+    if let Request::Unlock { vault_id, vek } = request {
+        // Only a locked app, and only for the vault it has open: never switch vaults behind the
+        // user's back, and never replace a key that is in use.
+        return if now.locked && now.active.as_deref() == Some(vault_id.as_str()) {
+            (Reply::default(), Effect::Unlock { vault_id, vek })
+        } else {
+            (Reply::default(), Effect::None)
+        };
+    }
+    let open = match (&now.active, now.locked) {
+        (Some(active), false) => active.as_str(),
+        _ => return (Reply::default(), Effect::None),
     };
+    let index = &now.index;
     let logins = || index.iter().filter(|e| e.kind == "login");
     match request {
         Request::Fetch { vault_id, id } if vault_id == open => {
@@ -136,9 +208,9 @@ fn answer(request: Request, open: Option<&str>, index: &[IndexEntry]) -> (Reply,
                         totp: e.totp.clone(),
                         ..Default::default()
                     },
-                    true,
+                    Effect::Used,
                 ),
-                None => (Reply::default(), false),
+                None => (Reply::default(), Effect::None),
             }
         }
         Request::List { vault_id } if vault_id.as_deref().map_or(true, |v| v == open) => (
@@ -160,25 +232,26 @@ fn answer(request: Request, open: Option<&str>, index: &[IndexEntry]) -> (Reply,
                 ),
                 ..Default::default()
             },
-            false,
+            Effect::None,
         ),
-        _ => (Reply::default(), false),
+        _ => (Reply::default(), Effect::None),
     }
 }
 
 /// Answer one request on `stream`: nothing at all unless `trusted` accepts the caller. `state` is
-/// read only after the request arrives, so an answer is never older than its question. Returns
-/// whether a secret went out.
+/// read only after the request arrives, so an answer is never older than its question. `apply`
+/// carries out the answer's effect; for an unlock, the reply says whether it took.
 #[cfg(unix)]
 fn serve(
     stream: &mut std::os::unix::net::UnixStream,
     trusted: impl Fn(&std::os::unix::net::UnixStream) -> bool,
-    state: impl Fn() -> (Option<String>, Vec<IndexEntry>),
-) -> std::io::Result<bool> {
+    state: impl Fn() -> Snapshot,
+    apply: impl FnOnce(&Effect) -> bool,
+) -> std::io::Result<()> {
     use std::io::{Error, ErrorKind, Read, Write};
 
     if !trusted(stream) {
-        return Ok(false);
+        return Ok(());
     }
     let mut len = [0u8; 4];
     stream.read_exact(&mut len)?;
@@ -190,12 +263,15 @@ fn serve(
     stream.read_exact(&mut body)?;
     let request: Request =
         serde_json::from_slice(&body).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
-    let (open, index) = state();
-    let (reply, used) = answer(request, open.as_deref(), &index);
+    let (mut reply, effect) = answer(request, &state());
+    let took = apply(&effect);
+    if matches!(effect, Effect::Unlock { .. }) {
+        reply.ok = took;
+    }
     let body = serde_json::to_vec(&reply).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
     stream.write_all(&(body.len() as u32).to_le_bytes())?;
     stream.write_all(&body)?;
-    Ok(used)
+    Ok(())
 }
 
 /// Whether the process at the other end of `stream` satisfies `requirement`, from the audit token
@@ -275,6 +351,29 @@ mod tests {
         ]
     }
 
+    fn unlocked_on(vault: &str) -> Snapshot {
+        Snapshot {
+            locked: false,
+            active: Some(vault.into()),
+            index: index(),
+        }
+    }
+
+    fn locked_on(vault: &str) -> Snapshot {
+        Snapshot {
+            locked: true,
+            active: Some(vault.into()),
+            index: vec![],
+        }
+    }
+
+    fn unlock(vault: &str) -> Request {
+        Request::Unlock {
+            vault_id: vault.into(),
+            vek: "K".into(),
+        }
+    }
+
     fn fetch(vault: &str, id: &str) -> Request {
         Request::Fetch {
             vault_id: vault.into(),
@@ -284,7 +383,7 @@ mod tests {
 
     #[test]
     fn a_fetch_from_the_open_vault_hands_over_that_login_and_counts_as_use() {
-        let (reply, used) = answer(fetch("v1", "b"), Some("v1"), &index());
+        let (reply, effect) = answer(fetch("v1", "b"), &unlocked_on("v1"));
         assert_eq!(
             reply,
             Reply {
@@ -295,50 +394,53 @@ mod tests {
                 ..Default::default()
             }
         );
-        assert!(used);
+        assert_eq!(effect, Effect::Used);
     }
 
     #[test]
     fn a_locked_app_answers_nothing() {
         assert_eq!(
-            answer(fetch("v1", "a"), None, &index()),
-            (Reply::default(), false)
+            answer(fetch("v1", "a"), &locked_on("v1")),
+            (Reply::default(), Effect::None)
         );
         let list = Request::List { vault_id: None };
-        assert_eq!(answer(list, None, &index()), (Reply::default(), false));
+        assert_eq!(
+            answer(list, &locked_on("v1")),
+            (Reply::default(), Effect::None)
+        );
     }
 
     #[test]
     fn another_vault_answers_nothing() {
         assert_eq!(
-            answer(fetch("v2", "a"), Some("v1"), &index()),
-            (Reply::default(), false)
+            answer(fetch("v2", "a"), &unlocked_on("v1")),
+            (Reply::default(), Effect::None)
         );
         let list = Request::List {
             vault_id: Some("v2".into()),
         };
         assert_eq!(
-            answer(list, Some("v1"), &index()),
-            (Reply::default(), false)
+            answer(list, &unlocked_on("v1")),
+            (Reply::default(), Effect::None)
         );
     }
 
     #[test]
     fn an_unknown_id_or_a_card_answers_nothing() {
         assert_eq!(
-            answer(fetch("v1", "zz"), Some("v1"), &index()),
-            (Reply::default(), false)
+            answer(fetch("v1", "zz"), &unlocked_on("v1")),
+            (Reply::default(), Effect::None)
         );
         assert_eq!(
-            answer(fetch("v1", "card"), Some("v1"), &index()),
-            (Reply::default(), false)
+            answer(fetch("v1", "card"), &unlocked_on("v1")),
+            (Reply::default(), Effect::None)
         );
     }
 
     #[test]
     fn the_list_is_the_open_vaults_logins_without_a_secret() {
-        let (reply, used) = answer(Request::List { vault_id: None }, Some("v1"), &index());
-        assert!(!used);
+        let (reply, effect) = answer(Request::List { vault_id: None }, &unlocked_on("v1"));
+        assert_eq!(effect, Effect::None);
         assert!(reply.ok);
         assert_eq!(reply.vault_id.as_deref(), Some("v1"));
         let logins = reply.logins.as_ref().unwrap();
@@ -367,7 +469,42 @@ mod tests {
         let list = Request::List {
             vault_id: Some("v1".into()),
         };
-        assert!(answer(list, Some("v1"), &index()).0.ok);
+        assert!(answer(list, &unlocked_on("v1")).0.ok);
+    }
+
+    #[test]
+    fn an_unlock_in_autofill_unlocks_the_locked_app_on_that_vault() {
+        assert_eq!(
+            answer(unlock("v1"), &locked_on("v1")),
+            (
+                Reply::default(),
+                Effect::Unlock {
+                    vault_id: "v1".into(),
+                    vek: "K".into()
+                }
+            )
+        );
+    }
+
+    #[test]
+    fn an_unlock_never_switches_vaults_or_replaces_a_key_in_use() {
+        assert_eq!(
+            answer(unlock("v2"), &locked_on("v1")),
+            (Reply::default(), Effect::None)
+        );
+        assert_eq!(
+            answer(unlock("v1"), &unlocked_on("v1")),
+            (Reply::default(), Effect::None)
+        );
+        let nothing_open = Snapshot {
+            locked: true,
+            active: None,
+            index: vec![],
+        };
+        assert_eq!(
+            answer(unlock("v1"), &nothing_open),
+            (Reply::default(), Effect::None)
+        );
     }
 
     #[cfg(unix)]
@@ -393,15 +530,26 @@ mod tests {
             serde_json::from_slice(&body).ok()
         }
 
-        fn unlocked() -> (Option<String>, Vec<IndexEntry>) {
-            (Some("v1".into()), index())
+        fn unlocked() -> Snapshot {
+            unlocked_on("v1")
         }
 
         #[test]
         fn a_trusted_caller_gets_its_answer() {
             let (mut ours, mut theirs) = UnixStream::pair().unwrap();
             send(&mut theirs, br#"{"op":"fetch","vaultId":"v1","id":"a"}"#);
-            assert!(serve(&mut ours, |_| true, unlocked).unwrap());
+            let applied = std::cell::RefCell::new(None);
+            serve(
+                &mut ours,
+                |_| true,
+                unlocked,
+                |e| {
+                    applied.replace(Some(format!("{e:?}")));
+                    true
+                },
+            )
+            .unwrap();
+            assert_eq!(applied.take().as_deref(), Some("Used"));
             drop(ours);
             let reply = received(&mut theirs).unwrap();
             assert_eq!(reply["ok"], true);
@@ -417,8 +565,19 @@ mod tests {
                 asked.set(true);
                 unlocked()
             };
-            assert!(!serve(&mut ours, |_| false, state).unwrap());
+            let applied = std::cell::Cell::new(false);
+            serve(
+                &mut ours,
+                |_| false,
+                state,
+                |_| {
+                    applied.set(true);
+                    true
+                },
+            )
+            .unwrap();
             assert!(!asked.get());
+            assert!(!applied.get());
             drop(ours);
             assert!(received(&mut theirs).is_none());
         }
@@ -427,15 +586,43 @@ mod tests {
         fn an_oversized_or_garbled_request_gets_nothing() {
             let (mut ours, mut theirs) = UnixStream::pair().unwrap();
             theirs.write_all(&(MAX_REQUEST + 1).to_le_bytes()).unwrap();
-            assert!(serve(&mut ours, |_| true, unlocked).is_err());
+            assert!(serve(&mut ours, |_| true, unlocked, |_| true).is_err());
             drop(ours);
             assert!(received(&mut theirs).is_none());
 
             let (mut ours, mut theirs) = UnixStream::pair().unwrap();
             send(&mut theirs, b"{not json");
-            assert!(serve(&mut ours, |_| true, unlocked).is_err());
+            assert!(serve(&mut ours, |_| true, unlocked, |_| true).is_err());
             drop(ours);
             assert!(received(&mut theirs).is_none());
+        }
+
+        #[test]
+        fn an_unlock_replies_whether_the_app_took_the_key() {
+            for took in [true, false] {
+                let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+                send(&mut theirs, br#"{"op":"unlock","vaultId":"v1","vek":"K"}"#);
+                let applied = std::cell::RefCell::new(None);
+                serve(
+                    &mut ours,
+                    |_| true,
+                    || locked_on("v1"),
+                    |e| {
+                        applied.replace(Some(format!("{e:?}")));
+                        took
+                    },
+                )
+                .unwrap();
+                assert_eq!(
+                    applied.take().as_deref(),
+                    Some(r#"Unlock { vault_id: "v1", vek: "K" }"#)
+                );
+                drop(ours);
+                assert_eq!(
+                    received(&mut theirs).unwrap(),
+                    serde_json::json!({ "ok": took })
+                );
+            }
         }
 
         #[cfg(target_os = "macos")]
@@ -466,5 +653,8 @@ mod tests {
         assert!(matches!(r, Request::Fetch { vault_id, id } if vault_id == "v1" && id == "a"));
         let r: Request = serde_json::from_str(r#"{"op":"list"}"#).unwrap();
         assert!(matches!(r, Request::List { vault_id: None }));
+        let r: Request =
+            serde_json::from_str(r#"{"op":"unlock","vaultId":"v1","vek":"K"}"#).unwrap();
+        assert!(matches!(r, Request::Unlock { vault_id, vek } if vault_id == "v1" && vek == "K"));
     }
 }

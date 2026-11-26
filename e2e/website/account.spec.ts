@@ -37,7 +37,7 @@ test("a new account is created behind the check, shown once, and bought", async 
 	await page.goto("/account/");
 	await page.getByRole("button", { name: "Create an account" }).click();
 	await expect(page.getByText(NUMBER, { exact: true })).toBeVisible();
-	await page.getByRole("button", { name: "6 months, $12" }).click();
+	await page.getByRole("button", { name: "Credit/Debit card" }).click();
 	await page.waitForURL(/checkout\.stripe\.com/);
 	const [checkout] = callsTo("/v1/checkout");
 	const body = JSON.parse(checkout?.body ?? "{}");
@@ -60,7 +60,8 @@ test("a double click starts one checkout", async ({ page }) => {
 	await fromApp(page);
 	await expect(page.getByText(/^Paid through /)).toBeVisible();
 	await page.getByRole("button", { name: "12", exact: true }).click();
-	await page.getByRole("button", { name: "12 months, $24" }).dblclick();
+	await expect(page.getByText("12 months, $24")).toBeVisible();
+	await page.getByRole("button", { name: "Credit/Debit card" }).dblclick();
 	await page.waitForURL(/checkout\.stripe\.com/);
 	expect(callsTo("/v1/checkout")).toHaveLength(1);
 });
@@ -129,10 +130,13 @@ test("one day reads as one day", async ({ page }) => {
 	await expect(page.getByText(/You pay for 1 day, and the other 183 come off/)).toBeVisible();
 });
 
-test("the page says refunds take off the days since buying", async ({ page }) => {
+test("the page says card refunds take off the days since buying, and crypto has none", async ({
+	page,
+}) => {
 	await fromApp(page);
+	await expect(page.getByText(/A Bitcoin or Monero payment can't be refunded/)).toBeVisible();
 	await expect(
-		page.getByText(/Refunds within 14 days of a\s+purchase, less the days/),
+		page.getByText(/can be refunded within 14\s+days, less the days since you bought it/),
 	).toBeVisible();
 });
 
@@ -210,7 +214,7 @@ test("Back from Stripe brings the page back with its buttons working", async ({ 
 	};
 	await fromApp(page);
 	await expect(page.getByText(/^Paid through /)).toBeVisible();
-	const six = page.getByRole("button", { name: "6 months, $12" });
+	const six = page.getByRole("button", { name: "Credit/Debit card" });
 	await six.click();
 	await expect(six).toBeDisabled();
 	await expect(six).toHaveAttribute("aria-busy", "true");
@@ -244,7 +248,7 @@ test("Create an account shows it's working until the account is open", async ({ 
 test("a failed checkout stops the spinner", async ({ page }) => {
 	services.checkout = () => ({ code: 502, body: { error: "payment_provider" } });
 	await fromApp(page);
-	const six = page.getByRole("button", { name: "6 months, $12" });
+	const six = page.getByRole("button", { name: "Credit/Debit card" });
 	await six.click();
 	await expect(
 		page.getByText("The payment provider didn't answer. Try again shortly."),
@@ -267,7 +271,7 @@ test("a number from a link is shown in full and used only once confirmed", async
 	await page.goto(`/account/#n=${DIGITS}`);
 	await expect(page.getByText("Is this your account number?")).toBeVisible();
 	await expect(page.getByText(NUMBER, { exact: true })).toBeVisible();
-	await expect(page.getByRole("button", { name: "6 months, $12" })).toBeHidden();
+	await expect(page.getByRole("button", { name: "Credit/Debit card" })).toBeHidden();
 	expect(await remembered(page)).toBeNull();
 	expect(callsTo("/v1/accounts/status")).toHaveLength(0);
 	await page.getByRole("button", { name: "Yes, it's mine" }).click();
@@ -373,10 +377,11 @@ test("the notice goes once an account is open again", async ({ page }) => {
 	await expect(page.getByRole("button", { name: "Yes, delete" })).toBeHidden();
 });
 
-test("any number of months can be bought, and the button says what it costs", async ({ page }) => {
+test("any number of months can be bought, and the page says what it costs", async ({ page }) => {
 	await fromApp(page);
 	await page.getByLabel("Months").fill("9");
-	await page.getByRole("button", { name: "Add 9 months, $18" }).click();
+	await expect(page.getByText("9 months, $18")).toBeVisible();
+	await page.getByRole("button", { name: "Credit/Debit card" }).click();
 	await page.waitForURL(/checkout\.stripe\.com/);
 	const [checkout] = callsTo("/v1/checkout");
 	expect(JSON.parse(checkout?.body ?? "{}").months).toBe(9);
@@ -386,7 +391,8 @@ test("a shortcut sets the months", async ({ page }) => {
 	await fromApp(page);
 	await page.getByRole("button", { name: "36", exact: true }).click();
 	await expect(page.getByLabel("Months")).toHaveValue("36");
-	await expect(page.getByRole("button", { name: "Add 36 months, $72" })).toBeEnabled();
+	await expect(page.getByText("36 months, $72")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Credit/Debit card" })).toBeEnabled();
 });
 
 for (const value of ["5", "37", "7.5", ""]) {
@@ -394,7 +400,8 @@ for (const value of ["5", "37", "7.5", ""]) {
 		await fromApp(page);
 		await page.getByLabel("Months").fill(value);
 		await expect(page.getByText("Choose 6 to 36 months.")).toBeVisible();
-		await expect(page.getByRole("button", { name: /^Add / })).toBeDisabled();
+		for (const name of ["Credit/Debit card", "Bitcoin", "Monero"])
+			await expect(page.getByRole("button", { name, exact: true })).toBeDisabled();
 		expect(callsTo("/v1/checkout")).toHaveLength(0);
 	});
 }
@@ -405,5 +412,101 @@ test("a valid number clears the message", async ({ page }) => {
 	await expect(page.getByText("Choose 6 to 36 months.")).toBeVisible();
 	await page.getByLabel("Months").fill("6");
 	await expect(page.getByText("Choose 6 to 36 months.")).toBeHidden();
-	await expect(page.getByRole("button", { name: "Add 6 months, $12" })).toBeEnabled();
+	await expect(page.getByText("6 months, $12")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Credit/Debit card" })).toBeEnabled();
+});
+
+for (const [name, method] of [
+	["Bitcoin", "bitcoin"],
+	["Monero", "monero"],
+] as const) {
+	test(`${name} asks where the buyer lives, then for an invoice in ${name}`, async ({ page }) => {
+		services.checkout = () => ({ code: 200, body: { url: "https://pay.bramble.sh/i/test" } });
+		await fromApp(page);
+		await page.getByRole("button", { name: "12", exact: true }).click();
+		await page.getByRole("button", { name, exact: true }).click();
+		const go = page.getByRole("button", { name: `Continue to ${name}` });
+		await expect(go).toBeDisabled();
+		expect(callsTo("/v1/checkout")).toHaveLength(0);
+		await page.getByLabel("Country").selectOption({ label: "Germany" });
+		await expect(page.getByLabel("Province or territory")).toBeHidden();
+		await go.click();
+		await expect(page.getByText("BTCPay test invoice")).toBeVisible();
+		const body = JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}");
+		expect(body).toMatchObject({ months: 12, method, country: "DE" });
+		expect(body).not.toHaveProperty("province");
+	});
+}
+
+test("in Canada, the province is asked for too", async ({ page }) => {
+	services.checkout = () => ({ code: 200, body: { url: "https://pay.bramble.sh/i/test" } });
+	await fromApp(page);
+	await page.getByRole("button", { name: "Monero", exact: true }).click();
+	await page.getByLabel("Country").selectOption({ label: "Canada" });
+	const go = page.getByRole("button", { name: "Continue to Monero" });
+	await expect(go).toBeDisabled();
+	await page.getByLabel("Province or territory").selectOption({ label: "Ontario" });
+	await go.click();
+	await expect(page.getByText("BTCPay test invoice")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).toMatchObject({
+		method: "monero",
+		country: "CA",
+		province: "ON",
+	});
+});
+
+test("Cancel closes the question, and a card never asks it", async ({ page }) => {
+	await fromApp(page);
+	await page.getByRole("button", { name: "Bitcoin", exact: true }).click();
+	await expect(page.getByLabel("Country")).toBeVisible();
+	await page.getByRole("button", { name: "Cancel" }).click();
+	await expect(page.getByLabel("Country")).toBeHidden();
+	await page.getByRole("button", { name: "Credit/Debit card" }).click();
+	await expect(page.getByText("Stripe test checkout")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).not.toHaveProperty("country");
+});
+
+test("the card button still asks for a card", async ({ page }) => {
+	await fromApp(page);
+	await page.getByRole("button", { name: "Credit/Debit card" }).click();
+	await expect(page.getByText("Stripe test checkout")).toBeVisible();
+	expect(JSON.parse(callsTo("/v1/checkout")[0]?.body ?? "{}")).toMatchObject({ method: "card" });
+});
+
+test("where crypto isn't offered, the page says so and both buttons work again", async ({
+	page,
+}) => {
+	services.checkout = () => ({ code: 404, body: { error: "method_unavailable" } });
+	await fromApp(page);
+	await page.getByRole("button", { name: "Monero", exact: true }).click();
+	await page.getByLabel("Country").selectOption({ label: "Germany" });
+	const go = page.getByRole("button", { name: "Continue to Monero" });
+	await go.click();
+	await expect(
+		page.getByText(/Paying with Bitcoin or Monero isn't available right now/),
+	).toBeVisible();
+	await expect(go).toBeEnabled();
+	await expect(go).not.toHaveAttribute("aria-busy");
+	await expect(page.getByRole("button", { name: "Credit/Debit card" })).toBeEnabled();
+});
+
+test("back from a crypto payment, the page says the time lands once it confirms", async ({
+	page,
+}) => {
+	await page.clock.install();
+	await page.addInitScript(
+		([number, paidThrough]) => {
+			sessionStorage.setItem("bramble.account", number);
+			sessionStorage.setItem("bramble.paidThrough", paidThrough);
+		},
+		[NUMBER, String(PAID.paidThrough)],
+	);
+	// The payment is seen, but its time hasn't landed yet.
+	services.status = () => ({ code: 200, body: PAID });
+	await page.goto("/account/paid?via=crypto");
+	await page.clock.runFor(35_000);
+	await expect(
+		page.getByText(/once the payment confirms, which can take up to an hour/),
+	).toBeVisible();
+	await expect(page.getByText(NUMBER, { exact: true })).toBeVisible();
 });

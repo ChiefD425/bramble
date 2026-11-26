@@ -208,7 +208,11 @@ present the gate itself, so a Face ID user opens the app to no tap at all
   and silence would leave nothing to explain it.
 - **An explicit Lock is honoured** (`lockedByUser`, set only by `lock()`), or
   locking would be impossible while looking at the phone. Auto-lock does not set
-  it, which is what lets a backgrounded vault re-open on return.
+  it, which is what lets a backgrounded vault re-open on return. A terminal's SSH
+  agent request for the vault on screen outweighs it (`requested`): running `ssh`
+  asks for the unlock as plainly as opening the app does. One prompt per request,
+  so a cancelled one isn't repeated until the next `ssh`. See
+  [ssh-agent.md](ssh-agent.md).
 - **Never while off screen.** Auto-lock fires as the app leaves the foreground, so
   the unlock screen routinely mounts backgrounded. Document visibility is the cheap
   check; the screen also waits for a frame, which a hidden document cannot produce,

@@ -10,6 +10,7 @@ import type {
 } from "@core/adapters/autofill";
 import { PREF_AUTOFILL_QUICKTYPE } from "@core/hooks/usePrefs";
 import { buildProviderMirror, passwordSlotPayload } from "@core/vault/provider-mirror";
+import type { SshKeyForAgent } from "@core/vault/ssh-keys";
 import {
 	displayLabel,
 	listedVaults,
@@ -95,6 +96,20 @@ function desktopAutofillFor(vaultId?: string): AutofillAdapter {
 					console.warn("[autofill] mirror:", e),
 				);
 		},
+		// The app's SSH agent: only from a vault-scoped view, so the keys always name their vault.
+		...(vaultId
+			? {
+					setSshKeys: async (keys: SshKeyForAgent[]) => {
+						const picker = await pickerView(vaultId);
+						await invoke<void>("ssh_agent_set_keys", {
+							vaultId,
+							vaultName: picker.name ?? "",
+							listedVaultIds: picker.listed,
+							keys,
+						}).catch((e) => console.warn("[ssh-agent] keys not sent:", e));
+					},
+				}
+			: {}),
 		withVault: (id) => desktopAutofillFor(id),
 		// Below sign-in fields in Safari, from the logins macOS holds for the AutoFill extension.
 		inlineSuggestionsAvailable: async () => onMac(),
@@ -113,7 +128,9 @@ function desktopAutofillFor(vaultId?: string): AutofillAdapter {
 		// The mirror stays on lock, as on iOS: it is VEK-encrypted, and the extension unlocks on its own.
 		clearIndex: () => invoke<void>("link_clear_index"),
 		clearProviderData: async () => {
-			if (vaultId) await invoke<void>("autofill_provider_clear", { vaultId });
+			if (!vaultId) return;
+			await invoke<void>("autofill_provider_clear", { vaultId });
+			await invoke<void>("ssh_agent_forget_vault", { vaultId });
 		},
 
 		query: async (): Promise<QueryResult> => ({

@@ -3,6 +3,8 @@
 // Three signals, mirroring mobile's:
 //  - onExternalLock: the vault was locked from outside the UI flow, so useVault drops decrypted
 //    state and bounces to the unlock screen.
+//  - onExternalUnlock: the shell loaded a vault's key from the macOS AutoFill extension, so useVault
+//    opens that vault.
 //  - onExternalChange: a sync merge wrote new entries out of band, so useVault reloads.
 //  - onVaultStateChange: lock and unlock transitions, which start and stop roster sync. While
 //    locked the VEK is gone from the Rust process, so a merge could not decrypt anything.
@@ -10,12 +12,18 @@
 // The crypto adapter reports the transitions; nothing here reaches into it.
 
 const lockListeners = new Set<() => void>();
+const unlockListeners = new Set<(vaultId: string) => void>();
 const changeListeners = new Set<() => void>();
 const stateListeners = new Set<(locked: boolean) => void>();
 
 export function onExternalLock(cb: () => void): () => void {
 	lockListeners.add(cb);
 	return () => lockListeners.delete(cb);
+}
+
+export function onExternalUnlock(cb: (vaultId: string) => void): () => void {
+	unlockListeners.add(cb);
+	return () => unlockListeners.delete(cb);
 }
 
 export function onExternalChange(cb: () => void): () => void {
@@ -37,6 +45,12 @@ export function markUnlocked(): void {
 export function markLocked(): void {
 	for (const fn of stateListeners) fn(true);
 	for (const fn of lockListeners) fn();
+}
+
+/** The shell loaded `vaultId`'s key from AutoFill. */
+export function markUnlockedElsewhere(vaultId: string): void {
+	markUnlocked();
+	for (const fn of unlockListeners) fn(vaultId);
 }
 
 /** A sync merge wrote new entries out of band; tell the UI to reload rather than leaving it

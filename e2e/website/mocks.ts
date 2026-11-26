@@ -96,6 +96,9 @@ export async function mockServices(context: BrowserContext, number: string): Pro
 	await context.route("https://mailbox.bramble.sh/**", async (route, req) =>
 		reply(route, req, await services.status()),
 	);
+	await context.route("https://pay.bramble.sh/**", (route) =>
+		route.fulfill({ status: 200, contentType: "text/html", body: "<h1>BTCPay test invoice</h1>" }),
+	);
 	await context.route("https://checkout.stripe.com/**", (route) =>
 		route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Stripe test checkout</h1>" }),
 	);

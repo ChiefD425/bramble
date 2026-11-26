@@ -266,6 +266,19 @@ describe("toCxf: other entry types", () => {
 		expect(run(ssh).warnings[0]).toMatch(/SSH key/);
 	});
 
+	it("sends an SSH key's hosts as a Hosts custom field", () => {
+		const ssh: Entry = {
+			id: "s1",
+			type: "ssh-key",
+			name: "deploy key",
+			publicKey: "ssh-ed25519 AAAA",
+			privateKey: "k",
+			hosts: ["github.com", "10.0.0.5"],
+		};
+		const field = cred(ssh, "custom-fields")?.fields?.find((f) => f.label === "Hosts");
+		expect(field?.value).toBe("github.com\n10.0.0.5");
+	});
+
 	it("gives an otherwise empty entry a note credential, because CXF items need one", () => {
 		const note: Entry = { id: "n1", type: "note", name: "Empty" };
 		expect(creds(note)).toEqual([{ type: "note", content: { fieldType: "string", value: "" } }]);

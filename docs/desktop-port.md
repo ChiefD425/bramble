@@ -535,26 +535,10 @@ claiming someone else's namespace. Desktop must not reintroduce that inference f
 
 ## SSH agent
 
-Storage is done. `app/entry-modes/ssh-key.tsx` holds name, publicKey, privateKey, passphrase, and
-notes, and the type already syncs. The gap is that nothing *uses* the private key: `util/ssh.ts` is
-41 lines and both `deriveKeyType` and `sshFingerprint` are public-key-side only. The private key is
-an opaque string.
-
-The work is entirely Rust:
-
-- Parse the `openssh-key-v1` container, including the encrypted case, which defaults to bcrypt-pbkdf
-  plus aes256-ctr keyed on the stored `passphrase`
-- Extract the ed25519 or ecdsa scalar and sign. `ed25519-dalek` and `p256` are already dependencies
-  and cover `ssh-ed25519` and `ecdsa-sha2-nistp256`; RSA would need the `rsa` crate
-- Speak the agent protocol on a socket, plus the OpenSSH named pipe on Windows, with
-  `SSH_AUTH_SOCK` pointed at it
-
-RustCrypto's `ssh-key` covers the first two including passphrase decryption; `ssh-agent-lib` covers
-the third `[unverified: crate maturity]`. Gate both behind an `ssh-agent` cargo feature so the wasm
-and mobile builds never pay for them, exactly as `webrtc` is gated for iOS.
-
-Require per-signature approval (biometric where available). The pitch: private keys never touch disk
-unencrypted and every use is explicitly approved.
+Designed in [ssh-agent.md](ssh-agent.md) (2026-11-25), which replaces what this section said. The
+two changes from the first sketch: no prompt while the key's vault is unlocked (the auto-lock time
+is the approval), and the code lives in the desktop crate rather than behind a `core-rust` feature,
+since nothing else links it.
 
 ## Sync transport: the webview's own WebRTC, on macOS and Windows
 
@@ -685,7 +669,7 @@ ffi = ["native", "dep:uniffi"]
 ```
 
 Desktop then depends on `vault-crypto` with `default-features = false, features = ["native"]`, plus
-`webrtc` and `ssh-agent` as those land.
+`webrtc` as that lands.
 
 ## Platform reality
 
@@ -1519,7 +1503,7 @@ Each phase retires a risk.
   put in front of a real browser. `[unverified]`
 - **Phase 5, auto-type.** Per-OS input synthesis, `appIdFromUri` matching, permissions onboarding.
   Enter becomes a real fill in native apps.
-- **Phase 6, SSH agent.**
+- **Phase 6, SSH agent.** Designed in [ssh-agent.md](ssh-agent.md).
 - **Deferred:** native CTAP security keys, extension unlock delegation, Wayland auto-type.
 
 Phase 2 lands before Phase 4 deliberately: the spotlight is useful with clipboard actions alone, and

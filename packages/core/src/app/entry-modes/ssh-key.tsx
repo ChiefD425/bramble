@@ -1,17 +1,18 @@
 import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound, Plus, Server, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 import type { SshKeyEntry, SshKeyEntryData } from "../../hooks/useVault";
-import { deriveKeyType, sshFingerprint } from "../../util/ssh";
+import { deriveKeyType, normalizeHost, sshFingerprint } from "../../util/ssh";
 import { Button } from "../components/ui/button";
 import { SecretArea } from "../components/ui/secret-area";
 import { TextArea } from "../components/ui/text-area";
 import { TextField } from "../components/ui/text-field";
 import { useRevealState } from "../hooks/useRevealState";
 import { DetailField, DetailNotes, DetailValue } from "./DetailField";
+import { ToggleRow } from "./toggle-row";
 import type { EntryDetailBodyProps, EntryMode } from "./types";
 
 /** OpenSSH SHA-256 fingerprint of `publicKey`. undefined until derived (async) and on parse failure. */
@@ -36,17 +37,89 @@ interface SshKeyFormValues {
 	publicKey: string;
 	privateKey: string;
 	passphrase: string;
+	/** Wrapped as `{ value }[]` so useFieldArray has stable per-row identity, as a login's URLs. */
+	hosts: { value: string }[];
+	useAgent: boolean;
 	notes: string;
 }
 
+/** A stored host list, or none when it isn't one (an older or hand-made entry). */
+export const hostList = (hosts: unknown): string[] =>
+	Array.isArray(hosts) ? hosts.filter((h): h is string => typeof h === "string") : [];
+
 function SshKeyFields() {
-	const { register } = useFormContext<SshKeyFormValues>();
+	const {
+		control,
+		register,
+		watch,
+		setValue,
+		formState: { errors },
+	} = useFormContext<SshKeyFormValues>();
 	const { t } = useLingui();
 	const [showPassphrase, setShowPassphrase] = useRevealState(false);
+	const {
+		fields: hostFields,
+		append: appendHost,
+		remove: removeHost,
+	} = useFieldArray({
+		control,
+		name: "hosts",
+	});
 
 	return (
 		<>
 			<TextField label={t`Name`} type="text" {...register("name")} />
+			<div>
+				<div className="flex items-center justify-between mb-2">
+					<span className="block text-sm">{t`Hosts`}</span>
+					<Button
+						variant="secondary"
+						size="none"
+						onClick={() => appendHost({ value: "" })}
+						className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md"
+					>
+						<Plus className="w-3 h-3" />
+						{t`Add host`}
+					</Button>
+				</div>
+
+				{hostFields.length > 0 ? (
+					<div className="space-y-2">
+						{hostFields.map((field, index) => (
+							<div key={field.id} className="flex gap-2 items-start">
+								<div className="flex-1">
+									<TextField
+										label={t`Host`}
+										type="text"
+										autoComplete="off"
+										className="font-mono"
+										error={errors.hosts?.[index]?.value?.message}
+										{...register(`hosts.${index}.value`, {
+											validate: (host) =>
+												!host.trim() ||
+												normalizeHost(host) !== null ||
+												t`Use only the host, like github.com or 10.0.0.5`,
+										})}
+									/>
+								</div>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => removeHost(index)}
+									className="mt-2 shrink-0 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+									aria-label={t`Remove host`}
+								>
+									<X className="w-4 h-4" />
+								</Button>
+							</div>
+						))}
+					</div>
+				) : (
+					<p className="text-xs text-muted-foreground">
+						{t`Add the servers ssh uses this key for, like github.com or 10.0.0.5.`}
+					</p>
+				)}
+			</div>
 			<TextArea label={t`Public key`} rows={2} className="font-mono" {...register("publicKey")} />
 			<SecretArea label={t`Private key`} rows={6} autoComplete="off" {...register("privateKey")} />
 			<TextField
@@ -65,6 +138,12 @@ function SshKeyFields() {
 					</Button>
 				}
 				{...register("passphrase")}
+			/>
+			<ToggleRow
+				title={t`Use with the SSH agent`}
+				subtitle={t`Off: Bramble never offers or signs with this key.`}
+				checked={watch("useAgent")}
+				onChange={(v) => setValue("useAgent", v, { shouldDirty: true })}
 			/>
 			<TextArea label={t`Notes (optional)`} rows={2} autoGrow {...register("notes")} />
 		</>
@@ -129,8 +208,32 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 	const { t } = useLingui();
 	const [showPassphrase, setShowPassphrase] = useRevealState(false);
 	const fingerprint = useSshFingerprint(key.publicKey);
+	const hosts = hostList(key.hosts);
 	return (
 		<>
+			{hosts.length > 0 && (
+				<DetailField.Group label={hosts.length > 1 ? t`Hosts` : t`Host`}>
+					{hosts.map((host, i) => {
+						const copyName = hosts.length === 1 ? "host" : `host-${i}`;
+						return (
+							<DetailField.Item
+								// biome-ignore lint/suspicious/noArrayIndexKey: index disambiguates a host listed twice
+								key={`${host}-${i}`}
+								label={t`Host`}
+								copied={copied}
+								copyName={copyName}
+								onCopy={() => copy(copyName, host)}
+							>
+								<div className="flex items-center gap-2 text-sm">
+									<Server className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+									<span className="truncate font-mono">{host}</span>
+								</div>
+							</DetailField.Item>
+						);
+					})}
+				</DetailField.Group>
+			)}
+
 			{fingerprint && (
 				<DetailField
 					label={t`Fingerprint`}
@@ -189,6 +292,10 @@ function SshKeyDetail({ entry, copied, copy }: EntryDetailBodyProps) {
 				</DetailField>
 			)}
 
+			{key.agentDisabled && (
+				<p className="text-xs text-muted-foreground">{t`Not used by the SSH agent`}</p>
+			)}
+
 			{key.notes && <DetailNotes label={t`Notes`} value={key.notes} copied={copied} copy={copy} />}
 		</>
 	);
@@ -204,7 +311,15 @@ export const sshKeyMode: EntryMode = {
 	},
 	icon: KeyRound,
 
-	emptyForm: () => ({ name: "", publicKey: "", privateKey: "", passphrase: "", notes: "" }),
+	emptyForm: () => ({
+		name: "",
+		publicKey: "",
+		privateKey: "",
+		passphrase: "",
+		hosts: [],
+		useAgent: true,
+		notes: "",
+	}),
 
 	toForm: (entry) => {
 		const key = entry as SshKeyEntryData;
@@ -213,6 +328,8 @@ export const sshKeyMode: EntryMode = {
 			publicKey: key.publicKey,
 			privateKey: key.privateKey,
 			passphrase: key.passphrase ?? "",
+			hosts: hostList(key.hosts).map((value) => ({ value })),
+			useAgent: key.agentDisabled !== true,
 			notes: key.notes ?? "",
 		};
 	},
@@ -226,6 +343,16 @@ export const sshKeyMode: EntryMode = {
 			privateKey: v.privateKey,
 			passphrase: v.passphrase || undefined,
 			keyType: deriveKeyType(v.publicKey, v.privateKey),
+			// Named even when empty, so clearing the list clears it (the edit keeps unnamed fields).
+			hosts: (() => {
+				const hosts = (v.hosts ?? [])
+					.map((h) => h.value.trim())
+					.filter((h) => h.length > 0)
+					.map(normalizeHost)
+					.filter((h): h is string => h !== null);
+				return hosts.length > 0 ? hosts : undefined;
+			})(),
+			agentDisabled: v.useAgent === false ? true : undefined,
 			notes: v.notes || undefined,
 		};
 	},
@@ -249,6 +376,6 @@ export const sshKeyMode: EntryMode = {
 
 	searchText: (entry) => {
 		const key = entry as SshKeyEntry;
-		return `${key.keyType ?? ""} ${key.publicKey}`.toLowerCase();
+		return `${key.keyType ?? ""} ${key.publicKey} ${hostList(key.hosts).join(" ")}`.toLowerCase();
 	},
 };

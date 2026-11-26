@@ -9,7 +9,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { IndexEntry, SubdomainMatchMode } from "../adapters/autofill";
+import type { SubdomainMatchMode } from "../adapters/autofill";
 import type { BiometryType } from "../adapters/biometric";
 import { type PasskeyPrfSecrets, VAULT_OPEN_FAILED } from "../adapters/crypto";
 import type { PickedAttachment } from "../adapters/files";
@@ -178,6 +178,10 @@ export interface SshKeyEntryData extends BaseEntryData {
 	privateKey: string;
 	passphrase?: string;
 	keyType?: string;
+	/** What you type after `ssh`; the desktop agent offers this key only to these. */
+	hosts?: string[];
+	/** The agent never offers or signs with this key. Absent means it may. */
+	agentDisabled?: true;
 }
 
 /**
@@ -247,7 +251,6 @@ import { PER_VAULT_SYNC_KEYS, syncKeyFor } from "../sync/sync-keys";
 import type { FileTransferStatus } from "../sync/transport/blob-sync";
 import { base64ToBytes, bytesToBase64 } from "../util/bytes";
 import { UserFacingError } from "../util/user-facing-error";
-import { toAutofillIndex } from "../vault/autofill-index";
 import {
 	biometricUnlockFlow,
 	enableBiometricUnlock,
@@ -277,6 +280,7 @@ import {
 	type FileMeta,
 	sealAttachment,
 } from "../vault/file-mutations";
+import { publishToPlatform } from "../vault/publish-index";
 import { quarantineEntries } from "../vault/quarantine";
 import { decryptEntriesOrRecover } from "../vault/recover-entries";
 import {
@@ -814,12 +818,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	 * create/join binding trap does for crypto (docs/multiple-vaults.md).
 	 */
 	const publishIndex = useCallback(
-		async (entries: IndexEntry[], lease: unknown, vaultId?: string) => {
+		async (entries: Entry[], lease: unknown, vaultId?: string) => {
 			const target = vaultId
 				? (platformAutofill.withVault?.(vaultId) ?? platformAutofill)
 				: autofill;
 			try {
-				await target.setIndex(entries, lease);
+				await publishToPlatform(target, entries, lease);
 			} catch (e) {
 				console.warn("[vault] autofill index not updated for this load:", e);
 			}
@@ -830,7 +834,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	/** Publish the open vault's index again, for a change the index carries that isn't an entry. */
 	const refreshAutofillIndex = useCallback(async () => {
 		const lease = await autofill.beginIndexUpdate?.().catch(() => undefined);
-		await publishIndex(toAutofillIndex(latestRef.current.entries), lease);
+		await publishIndex(latestRef.current.entries, lease);
 	}, [autofill, publishIndex]);
 
 	// Switched back on in AutoFill, macOS holds none of the open vault's suggestions: send them again.
@@ -1004,7 +1008,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			markLoaded(vaultKey(targetId));
 			setConflicts(conflictsOf(loaded));
 			setEntries(decrypted);
-			await publishIndex(toAutofillIndex(decrypted), indexLease, targetId);
+			await publishIndex(decrypted, indexLease, targetId);
 		},
 		[openEntries, autofill, publishIndex, activeId, markLoaded],
 	);
@@ -1161,6 +1165,21 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		return crypto.onExternalLock(closeOpenVault);
 	}, [crypto, closeOpenVault]);
+
+	// The macOS AutoFill extension unlocked this vault and the shell loaded its key: open it here
+	// too, as after the app's own Touch ID, so the next fill asks for nothing. The shell only does
+	// that for the active vault while locked; the id check keeps a stale event from opening another.
+	useEffect(() => {
+		return crypto.onExternalUnlock?.((vaultId) => {
+			if (vaultId !== activeId) return;
+			void openUnlocked(vaultId)
+				.then(() => {
+					setIsLocked(false);
+					void shell.flushPendingCornerCapture().catch(() => {});
+				})
+				.catch((e) => console.error("[vault] AutoFill unlock did not open the vault:", e));
+		});
+	}, [crypto, activeId, openUnlocked, shell]);
 
 	// Re-decrypt when the background commits a vault write (corner-prompt path)
 	// outside this context, keeping in-memory entries in sync with disk.

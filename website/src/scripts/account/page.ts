@@ -11,9 +11,12 @@ import {
 	AccountError,
 	type AccountErrorCode,
 	accountApi,
+	type PaymentMethod,
 	type Purchase,
 	solveAltcha,
+	type Where,
 } from "./api";
+import { countries, PROVINCES } from "./countries";
 import { BILLING_URL, MAILBOX_URL } from "./endpoints";
 import { forget, PAID_THROUGH_KEY, remember, rememberedNumber, takeNumberFromUrl } from "./session";
 
@@ -22,6 +25,8 @@ const MESSAGES: Record<AccountErrorCode, string> = {
 	challenge_failed: "The browser check didn't go through. Try again.",
 	account_unknown: "That account number isn't recognized.",
 	payment_provider: "The payment provider didn't answer. Try again shortly.",
+	method_unavailable:
+		"Paying with Bitcoin or Monero isn't available right now. You can pay by card.",
 	nothing_to_refund: "That purchase can't be refunded.",
 	network: "Can't reach Bramble right now.",
 	bad_request: "Something went wrong. Try again.",
@@ -91,7 +96,16 @@ export function start(
 	const input = part<HTMLInputElement>("number-input");
 	const numberError = part("number-error");
 	const months = part<HTMLInputElement>("months");
-	const buy = part<HTMLButtonElement>("buy");
+	/** The three ways to pay, each its own button of the same weight. */
+	const payButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-pay]")];
+	// A coin asks where the buyer lives first, for tax; a card's checkout asks for its address.
+	const where = part("where");
+	const countrySelect = part<HTMLSelectElement>("country");
+	const provinceField = part("province-field");
+	const provinceSelect = part<HTMLSelectElement>("province");
+	const whereContinue = part<HTMLButtonElement>("where-continue");
+	let coin: PaymentMethod | null = null;
+	for (const { code, name } of countries()) countrySelect.add(new Option(name, code));
 	let number: string | null = null;
 	let shown = false;
 	let paidThrough = 0;
@@ -251,12 +265,15 @@ export function start(
 		showAccount(parsed, false);
 	});
 
-	/** The button follows the field: what it buys and costs, or disabled for a number it can't buy. */
+	/** The total follows the field, and the buttons are disabled for a number it can't buy. */
 	function paintMonths() {
 		const chosen = chosenMonths(months.value);
-		buy.disabled = busy || chosen === null;
+		for (const button of payButtons) button.disabled = busy || chosen === null;
+		paintWhere();
 		part("months-error").hidden = chosen !== null;
-		if (chosen !== null) buy.textContent = `Add ${chosen} months, $${chosen * PRICE_PER_MONTH}`;
+		const total = part("total");
+		total.hidden = chosen === null;
+		if (chosen !== null) total.textContent = `${chosen} months, $${chosen * PRICE_PER_MONTH}`;
 	}
 	months.addEventListener("input", paintMonths);
 	for (const shortcut of document.querySelectorAll<HTMLButtonElement>("[data-months]")) {
@@ -266,24 +283,68 @@ export function start(
 		});
 	}
 
-	buy.addEventListener("click", async () => {
+	/** The location step: a province only where one is needed, and Continue once it's answered. */
+	function paintWhere() {
+		const provinces = PROVINCES[countrySelect.value];
+		provinceField.hidden = !provinces;
+		const answered = !!countrySelect.value && (!provinces || !!provinceSelect.value);
+		whereContinue.disabled = busy || chosenMonths(months.value) === null || !answered;
+	}
+	countrySelect.addEventListener("change", () => {
+		provinceSelect.length = 1;
+		for (const { code, name } of PROVINCES[countrySelect.value] ?? [])
+			provinceSelect.add(new Option(name, code));
+		paintWhere();
+	});
+	provinceSelect.addEventListener("change", paintWhere);
+	part("where-cancel").addEventListener("click", () => {
+		coin = null;
+		where.hidden = true;
+	});
+	whereContinue.addEventListener("click", () => {
+		if (!coin) return;
+		const province = PROVINCES[countrySelect.value] ? provinceSelect.value : undefined;
+		void checkout(coin, whereContinue, { country: countrySelect.value, province });
+	});
+
+	/** Checkout by card or crypto: the processor's page, with the paid time remembered for the paid
+	 * page to tell when the new time lands. */
+	async function checkout(method: PaymentMethod, button: HTMLButtonElement, at?: Where) {
 		const chosen = chosenMonths(months.value);
 		if (busy || !number || chosen === null) return;
 		busy = true;
-		working(buy, true);
+		working(button, true);
+		paintMonths();
 		showError(null);
 		try {
-			const url = await api.checkout(number, chosen, await solveAltcha(await api.challenge()));
+			const url = await api.checkout(
+				number,
+				chosen,
+				await solveAltcha(await api.challenge()),
+				method,
+				at,
+			);
 			if (!url.startsWith("https://")) throw new AccountError("unexpected");
 			sessionStorage.setItem(PAID_THROUGH_KEY, String(paidThrough));
 			location.assign(url);
 		} catch (err) {
 			showError(messageFor(err));
 			busy = false;
-			working(buy, false);
+			working(button, false);
 			paintMonths();
 		}
-	});
+	}
+	for (const button of payButtons) {
+		const method = button.dataset.pay as PaymentMethod;
+		button.addEventListener("click", () => {
+			if (method === "card") return void checkout(method, button);
+			coin = method;
+			whereContinue.textContent = `Continue to ${button.textContent?.trim()}`;
+			where.hidden = false;
+			paintWhere();
+			countrySelect.focus();
+		});
+	}
 
 	part("show").addEventListener("click", () => {
 		shown = !shown;
@@ -327,7 +388,8 @@ export function start(
 	window.addEventListener("pageshow", (event) => {
 		if (!event.persisted) return;
 		busy = false;
-		working(buy, false);
+		for (const button of payButtons) working(button, false);
+		working(whereContinue, false);
 		paintMonths();
 		working(create, false);
 		checking.hidden = true;

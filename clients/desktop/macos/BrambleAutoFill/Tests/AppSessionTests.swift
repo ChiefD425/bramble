@@ -83,6 +83,18 @@ struct AppSessionTests {
 		check(AppSession.ask(["op": "list"], at: path) == nil, "an impostor gets no request and gives no answer")
 		check(asked() == nil, "the impostor never heard the request")
 
+		// An unlock here goes to the app, which says whether it took the key.
+		asked = serveOnce(at: path, reply: #"{"ok":true}"#)
+		check(AppSession.unlock(vaultId: "v1", vek: "K", at: path, requirement: "always"), "the app took the key")
+		let handed = asked().flatMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: String] }
+		check(handed == ["op": "unlock", "vaultId": "v1", "vek": "K"], "the key goes with its vault")
+		asked = serveOnce(at: path, reply: #"{"ok":false}"#)
+		check(!AppSession.unlock(vaultId: "v1", vek: "K", at: path, requirement: "always"), "a refusal")
+		_ = asked()
+		asked = serveOnce(at: path, reply: #"{"ok":true}"#)
+		check(!AppSession.unlock(vaultId: "v1", vek: "K", at: path), "the key never goes to an impostor")
+		check(asked() == nil, "the impostor never saw the key")
+
 		// No app running.
 		unlink(path)
 		check(AppSession.ask(["op": "list"], at: path, requirement: "always") == nil, "no socket, no answer")

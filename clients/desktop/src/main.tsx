@@ -13,6 +13,7 @@ import { desktopFiles, startOpenedCopySweeps } from "./adapters/files";
 import { desktopHttp } from "./adapters/http";
 import { desktopPairing } from "./adapters/pairing";
 import { desktopShell, registerOpenSetup, resolveAppVersion } from "./adapters/shell";
+import { desktopSshAgent } from "./adapters/ssh-agent";
 import { desktopStorage } from "./adapters/storage";
 import { onVaultStateChange } from "./adapters/vault-session";
 import { startAutoLock } from "./auto-lock";
@@ -40,6 +41,7 @@ const platform: Platform = {
 	shell: desktopShell,
 	clipboard: desktopClipboard,
 	pairing: desktopPairing,
+	sshAgent: desktopSshAgent,
 	backupCreds: desktopBackupCreds,
 	http: desktopHttp,
 	files: desktopFiles,

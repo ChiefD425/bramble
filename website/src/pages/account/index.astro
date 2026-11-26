@@ -1,6 +1,9 @@
 ---
 import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
+import CreditCard from "@tabler/icons/outline/credit-card.svg";
+import CurrencyBitcoin from "@tabler/icons/outline/currency-bitcoin.svg";
+import CurrencyMonero from "@tabler/icons/outline/currency-monero.svg";
 import { Button } from "@/components/starwind/button";
 import Layout from "@/layouts/Layout.astro";
 ---
@@ -109,10 +112,48 @@ import Layout from "@/layouts/Layout.astro";
 					<Button data-months="36" type="button" variant="outline">36</Button>
 				</div>
 				<p data-account="months-error" hidden class="text-sm text-error">Choose 6 to 36 months.</p>
-				<Button data-account="buy" type="button">Add 6 months, $12</Button>
+				<p id="add-time-total" data-account="total" class="text-lg font-medium">6 months, $12</p>
+				<div class="flex flex-wrap gap-2">
+					<Button data-pay="card" type="button" variant="outline" aria-describedby="add-time-total">
+						<CreditCard aria-hidden="true" />Credit/Debit card
+					</Button>
+					<Button data-pay="bitcoin" type="button" variant="outline" aria-describedby="add-time-total">
+						<CurrencyBitcoin aria-hidden="true" />Bitcoin
+					</Button>
+					<Button data-pay="monero" type="button" variant="outline" aria-describedby="add-time-total">
+						<CurrencyMonero aria-hidden="true" />Monero
+					</Button>
+				</div>
+				<div data-account="where" hidden class="space-y-3 rounded-md border p-4">
+					<p class="text-sm">Where do you live? It decides the tax, if any.</p>
+					<div class="space-y-1">
+						<label for="country" class="block text-sm font-medium">Country</label>
+						<select
+							id="country"
+							data-account="country"
+							class="w-full rounded-md border bg-background px-3 py-2"
+						>
+							<option value="">Choose your country</option>
+						</select>
+					</div>
+					<div data-account="province-field" hidden class="space-y-1">
+						<label for="province" class="block text-sm font-medium">Province or territory</label>
+						<select
+							id="province"
+							data-account="province"
+							class="w-full rounded-md border bg-background px-3 py-2"
+						>
+							<option value="">Choose your province or territory</option>
+						</select>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						<Button data-account="where-continue" type="button" disabled>Continue</Button>
+						<Button data-account="where-cancel" type="button" variant="ghost">Cancel</Button>
+					</div>
+				</div>
 				<p class="text-sm text-muted-foreground">
-					$2 a month. Prices in US dollars. Tax is added at checkout where it applies. Refunds within 14 days of a
-					purchase, less the days since you bought it, none after.
+					$2 a month, in US dollars, plus tax where it applies. A card purchase can be refunded within 14
+					days, less the days since you bought it. A Bitcoin or Monero payment can't be refunded.
 				</p>
 			</div>
 

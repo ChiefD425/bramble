@@ -1,0 +1,105 @@
+---
+title: Use your SSH keys in the terminal
+description: Let ssh and git sign with the SSH keys in your vaults, offer each key only to its hosts, and say when Bramble asks.
+section: desktop
+kind: guide
+order: 5
+keywords:
+  - SSH agent
+  - ssh-agent
+  - ssh-add
+  - IdentityAgent
+  - SSH_AUTH_SOCK
+  - IdentitiesOnly
+  - ~/.ssh/config
+  - git commit signing
+  - gpg.format ssh
+  - sign commits
+  - ForwardAgent
+  - ssh -A
+  - agent forwarding
+  - Too many authentication failures
+  - Permission denied (publickey)
+  - Hosts
+  - Use with the SSH agent
+  - Ask before each use
+  - Use Bramble for every server
+  - Add host
+  - YubiKey agent
+  - Add it for me
+updatedDate: 2026-11-25
+since: "b33f6e32"
+sinceOn: "desktop"
+---
+
+The desktop app can act as an SSH agent: `ssh`, `git`, `scp`, `rsync` and git commit signing use the SSH keys in your vaults, and the private keys never leave Bramble. While a key's vault is unlocked, signing asks nothing; when Bramble is locked, it comes forward on that vault's unlock screen.
+
+## Turn it on
+
+1. In the desktop app, open **Settings** > **General** and turn on **Use your SSH keys in the terminal**.
+2. Choose **Add it for me**, or copy the line it shows to the very top of `~/.ssh/config`:
+
+   ```
+   Include ~/.ssh/bramble/config
+   ```
+
+The row reads **Added to ~/.ssh/config** once the line is in place. If it says **Move this line to the top of ~/.ssh/config**, the line is below a `Host` or `Match` block, where it only applies to that block. **Add it for me** isn't offered when `~/.ssh/config` is a link a dotfiles tool manages; add the line there yourself.
+
+Bramble has to be running for `ssh` to reach it, so let it start at login.
+
+## Tell a key where it's used
+
+Open an SSH key in your vault, choose **Edit**, and under **Hosts** choose **Add host** for each server: what you type after `ssh`, such as `github.com`, `10.0.0.5`, `*.example.com`, or an alias from your own config. `ssh` then offers that host this key only, from the first connection.
+
+A host no key names keeps your own SSH setup, such as another agent or a key file, so turning Bramble on changes nothing for it.
+
+## Use Bramble for every server
+
+To have Bramble offer its keys to servers not named on any key, add the line Settings shows under **Use Bramble for every server** to your shell profile, such as `~/.zshrc`, and open a new terminal. It's the same line git commit signing needs (below). Those servers are then offered every key, from every vault, the open vault's first. Many servers stop after six tries with **Too many authentication failures**; naming the host on the right key fixes it.
+
+Turn off **Use with the SSH agent** on a key that should never sign from the terminal, such as a certificate authority key.
+
+## When Bramble asks
+
+- **Unlocked:** nothing is asked, for as long as your [auto-lock](/docs/auto-lock) time. Signing doesn't keep the vault open longer.
+- **Locked:** Bramble comes forward on the unlock screen of the vault holding the key, with a line such as "ssh wants to sign a git commit with Deploy". With **Unlock on open** on, Touch ID or Windows Hello comes up by itself. Unlock and the terminal carries on, while Bramble goes back to where it was. **Cancel**, closing the window, or two minutes without an unlock makes `ssh` move on, usually to **Permission denied (publickey)**.
+- **Another vault is open:** a card offers to open the key's vault. Opening it locks the vault you have open.
+- **Ask before each use:** turn this on in Settings to be asked every time a key is used, even while unlocked.
+
+## Connecting onward with ssh -A
+
+With `ssh -A` or `ForwardAgent yes`, the server you log in to can use your keys. Bramble asks once per server, until it locks: **Let bastion use your SSH keys?** Choose **Deny** unless you meant to forward. OpenSSH before 8.9 doesn't say a request was forwarded, so Bramble treats those requests as local.
+
+## Sign git commits
+
+Git signs through `ssh-keygen`, which finds an agent only through `SSH_AUTH_SOCK`, never through `~/.ssh/config`. Add the line Settings shows under **Use Bramble for every server** to your shell profile. On a Mac it is:
+
+```sh
+export SSH_AUTH_SOCK='/Users/you/Library/Application Support/app.bramble.desktop/ssh-agent.sock'
+```
+
+On Linux the path is `~/.local/share/app.bramble.desktop/ssh-agent.sock`. Then tell git which key to sign with:
+
+```sh
+git config --global gpg.format ssh
+git config --global user.signingkey "key::ssh-ed25519 AAAA..."
+git config --global commit.gpgsign true
+```
+
+After `key::` goes the key's public key, as its page in Bramble shows it.
+
+## Keys Bramble can't use
+
+Settings lists any key the agent can't use, and why. Keys saved in the old encrypted PEM format need re-saving in OpenSSH format: `ssh-keygen -p -f <file>`. Keys whose private half lives on a hardware security key can't be used through Bramble.
+
+## Windows
+
+Settings shows the line for your `.ssh\config`. It doesn't offer **Use Bramble for every server** on Windows yet, so Bramble's keys reach only the hosts named on them, and git commit signing doesn't use Bramble. Git for Windows comes with its own `ssh`, which can't reach Bramble; point Git at Windows' own:
+
+```sh
+git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe
+```
+
+## Turn it off, or uninstall
+
+Turning **Use your SSH keys in the terminal** off deletes the files Bramble wrote in `~/.ssh/bramble`; anything of yours there stays. The `Include` line can stay: with nothing to include, `ssh` carries on without Bramble. Turn the agent off before you uninstall the app, so those files go with it.

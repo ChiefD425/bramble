@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sshFingerprint } from "./ssh";
+import { normalizeHost, sshFingerprint } from "./ssh";
 
 describe("sshFingerprint", () => {
 	// Pinned test vector: generated with `ssh-keygen -t ed25519 -N ""`,
@@ -38,5 +38,23 @@ describe("sshFingerprint", () => {
 
 	it("returns undefined for malformed base64 rather than throwing", async () => {
 		expect(await sshFingerprint("ssh-ed25519 not-valid-base64!")).toBeUndefined();
+	});
+});
+
+describe("normalizeHost", () => {
+	it("keeps hosts, addresses, patterns and aliases", () => {
+		for (const h of ["github.com", "10.0.0.5", "*.example.com", "fe80::1%en0", "prod", "a-b_c?"]) {
+			expect(normalizeHost(h)).toBe(h);
+		}
+	});
+
+	it("trims and strips a user@ prefix", () => {
+		expect(normalizeHost("  git@github.com ")).toBe("github.com");
+	});
+
+	it("refuses anything that could end the ssh config line", () => {
+		for (const h of ["", " ", "a b", 'a"b', "a#b", "a=b", "a\nb", "a".repeat(254)]) {
+			expect(normalizeHost(h)).toBeNull();
+		}
 	});
 });

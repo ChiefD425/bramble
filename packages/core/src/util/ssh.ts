@@ -39,3 +39,18 @@ export async function sshFingerprint(publicKey: string): Promise<string | undefi
 	for (let i = 0; i < digest.length; i++) bin += String.fromCharCode(digest[i] ?? 0);
 	return `SHA256:${btoa(bin).replace(/=+$/, "")}`;
 }
+
+/** The longest DNS name; a host past it is not one. */
+const MAX_HOST = 253;
+
+/**
+ * What the SSH agent's ssh config may say after `Host`: a name, address, pattern or alias, with
+ * any `user@` dropped. `null` for anything else, including characters that could end the config
+ * line, so a host from sync or an import can never add a directive. The desktop checks again.
+ */
+export function normalizeHost(input: string): string | null {
+	const trimmed = input.trim();
+	const host = trimmed.slice(trimmed.lastIndexOf("@") + 1);
+	if (host.length === 0 || host.length > MAX_HOST) return null;
+	return /^[A-Za-z0-9.\-_*?:%]+$/.test(host) ? host : null;
+}

@@ -82,7 +82,7 @@ Any of these is a failure even if everything else works:
 | Hosted on a Cloudflare Worker with D1 and Drizzle | owner |
 | Mullvad-style random account number as the only customer identifier | owner |
 | Cards through Stripe directly, not a merchant of record; tax handled with an accountant | owner |
-| Crypto payments accepted: Bitcoin, Lightning, Monero | owner |
+| Crypto payments accepted: Bitcoin on-chain and Monero; no Lightning (2026-11-24) | owner |
 | BTCPay Server as the crypto processor | design call |
 | No mailed cash or reseller codes for now | owner |
 | Payment-to-account link kept 120 days | owner |
@@ -714,8 +714,10 @@ deleted early because of payment. The app warns before `paid_through` arrives.
 
 ### Crypto: BTCPay Server
 
-- **Self-hosted BTCPay Server.** No KYC, no third party, Bitcoin on-chain and Lightning, and
-  Monero through a plugin. Lightning matters because on-chain fees swamp a few-dollar payment.
+- **Self-hosted BTCPay Server.** No KYC, no third party, Bitcoin on-chain, and Monero through a
+  plugin. No Lightning (owner, 2026-11-24): a node needs inbound channel capacity bought and
+  looked after, and the smallest purchase is $12, so the on-chain fee, which the buyer pays,
+  stays a small share of it.
 - **It cannot run on Cloudflare.** It needs a VM, and Monero needs a full node (one source puts
   it at about 180 GB). The Monero plugin's current state is unconfirmed; check it before
   committing.
@@ -723,7 +725,20 @@ deleted early because of payment. The app warns before `paid_through` arrives.
   the webhook adds the time.
 - **No crypto refunds** in v1 (design call). A refund would mean collecting a return address, a
   new data point.
-- **Tax** for a payer whose country is unknown is an open question for the accountant.
+- **As built** (billing's plan 6). The account page offers **Credit/Debit card**, **Bitcoin** and
+  **Monero** as three buttons of equal weight. A coin first asks where the buyer lives (a country,
+  and a province in Canada; nothing is guessed from the connection), then asks billing for a BTCPay
+  invoice of the months at $2 plus the tax Stripe Tax calculates for that place (none in the United
+  States, where there's no registration), payable in that coin only, and opens it. The invoice
+  carries only the reference, the coin and the months, and returns the buyer to the paid page,
+  which says the time lands once the payment confirms. BTCPay's signed `InvoiceSettled` webhook
+  makes billing read the invoice back, report a taxed sale to Stripe Tax, and record it as a card's
+  is recorded, never refundable, with the declared country, its tax and the coin in the ledger; a
+  daily catch-up records any settled invoice whose webhook never landed. BTCPay runs on mainnet
+  only, so the sandbox sells through a second store on the same server and its tests settle
+  invoices by hand (Mark as settled).
+- **Tax** (owner, 2026-11-25): on top of the price as for cards, from the country (and Canadian
+  province) the buyer picks, calculated by Stripe Tax; no US tax without a state registration.
 
 ### Buying from the apps
 

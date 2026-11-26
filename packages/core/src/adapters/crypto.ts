@@ -189,6 +189,9 @@ export interface CryptoAdapter {
 	// Fires on a session lock from outside this UI context (background auto-lock).
 	// Does NOT fire on unlock/resume. Returns an unsubscribe function.
 	onExternalLock(callback: () => void): () => void;
+	// Fires when the shell loaded a vault's key from outside this UI (the macOS AutoFill extension
+	// unlocked it), with that vault's id. Absent where nothing else can unlock.
+	onExternalUnlock?(callback: (vaultId: string) => void): () => void;
 	// Fires on vault-content changes from outside this UI context (background
 	// corner-prompt save). Returns an unsubscribe function.
 	onExternalChange(callback: () => void): () => void;

@@ -109,6 +109,11 @@ msgstr "{0} (Ihre Domain)"
 msgid "{0} more look like entries you already have (the same site, username and password, or the same card number), so they are held back."
 msgstr "{0} weitere ähneln Einträgen, die Sie bereits haben (dieselbe Website, derselbe Benutzername und dasselbe Passwort oder dieselbe Kartennummer), daher werden sie zurückgestellt."
 
+#. placeholder {0}: current.caller
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
+#~ msgstr "{0} möchte {keyName} aus {vaultName} verwenden. {openVault} wird gesperrt."
+
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "{affected, plural, one {Tag # entry} other {Tag # entries}}"
 msgstr "{affected, plural, one {# Eintrag taggen} other {# Einträge taggen}}"
@@ -140,6 +145,34 @@ msgstr "{browserName} synchronisiert auch mit {others}. Beim Zusammenführen wir
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 #~ msgid "{browserName} stays, as \"{browserName} (before linking)\", until you delete it."
 #~ msgstr "{browserName} bleibt als „{browserName} (vor dem Verknüpfen)“ erhalten, bis Sie ihn löschen."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign a git commit with {keyName}"
+#~ msgstr "{caller} möchte einen Git-Commit mit {keyName} signieren."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a git commit with <0>{keyName}</0>"
+msgstr "{caller} möchte einen Git-Commit mit <0>{keyName}</0> signieren"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign a message with {keyName}"
+#~ msgstr "{caller} möchte eine Nachricht mit {keyName} signieren."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a message with <0>{keyName}</0>"
+msgstr "{caller} möchte eine Nachricht mit <0>{keyName}</0> signieren"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign in to a server with {keyName}"
+#~ msgstr "{caller} möchte sich mit {keyName} bei einem Server anmelden."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign in to a server with <0>{keyName}</0>"
+msgstr "{caller} möchte sich mit <0>{keyName}</0> an einem Server anmelden"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to use <0>{keyName}</0> from <1>{vaultName}</1>. <2>{openVault}</2> will lock."
+msgstr "{caller} möchte <0>{keyName}</0> aus <1>{vaultName}</1> verwenden. <2>{openVault}</2> wird gesperrt."
 
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "{conflicted, plural, one {# entry has a sync conflict. Only the version shown came across.} other {# entries have a sync conflict. Only the version shown came across.}}"
@@ -270,6 +303,14 @@ msgstr "{remaining}s verbleiben"
 msgid "{rp} wants to use your passkey. Confirm it's you to continue."
 msgstr "{rp} möchte Ihren Passkey verwenden. Bestätigen Sie Ihre Identität, um fortzufahren."
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{server} wants to use {keyName}"
+#~ msgstr "{server} möchte {keyName} verwenden."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{server} wants to use <0>{keyName}</0>"
+msgstr "{server} möchte <0>{keyName}</0> verwenden"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{skippedFiles, plural, one {# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app.} other {# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app.}}"
 msgstr "{skippedFiles, plural, one {# Anhang in dieser Datei wird ausgelassen: Dieser Browser kann Dateien erst hinzufügen, wenn er mit der Bramble Desktop-App verknüpft ist.} other {# Anhänge in dieser Datei werden ausgelassen: Dieser Browser kann Dateien erst hinzufügen, wenn er mit der Bramble Desktop-App verknüpft ist.}}"
@@ -293,6 +334,10 @@ msgstr "{uncarried, plural, one {# Datei wurde nicht kopiert. Sie befindet sich 
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "{used} of {quota} used"
 msgstr "{used} von {quota} verwendet"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{who} wants to use your SSH keys"
+msgstr "{who} möchte Ihre SSH-Schlüssel verwenden."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 #~ msgid "{withNew, plural, one {# attachment goes with them.} other {# attachments go with them.}}"
@@ -384,6 +429,10 @@ msgstr "Es wurde ein QR-Code gefunden, aber es ist kein Einrichtungscode für ei
 msgid "A security code is 3 or 4 digits."
 msgstr "Ein Sicherheitscode besteht aus 3 oder 4 Ziffern."
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "A server you're connected to with ssh -A wants to see and use your keys until Bramble locks."
+msgstr "Ein Server, mit dem Sie über ssh -A verbunden sind, möchte Ihre Schlüssel sehen und verwenden, bis Bramble gesperrt wird."
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "A token is at least 16 letters, digits, dashes or underscores"
 msgstr "Ein Token besteht aus mindestens 16 Buchstaben, Ziffern, Bindestrichen oder Unterstrichen"
@@ -472,6 +521,14 @@ msgstr "Benutzerdefinierte Felder hinzufügen, um zusätzliche Informationen wie
 msgid "Add field"
 msgstr "Feld hinzufügen"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add host"
+msgstr "Host hinzufügen"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add it for me"
+msgstr "Für mich hinzufügen"
+
 #: packages/core/src/app/components/AddDropdown.tsx
 msgid "Add New"
 msgstr "Neu hinzufügen"
@@ -489,9 +546,17 @@ msgstr "2FA-Code zu {0} hinzufügen"
 msgid "Add the desktop's vault"
 msgstr "Desktop-Tresor hinzufügen"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add the servers ssh uses this key for, like github.com or 10.0.0.5."
+msgstr "Fügen Sie die Server hinzu, für die SSH diesen Schlüssel verwendet, z. B. github.com oder 10.0.0.5."
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
 msgstr "Fügen Sie die Websites hinzu, die diese Anmeldung abdeckt. Lassen Sie das Feld leer, wenn es sich um eine Anmeldeinformation handelt, die nicht an eine Website gebunden ist."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Add this line to the top of ~/.ssh/config"
+msgstr "Diese Zeile am Anfang von ~/.ssh/config einfügen"
 
 #: packages/core/src/app/screens/Settings/components/MailboxAccount.tsx
 msgid "Add time"
@@ -517,6 +582,10 @@ msgstr "Hinzugefügt am {added}"
 #: packages/core/src/app/entry-modes/tags.tsx
 msgid "Added tag {added}. {0} tags."
 msgstr "Tag {added} hinzugefügt. {0} Tags."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Added to ~/.ssh/config"
+msgstr "Zu ~/.ssh/config hinzugefügt"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Added when you create a passkey on a site with Bramble. Remove to delete."
@@ -578,6 +647,10 @@ msgstr "Alle"
 msgid "all your devices"
 msgstr "Alle Ihre Geräte"
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow"
+msgstr "Erlauben"
+
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Allow again"
 msgstr "Erneut erlauben"
@@ -590,6 +663,10 @@ msgstr "Erlauben und fortfahren"
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "Passcode-Fallback erlauben"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Allow this use of {keyName}?"
+msgstr "Diese Verwendung von {keyName} erlauben?"
 
 #. placeholder {0}: entries.length
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
@@ -677,6 +754,10 @@ msgstr "Archivierte Elemente"
 #: packages/core/src/app/bulk-actions/archive.tsx
 msgid "Archiving…"
 msgstr "Archivieren…"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Ask before each use"
+msgstr "Vor jeder Verwendung fragen"
 
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Ask for {brand} as soon as the unlock screen appears, with no tap."
@@ -854,6 +935,18 @@ msgstr "Buch"
 msgid "Bramble {version} is available. Updating downloads it and restarts the app. Your vault is not touched."
 msgstr "Bramble {version} ist verfügbar. Die Aktualisierung lädt sie herunter und startet die App neu. Ihr Tresor bleibt unberührt."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble asks every time a key is used, even while unlocked."
+msgstr "Bramble fragt bei jeder Verwendung eines Schlüssels, auch wenn die App entsperrt ist."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble can't read it"
+msgstr "Bramble kann es nicht lesen"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't change ~/.ssh/config. Add the line yourself."
+msgstr "Bramble konnte ~/.ssh/config nicht ändern. Fügen Sie die Zeile selbst hinzu."
+
 #: packages/core/src/hooks/useCryptoErrorMessage.tsx
 #~ msgid "Bramble couldn't open this vault right now. Nothing in it was changed. Please try again."
 #~ msgstr "Bramble konnte diesen Tresor gerade nicht öffnen. Es wurde nichts darin geändert. Bitte versuchen Sie es erneut."
@@ -870,6 +963,10 @@ msgstr "Bramble konnte diesen Tresor gerade nicht öffnen. Bitte melden Sie dies
 msgid "Bramble couldn't safely update this device's key storage, so the vault stayed locked. Try again."
 msgstr "Bramble konnte den Schlüsselspeicher dieses Geräts nicht sicher aktualisieren, daher blieb der Tresor gesperrt. Versuchen Sie es erneut."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble couldn't write its files in ~/.ssh/bramble."
+msgstr "Bramble konnte seine Dateien nicht in ~/.ssh/bramble schreiben."
+
 #: packages/core/src/hooks/useVault.tsx
 #~ msgid "Bramble Desktop didn't answer. Open it and try again, or use your master password."
 #~ msgstr "Bramble Desktop hat nicht geantwortet. Öffnen Sie es und versuchen Sie es erneut, oder verwenden Sie Ihr Master-Passwort."
@@ -877,6 +974,10 @@ msgstr "Bramble konnte den Schlüsselspeicher dieses Geräts nicht sicher aktual
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Bramble Desktop holds your Touch ID key, so the master password stays on."
 #~ msgstr "Bramble Desktop speichert Ihren Touch ID-Schlüssel, damit das Master-Passwort aktiviert bleibt."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Bramble doesn't support its size or settings"
+msgstr "Bramble unterstützt weder seine Größe noch seine Einstellungen"
 
 #: packages/core/src/app/ErrorBoundary.tsx
 msgid "Bramble hit an unexpected error. Your vault is safe — it stays encrypted on this device. Try reloading; if it keeps happening, reopen the app."
@@ -920,6 +1021,10 @@ msgstr "Bramble benötigt diese Berechtigung, um mit der Desktop-App zu kommuniz
 #: packages/core/src/app/screens/VaultSetup/components/DesktopLinkCard.tsx
 msgid "Bramble needs your permission to talk to the desktop app on this computer. Your browser will ask you to confirm."
 msgstr "Bramble benötigt Ihre Berechtigung, um mit der Desktop-App auf diesem Computer zu kommunizieren. Ihr Browser wird Sie um Bestätigung bitten."
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+#~ msgid "Bramble offers this key only to these hosts."
+#~ msgstr "Bramble bietet diesen Schlüssel nur diesen Hosts an."
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
@@ -982,7 +1087,14 @@ msgstr "Postfach nicht erreichbar; neuer Versuch in Kürze"
 msgid "Can't save this code"
 msgstr "Dieser Code kann nicht gespeichert werden"
 
+#. placeholder {0}: k.name
+#. placeholder {1}: problem[k.reason]
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Can't use {0}: {1}"
+msgstr "Kann {0} nicht verwenden: {1}"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
+#: packages/core/src/app/components/SshAgentRequests.tsx
 #: packages/core/src/app/components/ui/confirm-dialog.tsx
 #: packages/core/src/app/components/ui/file-password-dialog.tsx
 #: packages/core/src/app/components/ui/inline-confirm.tsx
@@ -1419,6 +1531,14 @@ msgstr "Protokoll kopieren"
 msgid "Copy previous password"
 msgstr "Vorheriges Passwort kopieren"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy shell line"
+msgstr "Shell-Zeile kopieren"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy SSH config line"
+msgstr "SSH-Konfigurationszeile kopieren"
+
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "Copy them anyway"
 msgstr "Trotzdem kopieren"
@@ -1670,6 +1790,10 @@ msgstr "Tresor löschen"
 msgid "Deleting…"
 msgstr "Lösche..."
 
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Deny"
+msgstr "Verweigern"
+
 #: packages/core/src/app/screens/VaultHome/SelectionBar.tsx
 msgid "Deselect all"
 msgstr "Alle abwählen"
@@ -1802,6 +1926,10 @@ msgstr "Herunterladen…"
 #: packages/core/src/app/screens/Settings/components/UpdatesSection.tsx
 msgid "Downloads and restarts Bramble. Your vault is untouched."
 msgstr "Bramble wird heruntergeladen und neu gestartet. Ihr Tresor bleibt unberührt."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "DSA keys aren't supported"
+msgstr "DSA-Schlüssel werden nicht unterstützt"
 
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 #~ msgid "DuckDuckGo has no API key page. Open the Autofill tab, then your browser's developer tools, click \"Generate Private Duck Address\", and copy the token after \"authorization: Bearer\" in the Network tab."
@@ -2262,6 +2390,18 @@ msgstr "Enthält einen Passkey"
 msgid "Horse"
 msgstr "Pferd"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Host"
+msgstr "Host"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Hosts"
+msgstr "Hosts"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+#~ msgid "Hosts (optional)"
+#~ msgstr "Hosts (optional)"
+
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
 msgstr "Sanduhr"
@@ -2409,6 +2549,10 @@ msgstr "Enthält einen Passkey, den die angezeigte Version nicht enthält."
 #~ msgid "It's free and open source, and a review is how most people find it. If something is wrong instead, the issue tracker is the place that gets it fixed."
 #~ msgstr "Es ist kostenlos und Open Source, und die meisten Menschen finden es über Bewertungen. Wenn stattdessen etwas nicht stimmt, ist der Issue-Tracker der Ort, an dem es behoben wird."
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "it's in an old encrypted format"
+msgstr "es ist in einem alten verschlüsselten Format"
+
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "item"
 msgstr "Element"
@@ -2437,6 +2581,10 @@ msgstr "Die zugehörigen Zugangsdaten wurden in einem anderen Tresor eingegeben,
 #: packages/core/src/app/screens/EntryDetail/ConflictBanner.tsx
 msgid "Its password is different from the version shown."
 msgstr "Das Passwort unterscheidet sich von dem der angezeigten Version."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "its private key is on a security key"
+msgstr "der private Schlüssel befindet sich auf einem Sicherheitsschlüssel"
 
 #: packages/core/src/app/screens/VaultSetup/components/ModeTabs.tsx
 #: packages/core/src/app/screens/VaultSetup/components/SetupHeader.tsx
@@ -2583,9 +2731,19 @@ msgstr "Lassen Sie den Wert leer, um die Standard-Domain Ihres Kontos zu verwend
 msgid "Leave unset to use your provider account's own default."
 msgstr "Lassen Sie den Wert leer, um den Standardwert Ihres Anbieterkontos zu verwenden."
 
+#. placeholder {0}: l.host
+#. placeholder {1}: l.name
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Left out {0} on {1}: not a host name"
+msgstr "{0} auf {1} ausgelassen: kein Hostname"
+
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Length"
 msgstr "Länge"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Let {server} use your SSH keys?"
+msgstr "Soll {server} Ihre SSH-Schlüssel verwenden dürfen?"
 
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Light"
@@ -2773,6 +2931,10 @@ msgstr "Mond"
 msgid "More options"
 msgstr "Weitere Optionen"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Move this line to the top of ~/.ssh/config"
+msgstr "Diese Zeile an den Anfang von ~/.ssh/config verschieben"
+
 #: packages/core/src/app/screens/Settings/components/TwoVaultsPrompt.tsx
 msgid "Moves {browserName}'s entries and files into {desktopName}. Exact duplicates are skipped; near-duplicates are held for you to review."
 msgstr "Verschiebt die Einträge und Dateien von {browserName} in {desktopName}. Exakte Duplikate werden übersprungen; Fast-Duplikate werden für Sie zur Überprüfung zurückgehalten."
@@ -2950,6 +3112,10 @@ msgstr "Synchronisierung nicht möglich: Dieses Gerät kann seinen Synchronisati
 msgid "Not syncing: your other devices no longer recognize this one. Disconnect, then join again with a code from another device."
 msgstr "Synchronisierung nicht möglich: Ihre anderen Geräte erkennen dieses Gerät nicht mehr. Trennen Sie die Verbindung und treten Sie dann mit einem Code von einem anderen Gerät erneut bei."
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Not used by the SSH agent"
+msgstr "Wird vom SSH-Agenten nicht verwendet"
+
 #: packages/core/src/app/screens/Settings/components/MailboxSection.tsx
 msgid "Not using the mailbox"
 msgstr "Postfach wird nicht verwendet"
@@ -3006,6 +3172,10 @@ msgstr "Aus"
 msgid "Off on this device"
 msgstr "Auf diesem Gerät deaktiviert"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Off: Bramble never offers or signs with this key."
+msgstr "Aus: Bramble bietet diesen Schlüssel nie an und signiert nie mit ihm."
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Off. You unlock by tapping a key."
 msgstr "Aus. Sie entsperren durch Antippen eines Schlüssels."
@@ -3013,6 +3183,10 @@ msgstr "Aus. Sie entsperren durch Antippen eines Schlüssels."
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 #~ msgid "Off. You unlock with a security key."
 #~ msgstr "Ausgeschaltet. Sie entsperren mit einem Sicherheitsschlüssel."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Offer keys only to their hosts"
+#~ msgstr "Schlüssel nur ihren Hosts anbieten"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3058,6 +3232,14 @@ msgstr "Öffnen"
 #: packages/core/src/app/components/EntryRow.tsx
 msgid "Open {name}"
 msgstr "Öffnen {name}"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}"
+msgstr "{vaultName} öffnen"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "Open {vaultName}?"
+msgstr "{vaultName} öffnen?"
 
 #. placeholder {0}: picked.name
 #: packages/core/src/app/screens/Restore/RestoreShell.tsx
@@ -3436,6 +3618,10 @@ msgstr "Bramble bewerten"
 msgid "Re-enter the password"
 msgstr "Geben Sie das Passwort erneut ein"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Re-save a key in OpenSSH format with ssh-keygen -p -f <file>."
+msgstr "Schlüssel mit ssh-keygen -p -f <file> im OpenSSH-Format neu speichern."
+
 #: packages/core/src/app/components/WhatsNewCard.tsx
 msgid "Read more"
 msgstr "Weiterlesen"
@@ -3536,6 +3722,10 @@ msgstr "Anhang entfernen"
 #: packages/core/src/app/entry-modes/custom-fields.tsx
 msgid "Remove field"
 msgstr "Feld entfernen"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Remove host"
+msgstr "Host entfernen"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Remove passkey"
@@ -3932,6 +4122,18 @@ msgstr "Server-URL"
 #~ msgid "Server URL (self-hosted only)"
 #~ msgstr "Server-URL (nur selbst gehostet)"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers no key names, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+#~ msgstr "Server ohne Schlüsselnamen und das Signieren von Git-Commits verwenden Ihren üblichen SSH-Agenten. Um Bramble auch dafür zu verwenden, fügen Sie diese Zeile zu Ihrem Shell-Profil hinzu, z. B. ~/.zshrc."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+msgstr "Für Server, die nicht auf einem Schlüssel aufgeführt sind, und für das Signieren von Git-Commits verwenden Sie Ihren üblichen SSH-Agenten. Um Bramble auch dafür zu verwenden, fügen Sie diese Zeile zu Ihrem Shell-Profil hinzu, z. B. ~/.zshrc."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers not named on any key see none of your keys."
+#~ msgstr "Server, die auf keinem Schlüssel genannt sind, sehen keinen Ihrer Schlüssel."
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
 msgstr "Durch eine Richtlinie oder eine andere Erweiterung festgelegt"
@@ -4110,6 +4312,14 @@ msgstr "Leerzeichen"
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Spanner"
 msgstr "Schraubenschlüssel"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "SSH agent"
+msgstr "SSH-Agent"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "ssh and git sign with the keys in your vaults. Their public keys, names and hosts are stored outside your vaults while this is on."
+msgstr "ssh und git signieren mit den Schlüsseln in Ihren Tresoren. Ihre öffentlichen Schlüssel, Namen und Hosts werden außerhalb Ihrer Tresore gespeichert, solange diese Funktion aktiviert ist."
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "SSH key"
@@ -4467,9 +4677,21 @@ msgstr "Die einzigen neuen Elemente in dieser Datei sind Anhänge, die dieser Br
 msgid "The other version"
 msgstr "Die andere Version"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "the saved passphrase doesn't open it"
+msgstr "die gespeicherte Passphrase öffnet ihn nicht"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The setting didn't change. Try again."
+msgstr "Die Einstellung hat sich nicht geändert. Versuchen Sie es erneut."
+
 #: packages/core/src/app/screens/Settings/components/SyncConnectSection.tsx
 msgid "The signaling relay that introduces devices. Defaults to the hosted relay; point it at your own or any public Nostr relay."
 msgstr "Der Signalisierungs-Relay, der Geräte einführt. Standardmäßig auf den gehosteten Relay eingestellt; richten Sie ihn auf Ihren eigenen oder einen öffentlichen Nostr-Relay."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "The SSH agent couldn't start. Restart Bramble to try again."
+msgstr "Der SSH-Agent konnte nicht gestartet werden. Starten Sie Bramble neu, um es erneut zu versuchen."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "The vault locked, so the attachments read from that file were cleared. Open it again to import them."
@@ -4800,6 +5022,10 @@ msgstr "Angebot zum Speichern von Anmeldedaten umschalten"
 msgid "Toggle passcode fallback"
 msgstr "Passcode-Fallback umschalten"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Toggle SSH agent"
+msgstr "SSH-Agent umschalten"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle start at login"
 msgstr "Start bei der Anmeldung umschalten"
@@ -5114,6 +5340,10 @@ msgstr "{currentSite} verwenden"
 msgid "Use a different language from your system"
 msgstr "Eine andere Sprache als die des Systems verwenden"
 
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use Bramble for every server"
+msgstr "Bramble für jeden Server verwenden"
+
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Use Bramble for passkeys"
 msgstr "Bramble für Passkeys verwenden"
@@ -5133,6 +5363,10 @@ msgstr "Verwenden Sie helles, dunkles oder passendes System"
 #: packages/core/src/app/entry-modes/card.tsx
 msgid "Use only digits, spaces or dashes."
 msgstr "Verwenden Sie nur Ziffern, Leerzeichen oder Bindestriche."
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use only the host, like github.com or 10.0.0.5"
+msgstr "Nur den Host verwenden, z. B. github.com oder 10.0.0.5"
 
 #: packages/core/src/app/components/PasswordGenerator.tsx
 msgid "Use password"
@@ -5170,6 +5404,10 @@ msgstr "Verwenden Sie Touch ID oder Windows Hello, anstatt Ihr Master-Passwort e
 msgid "Use Touch ID, Windows Hello or a security key like a YubiKey instead of typing your master password."
 msgstr "Verwenden Sie Touch ID, Windows Hello oder einen Sicherheitsschlüssel wie einen YubiKey, anstatt Ihr Master-Passwort einzugeben."
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Use with the SSH agent"
+msgstr "Mit dem SSH-Agenten verwenden"
+
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your master password instead"
 msgstr "Stattdessen Master-Passwort verwenden"
@@ -5177,6 +5415,10 @@ msgstr "Stattdessen Master-Passwort verwenden"
 #: packages/core/src/app/screens/Settings/components/MasterPasswordSection.tsx
 msgid "Use your recovery code instead"
 msgstr "Stattdessen Wiederherstellungscode verwenden"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use your SSH keys in the terminal"
+msgstr "SSH-Schlüssel im Terminal verwenden"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "username"
@@ -5451,6 +5693,10 @@ msgstr "Ihre Geräte synchronisieren sich nur, wenn sie gleichzeitig online sind
 #: packages/core/src/app/screens/Settings/components/AliasSection.tsx
 msgid "Your domain"
 msgstr "Ihre Domain"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Your home folder's path is too long for the agent's socket."
+msgstr "Der Pfad Ihres Home-Ordners ist zu lang für den Socket des Agenten."
 
 #: packages/core/src/app/screens/Settings/components/RecoveryCodeSection.tsx
 msgid "Your new recovery code"

@@ -8,6 +8,9 @@ export interface AutoPromptState {
 	offered: boolean;
 	/** The last lock was the Lock button, not an auto-lock. */
 	lockedByUser: boolean;
+	/** A terminal is waiting on this unlock (an SSH agent request). Running ssh asks for the
+	 * unlock as plainly as opening the app does, so it outweighs a Lock-button lock. */
+	requested: boolean;
 	/** The screen is on screen, as far as document visibility knows. */
 	visible: boolean;
 	/** The OS reports the app foreground-active, where the shell can tell (mobile). */
@@ -25,7 +28,7 @@ export interface AutoPromptState {
  */
 export function shouldAutoPromptBiometric(state: AutoPromptState): boolean {
 	if (!state.enabled || !state.offered) return false;
-	if (state.lockedByUser || state.attempted) return false;
+	if ((state.lockedByUser && !state.requested) || state.attempted) return false;
 	return state.visible && state.appActive;
 }
 

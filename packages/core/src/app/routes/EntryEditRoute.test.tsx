@@ -129,6 +129,25 @@ it("saving keeps what the form doesn't edit, and what it cleared stays cleared",
 	expect(saved.notes).toBeUndefined();
 });
 
+// The non-login save path: an SSH key's hosts survive an edit by a build that doesn't know them.
+it("an edit keeps a field this build doesn't know on an SSH key", async () => {
+	const data = {
+		id: "e",
+		type: "ssh-key",
+		name: "Deploy",
+		publicKey: "ssh-ed25519 AAAA",
+		privateKey: "k",
+		hosts: ["github.com"],
+	};
+	h.entries = [data];
+	h.openVersion.mockReturnValue({ ...version(1000, "p"), data });
+	render(<EntryEditRoute />);
+	const { id: _id, hosts: _hosts, ...known } = data;
+	await h.form!.onSave({ ...known, name: "Deploy key" });
+	const saved = h.updateEntry.mock.calls[0]?.[1] as Record<string, unknown>;
+	expect(saved).toMatchObject({ name: "Deploy key", hosts: ["github.com"] });
+});
+
 // #150: pushing the detail after a save left the form in history, so back from the detail
 // reopened it. Cancel and Save leave the way the header's back does.
 // Turned back on, the old password's result would show against the new one.

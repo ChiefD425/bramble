@@ -3,11 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlatform } from "../context/PlatformContext";
 import { usePendingHandoffs } from "../hooks/usePendingHandoffs";
 import { PrefsProvider } from "../hooks/usePrefs";
+import { SshAgentRequestsProvider } from "../hooks/useSshAgentRequests";
 import { useVault, VaultProvider } from "../hooks/useVault";
 import { useVaultRegistry, VaultRegistryProvider } from "../hooks/useVaultRegistry";
 import { setAppBackHandler } from "./android-back";
 import { CornerSavedToast } from "./components/CornerSavedToast";
 import { DevFlagsModal, useHydrateDevFlags } from "./components/DevFlagsModal";
+import { SshAgentRequests } from "./components/SshAgentRequests";
 import { ToastProvider } from "./components/ui/toast";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useBreachSweep } from "./hooks/useBreachSweep";
@@ -188,11 +190,15 @@ export default function App({
 							<VaultProvider>
 								<PrefsProvider>
 									<PopOutProvider router={router} initialDraft={initialDraft}>
-										<InnerApp
-											router={router}
-											pendingLogin={pendingLogin}
-											pendingTotp={pendingTotp}
-										/>
+										{/* The desktop SSH agent's questions; nothing elsewhere. */}
+										<SshAgentRequestsProvider>
+											<InnerApp
+												router={router}
+												pendingLogin={pendingLogin}
+												pendingTotp={pendingTotp}
+											/>
+											<SshAgentRequests />
+										</SshAgentRequestsProvider>
 									</PopOutProvider>
 								</PrefsProvider>
 							</VaultProvider>

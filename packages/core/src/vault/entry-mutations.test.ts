@@ -374,6 +374,19 @@ describe("createEntryMutations", () => {
 		expect(h.indexCalls[0]).toHaveLength(0); // notes never reach the index
 	});
 
+	it("a save publishes SSH keys beside the index", async () => {
+		const h = harness();
+		await h.mutations.add(empty(), {
+			type: "ssh-key",
+			name: "Deploy",
+			publicKey: "",
+			privateKey: "PK",
+		});
+		expect(h.indexCalls).toHaveLength(1);
+		expect(h.sshKeyCalls).toHaveLength(1);
+		expect(h.sshKeyCalls[0]?.map((k) => (k as { name?: string }).name)).toEqual(["Deploy"]);
+	});
+
 	it("logs the superseded password on a rotation, timestamped by the edit", async () => {
 		let t = 1000;
 		const h = harness(() => t);

@@ -37,6 +37,7 @@ mod socket;
 #[allow(dead_code)]
 mod socket_addr;
 mod spotlight;
+mod ssh_agent;
 mod storage;
 mod stream;
 mod sync_crypto;
@@ -88,6 +89,7 @@ fn quit_app(app: tauri::AppHandle) {
 /// however it is built, and the accelerators have to be handled where the keystrokes land.
 #[tauri::command]
 fn hide_to_tray(app: tauri::AppHandle) {
+    ssh_agent::cancel_waiting();
     lifetime::hide_main(&app);
 }
 
@@ -238,6 +240,8 @@ pub fn run() {
                     if let Err(e) = socket::listen(&root) {
                         log::error!("browser socket unavailable: {e}");
                     }
+                    // The SSH agent's socket, beside it, when the agent is switched on.
+                    ssh_agent::start(app.handle().clone(), &root);
                 }
                 Err(e) => log::error!("browser socket: no data dir: {e}"),
             }
@@ -249,6 +253,7 @@ pub fn run() {
             // no way back into the app.
             WindowEvent::CloseRequested { api, .. } if window.label() == lifetime::MAIN => {
                 let app = window.app_handle().clone();
+                ssh_agent::cancel_waiting();
                 // Logged because "the close button does nothing" is otherwise unfalsifiable from
                 // the outside: these lines distinguish an event that never arrived from a close
                 // that did not take.
@@ -374,6 +379,13 @@ pub fn run() {
             index_store::spotlight_copy_password,
             index_store::link_set_index,
             index_store::link_clear_index,
+            ssh_agent::commands::ssh_agent_status,
+            ssh_agent::commands::ssh_agent_set,
+            ssh_agent::commands::ssh_agent_add_include,
+            ssh_agent::commands::ssh_agent_set_keys,
+            ssh_agent::commands::ssh_agent_forget_vault,
+            ssh_agent::commands::ssh_agent_answer,
+            ssh_agent::commands::ssh_agent_pending,
             autolock::autolock_touch,
             socket::link_sync_send,
             socket::link_sync_peers,

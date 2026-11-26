@@ -143,10 +143,14 @@ function harnessOn(
 			writes++;
 		},
 	};
+	const sshKeyCalls: { id: string }[][] = [];
 	const autofill = {
 		setIndex: async (entries: { type: string }[]) => {
 			indexCalls.push(entries);
 			await window?.duringIndex.run?.();
+		},
+		setSshKeys: async (keys: { id: string }[]) => {
+			sshKeyCalls.push(keys);
 		},
 	};
 	const readDecodedBlob = async () => decodeBlob(disk.bytes);
@@ -159,5 +163,5 @@ function harnessOn(
 		clock: async () => c,
 		...(window ? { onDiskMerged: window.onDiskMerged } : {}),
 	});
-	return { mutations, writes: () => writes, indexCalls, crypto, clock: c };
+	return { mutations, writes: () => writes, indexCalls, sshKeyCalls, crypto, clock: c };
 }

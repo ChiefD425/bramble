@@ -10,6 +10,7 @@ const READY: AutoPromptState = {
 	enabled: true,
 	offered: true,
 	lockedByUser: false,
+	requested: false,
 	visible: true,
 	appActive: true,
 	attempted: false,
@@ -33,6 +34,18 @@ describe("shouldAutoPromptBiometric", () => {
 	// Otherwise tapping Lock would re-open the vault the moment you looked at the phone.
 	it("honors an explicit Lock", () => {
 		expect(not({ lockedByUser: true })).toBe(false);
+	});
+
+	// The user ran ssh: that asks for the unlock, so the Lock button's "not now" is over.
+	it("fires for a terminal's request even after an explicit Lock", () => {
+		expect(not({ lockedByUser: true, requested: true })).toBe(true);
+	});
+
+	it("still needs the opt-in, the gate, and a first try for a terminal's request", () => {
+		expect(not({ requested: true, enabled: false })).toBe(false);
+		expect(not({ requested: true, offered: false })).toBe(false);
+		expect(not({ requested: true, attempted: true })).toBe(false);
+		expect(not({ requested: true, visible: false })).toBe(false);
 	});
 
 	// Auto-lock fires as the app backgrounds, so the screen mounts hidden.
