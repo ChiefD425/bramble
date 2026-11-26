@@ -100,6 +100,9 @@ const PREF_APP_UPDATE = "pref.appUpdate";
 // app/support-ask.ts.
 const PREF_SUPPORT_ASK = "pref.supportAsk";
 const PREF_SUPPORT_ASK_ENABLED = "pref.supportAskEnabled";
+// Android, iOS and desktop: keep Bramble out of screenshots, recording and screen-reading
+// assistants. Read natively at launch; see docs/screen-capture-blocking.md.
+export const PREF_SCREEN_CAPTURE_BLOCKED = "pref.screenCaptureBlocked";
 
 export const DEFAULT_AUTOLOCK_MINUTES = 15;
 // Off by default: the breach check is the app's only network egress (k-anonymous
@@ -127,6 +130,8 @@ const DEFAULT_AUTOSTART_PROMPT_DISMISSED = false;
 const DEFAULT_DEFAULT_MANAGER_PROMPT_DISMISSED = false;
 // On, like the desktop's: a fix that reaches nobody fixes nothing.
 const DEFAULT_UPDATE_CHECK = true;
+// On: a password manager is rarely the app anyone needs a screenshot of.
+const DEFAULT_SCREEN_CAPTURE_BLOCKED = true;
 
 /** Resolved user preferences with their defaults. */
 export interface Prefs {
@@ -180,6 +185,8 @@ export interface Prefs {
 	// When the donation card was last shown, and whether it may be.
 	supportAsk: SupportAskState;
 	supportAskEnabled: boolean;
+	// Keep this app out of screenshots and screen-reading assistants.
+	screenCaptureBlocked: boolean;
 }
 
 /** Each pref's storage key. A map rather than a ternary chain: the type makes it exhaustive, so
@@ -213,6 +220,7 @@ const META_KEYS: Record<keyof Prefs, string> = {
 	whatsNew: PREF_WHATS_NEW,
 	supportAsk: PREF_SUPPORT_ASK,
 	supportAskEnabled: PREF_SUPPORT_ASK_ENABLED,
+	screenCaptureBlocked: PREF_SCREEN_CAPTURE_BLOCKED,
 };
 
 /**
@@ -277,6 +285,8 @@ const PREF_SCOPE: Record<keyof Prefs, PrefScope> = {
 	// a browser.
 	supportAsk: "device",
 	supportAskEnabled: "device",
+	// Device: native code reads it at launch, before any vault is open.
+	screenCaptureBlocked: "device",
 };
 
 const VAULT_SCOPED = (Object.keys(PREF_SCOPE) as (keyof Prefs)[]).filter(
@@ -353,6 +363,7 @@ const DEFAULT_PREFS: Prefs = {
 	whatsNew: {},
 	supportAsk: {},
 	supportAskEnabled: true,
+	screenCaptureBlocked: DEFAULT_SCREEN_CAPTURE_BLOCKED,
 };
 
 export interface UsePrefs {
@@ -451,7 +462,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 		}));
 		void (async () => {
 			if (retireLegacy) await retireLegacyFlatPrefs(storage);
-			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w, x, y, z] =
+			const [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, u, v, w, x, y, z, sc] =
 				await Promise.all([
 					storage.getMeta<number>(PREF_AUTOLOCK_MINUTES),
 					storage.getMeta<boolean>(PREF_BREACH_CHECK),
@@ -489,6 +500,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 					storage.getMeta<unknown>(PREF_WHATS_NEW),
 					storage.getMeta<unknown>(PREF_SUPPORT_ASK),
 					storage.getMeta<boolean>(PREF_SUPPORT_ASK_ENABLED),
+					storage.getMeta<boolean>(PREF_SCREEN_CAPTURE_BLOCKED),
 				]);
 			if (cancelled) return;
 			// One `now` for the read: a fresh install's clock starts here rather than at whichever
@@ -531,6 +543,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 				whatsNew: normalizeWhatsNewState(x),
 				supportAsk: normalizeSupportAskState(y, now),
 				supportAskEnabled: typeof z === "boolean" ? z : true,
+				screenCaptureBlocked: typeof sc === "boolean" ? sc : DEFAULT_SCREEN_CAPTURE_BLOCKED,
 			}));
 			setLoaded(true);
 		})();

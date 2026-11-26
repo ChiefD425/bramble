@@ -50,6 +50,7 @@ comments point here instead of repeating it.
 | [email-aliases.md](email-aliases.md) | Plan: per-site email aliases from Addy.io, SimpleLogin and Fastmail (Forward Email deferred, paid-only), why plain `fetch` reaches them from every platform while Firefox Relay and DuckDuckGo cannot be, and why an alias suggestion cannot be pre-generated the way a password is , and a catch-all-domain provider that needs no account and makes the address locally |
 | [firefox-port.md](firefox-port.md) | Firefox MV3 port feasibility and the filesystem-sync gap P2P sync fills |
 | [mobile-port.md](mobile-port.md) | Capacitor mobile port feasibility; native autofill + biometric-unlock constraints |
+| [screen-capture-blocking.md](screen-capture-blocking.md) | Keeping Bramble out of screenshots, recording and screen-reading assistants: on by default, a 10-minute pause, and what each OS can and can't do (FLAG_SECURE, the iOS layer redaction, WDA_EXCLUDEFROMCAPTURE, macOS's ScreenCaptureKit gap) |
 | [mobile-update-notice.md](mobile-update-notice.md) | The mobile apps' once-a-day version check: the vault-list card, App Store vs GitHub APK, and the Settings switch |
 | [whats-new.md](whats-new.md) | The card after an update: the per-target notes file that is also the GitHub release summary, when it shows, and the vault list's one-card-per-open rule |
 | [support-ask.md](support-ask.md) | The every-two-weeks donation card: its schedule, its place among the vault list's cards, and why iOS doesn't ask |

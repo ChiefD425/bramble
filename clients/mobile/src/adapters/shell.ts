@@ -11,6 +11,7 @@ import { peekPendingLogins, removePendingLogins } from "../autofill-pending-logi
 import { consumePendingPasskeys as drainPendingPasskeys } from "../autofill-pending-passkeys";
 import { pendingNativeCalls } from "../native-calls";
 import { scanQr } from "../qr-scanner";
+import { screenCapture } from "../screen-capture";
 import { mailboxDriver, mailboxVaultSwitching } from "../sync/mailbox";
 import {
 	ACTIVE_VAULT_KEY,
@@ -97,6 +98,7 @@ export const mobileShell: ShellAdapter = {
 	// would fire and drop the in-progress import. See ./auto-lock.ts.
 	notifyFilePickerOpening: armFilePickGrace,
 	pendingNativeCalls,
+	screenCapture,
 	// Capacitor's default follows the OS scheme, not Settings > Appearance. Dark = light icons.
 	setSystemBarsDark(dark) {
 		void SystemBars.setStyle({

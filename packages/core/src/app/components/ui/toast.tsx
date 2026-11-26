@@ -8,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Button } from "./button";
 
 // Centralized, app-wide toast/alert. Mount <ToastProvider> once near the root; call
 // useToast().show({...}) from anywhere in core. Variant styling lives here so every
@@ -22,6 +23,8 @@ export interface ToastOptions {
 	icon?: ComponentType<{ className?: string }>;
 	/** Auto-dismiss after this many ms; 0 keeps it until dismissed. Default 4000. */
 	durationMs?: number;
+	/** One button beside the message; pressing it also dismisses the toast. */
+	action?: { label: string; onClick: () => void };
 }
 
 interface ToastItem extends ToastOptions {
@@ -115,6 +118,19 @@ function ToastRow({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => voi
 		>
 			{Icon && <Icon className="w-4 h-4 shrink-0" />}
 			<span>{toast.message}</span>
+			{toast.action && (
+				<Button
+					variant="ghost"
+					size="sm"
+					className="underline underline-offset-2"
+					onClick={() => {
+						toast.action?.onClick();
+						onDismiss();
+					}}
+				>
+					{toast.action.label}
+				</Button>
+			)}
 			<button
 				type="button"
 				onClick={onDismiss}

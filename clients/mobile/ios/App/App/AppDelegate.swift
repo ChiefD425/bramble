@@ -9,6 +9,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         hideKeyboardFormAccessoryBar()
+        // Before the window first shows, so not one frame goes out unprotected.
+        ScreenCapture.apply(to: window)
         return true
     }
 
@@ -32,6 +34,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidBecomeActive(_ application: UIApplication) {
         privacyCover?.removeFromSuperview()
         privacyCover = nil
+        // Ends a pause that ran out while the app was suspended.
+        ScreenCapture.apply(to: window)
     }
 
     private func showPrivacyCover() {

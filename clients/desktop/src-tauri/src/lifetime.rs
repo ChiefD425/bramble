@@ -139,7 +139,10 @@ fn rebuild_main(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .find(|window| window.label == MAIN)
         .cloned()
         .ok_or(tauri::Error::WebviewNotFound)?;
-    WebviewWindowBuilder::from_config(app, &config)?.build()
+    let window = WebviewWindowBuilder::from_config(app, &config)?.build()?;
+    // The config protects it; the setting may say otherwise.
+    crate::screen_capture::apply(app);
+    Ok(window)
 }
 
 /// Whether this is a Wayland session, which is the only place a close cannot simply hide.
