@@ -536,6 +536,12 @@ away before the prompt is shown, the next page picks the stash back up. The
 commit itself goes through the background, which writes directly to
 `chrome.storage.local` (headless, no gesture; see [storage.md](storage.md)).
 
+A site that replaces `<body>` after a submit takes the card with it, so a save or
+update card is put back until answered. This is capped, so a page that keeps
+removing it cannot loop with the content script. Passkey cards are not put back.
+A redirect to another registrable domain still leaves the card behind, because the
+stash is keyed to the domain that was captured.
+
 ### Typing on the card
 
 The card sits in a closed shadow root in the page. That hides its DOM from the
@@ -950,12 +956,20 @@ The suggestion is generated **in the content script** and passed to the iframe a
 render data, never fetched from the vault. Choosing it (`UI_USE_SUGGESTED`, gated
 by the same anti-clickjacking `pickIsTrustworthy` check as a secret pick):
 
-1. fills the new-password field and any confirm sibling (`fillPasswordFields`,
-   which records the value so a later real submit won't re-prompt), leaving a
-   change form's current-password box for the user, and
+1. fills the new-password field and any confirm sibling (`fillPasswordFields`),
+   leaving a change form's current-password box for the user,
 2. fires a `CORNER_PROMPT_CAPTURE` with whatever username/email the user already
    typed plus the generated password, reusing the entire corner-prompt save path
-   above (including the navigation-surviving stash).
+   above (including the navigation-surviving stash), and
+3. records the password with `noteGeneratedPassword`, so the real submit captures
+   it again.
+
+The second capture exists because the first is early: the username is often not
+typed yet, and the card may be dismissed or lost before the account exists. It
+fires only while a field on the page still holds the suggestion, and stays pending
+so a rejected signup can be resubmitted. Both captures are flagged `generated`.
+A random 20-character password identifies its login, so once it is saved the
+background says nothing, or offers an update if the username has changed.
 
 The corner prompt's own dedupe then decides the rest: on a signup form (no matching
 login) it offers **Save**; on a change-password form (an existing login for the

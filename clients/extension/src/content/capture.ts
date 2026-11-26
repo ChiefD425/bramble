@@ -21,12 +21,23 @@ let lastEditAt = 0;
 // the last edit is treated as a submit (React-removes-form, no native event).
 const SPA_SUBMIT_WINDOW_MS = 1500;
 
+// The picker's suggested password. It is script-filled, so no trusted `input` ever records it.
+let generated: { password: string; newLogin: boolean } | null = null;
+
+/** Records a suggestion the user took, so the real submit offers it again with the final username. */
+export function noteGeneratedPassword(password: string, newLogin: boolean): void {
+	generated = { password, newLogin };
+	lastUserEditedPassword = password;
+	disarm();
+}
+
 /** A credential snapshot plus the password field it came from. */
 interface Captured {
 	username: string;
 	password: string;
 	newLogin: boolean;
 	field: HTMLInputElement | null;
+	generated?: boolean;
 }
 
 // A capture armed by a click on a submit control that drives no native `submit`
@@ -69,6 +80,20 @@ function buildCapture(): Captured | null {
 	const login = detectLoginFields();
 	if (otpInputs().length > 0 && !login.password) return null;
 
+	const username =
+		login.username?.value ??
+		deepQuery<HTMLInputElement>('input[autocomplete~="username"]')?.value ??
+		"";
+	if (generated && lastUserEditedPassword === generated.password) {
+		const { password, newLogin } = generated;
+		// Only while the page still holds it: otherwise this submit belongs to some other form.
+		const holders = deepQueryAll<HTMLInputElement>("input").filter((el) => el.value === password);
+		// A visible holder first: a hidden mirror would read as "form gone" while the form is still up.
+		const field = holders.find(isRendered) ?? holders[0];
+		if (!field) return null;
+		return { username, password, newLogin, field, generated: true };
+	}
+
 	const pwFields = deepQueryAll<HTMLInputElement>(
 		'input[type="password"]:not([readonly]):not([disabled])',
 	);
@@ -85,10 +110,6 @@ function buildCapture(): Captured | null {
 	// Suppress unchanged autofilled credentials: nothing to save.
 	if (capturePassword === getLastFilledPassword()) return null;
 
-	const username =
-		login.username?.value ??
-		deepQuery<HTMLInputElement>('input[autocomplete~="username"]')?.value ??
-		"";
 	// A signup form yields a NEW login even when one is already saved for the site; a login or
 	// change form does not (dedupe decides / rotates). See signup-detect.ts.
 	const newLogin = !!pwField && isAccountCreationForm(pwField);
@@ -104,9 +125,11 @@ function send(captured: Captured): void {
 			username: captured.username,
 			password: captured.password,
 			newLogin: captured.newLogin,
+			...(captured.generated ? { generated: true } : {}),
 		},
 	});
-	lastUserEditedPassword = null;
+	// A suggestion stays pending: a rejected signup is resubmitted with a corrected username.
+	if (!captured.generated) lastUserEditedPassword = null;
 	disarm();
 }
 
@@ -209,6 +232,7 @@ export function maybeEmitSpaSubmit(): void {
 
 /** Test seam: drop all pending capture state. */
 export function resetCaptureState(): void {
+	generated = null;
 	lastUserEditedPassword = null;
 	lastEditAt = 0;
 	disarm();
