@@ -42,7 +42,7 @@ Any entry can hold files. Bramble encrypts each file on your device, the same wa
 1. Save the entry, then open it.
 2. Under **Attachments**, choose **Attach a file** and pick the file.
 
-Each file can be up to 90 MB. Bramble shows **Encrypting…** while it works.<Since commit="50a14f29"> You can also attach from the list: choose **⋮** beside the entry, then **Attach a file**.</Since>
+Each file can be up to 90 MB. Bramble shows **Encrypting…** while it works. You can also attach from the list: choose **⋮** beside the entry, then **Attach a file**.
 
 In the browser extension's toolbar popup, choose **Popout to window to attach files** first. The popup closes when the file picker opens, so Bramble continues in a window.
 
@@ -66,7 +66,7 @@ When any entry has a file, a paperclip button appears next to **Sort** above you
 
 ## Sync
 
-Files sync to every device in your vault's sync group. They move between your devices end-to-end encrypted, and no server keeps a copy, so a file arrives only while a device that has it is online and unlocked. Until then, the file shows why it isn't there yet, for example **Not on this device yet. Waiting for a device that has it.**
+Files sync to every device in your vault's sync group. They move between your devices end-to-end encrypted<Until commit="605dc73e">, and no server keeps a copy, so a file arrives only while a device that has it is online and unlocked</Until><Since commit="605dc73e">. Unless you use [the mailbox](/docs/sync-through-the-mailbox), a file arrives only while a device that has it is online and unlocked</Since>. Until then, the file shows why it isn't there yet, for example **Not on this device yet. Waiting for a device that has it.**
 
 [Backups](/docs/back-up-your-vault) always include every file.
 
