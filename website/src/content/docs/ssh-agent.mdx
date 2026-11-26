@@ -66,6 +66,14 @@ With `ssh -A` or `ForwardAgent yes`, the server you log in to can use your keys.
 
 ## Sign git commits
 
+Git signs through `ssh-keygen`, which finds an agent only through `SSH_AUTH_SOCK`, never through `~/.ssh/config`. Point it at Bramble in your shell profile, such as `~/.zshrc`:
+
+```sh
+export SSH_AUTH_SOCK="$HOME/Library/Application Support/app.bramble.desktop/ssh-agent.sock"
+```
+
+On Linux the path is `~/.local/share/app.bramble.desktop/ssh-agent.sock`. Then tell git which key to sign with:
+
 ```sh
 git config --global gpg.format ssh
 git config --global user.signingkey "key::ssh-ed25519 AAAA..."

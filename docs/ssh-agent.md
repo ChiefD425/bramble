@@ -264,7 +264,8 @@ the private key; the entry's own public key field is display only.
   one piece of code owns both endpoints. Owner-only permissions, as there. Windows pipes share one
   machine-wide namespace, so the name carries the per-user tag the browser pipe already uses.
 - The generated config points `IdentityAgent` at it. Setting `SSH_AUTH_SOCK` works too, without
-  hosts.
+  hosts. Git commit signing needs `SSH_AUTH_SOCK`: git signs through `ssh-keygen -Y sign`, which
+  never reads `ssh_config`, so `IdentityAgent` doesn't reach it. The help article says so.
 - A Unix socket path is capped at 104 bytes on macOS and 108 on Linux. A home folder long enough to
   hit it gets a plain message in Settings rather than a silent failure.
 - Windows: a pipe of our own, not `openssh-ssh-agent`, which Windows' own agent service holds and
