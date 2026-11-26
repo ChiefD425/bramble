@@ -111,8 +111,8 @@ msgstr "আরও {0}টি দেখে মনে হচ্ছে আপনা�
 
 #. placeholder {0}: current.caller
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
-msgstr "{0} {vaultName}-এর {keyName} ব্যবহার করতে চায়। {openVault} লক হয়ে যাবে।"
+#~ msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
+#~ msgstr "{0} {vaultName}-এর {keyName} ব্যবহার করতে চায়। {openVault} লক হয়ে যাবে।"
 
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "{affected, plural, one {Tag # entry} other {Tag # entries}}"
@@ -147,16 +147,32 @@ msgstr "{browserName} {others}-এর সাথেও সিঙ্ক হয়�
 #~ msgstr "{browserName} stays, as \"{browserName} (before linking)\", until you delete it."
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign a git commit with {keyName}"
-msgstr "{caller} {keyName} দিয়ে একটি git commit সাইন করতে চায়।"
+#~ msgid "{caller} wants to sign a git commit with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি git commit সাইন করতে চায়।"
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign a message with {keyName}"
-msgstr "{caller} {keyName} দিয়ে একটি বার্তা সাইন করতে চায়।"
+msgid "{caller} wants to sign a git commit with <0>{keyName}</0>"
+msgstr "{caller} একটি git commit <0>{keyName}</0> দিয়ে স্বাক্ষর করতে চায়"
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign in to a server with {keyName}"
-msgstr "{caller} {keyName} দিয়ে একটি সার্ভারে সাইন ইন করতে চায়।"
+#~ msgid "{caller} wants to sign a message with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি বার্তা সাইন করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a message with <0>{keyName}</0>"
+msgstr "{caller} একটি বার্তা <0>{keyName}</0> দিয়ে স্বাক্ষর করতে চায়"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign in to a server with {keyName}"
+#~ msgstr "{caller} {keyName} দিয়ে একটি সার্ভারে সাইন ইন করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign in to a server with <0>{keyName}</0>"
+msgstr "{caller} একটি সার্ভারে <0>{keyName}</0> দিয়ে সাইন ইন করতে চায়"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to use <0>{keyName}</0> from <1>{vaultName}</1>. <2>{openVault}</2> will lock."
+msgstr "{caller} <0>{keyName}</0> <1>{vaultName}</1> থেকে ব্যবহার করতে চায়। <2>{openVault}</2> লক হবে।"
 
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "{conflicted, plural, one {# entry has a sync conflict. Only the version shown came across.} other {# entries have a sync conflict. Only the version shown came across.}}"
@@ -288,8 +304,12 @@ msgid "{rp} wants to use your passkey. Confirm it's you to continue."
 msgstr "{rp} আপনার পাসকি ব্যবহার করতে চায়। চালিয়ে যেতে আপনার পরিচয় নিশ্চিত করুন।"
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{server} wants to use {keyName}"
-msgstr "{server} {keyName} ব্যবহার করতে চায়।"
+#~ msgid "{server} wants to use {keyName}"
+#~ msgstr "{server} {keyName} ব্যবহার করতে চায়।"
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{server} wants to use <0>{keyName}</0>"
+msgstr "{server} <0>{keyName}</0> ব্যবহার করতে চায়"
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{skippedFiles, plural, one {# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app.} other {# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app.}}"

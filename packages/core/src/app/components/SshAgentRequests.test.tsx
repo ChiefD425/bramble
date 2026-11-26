@@ -99,6 +99,11 @@ function mount(sshAgent?: SshAgentAdapter) {
 
 const deploy = { keyName: "Deploy", purpose: "git" as const };
 
+/** A sentence by its whole text, though names in it sit in elements of their own. */
+const sentence = (text: string) => (_: string, el: Element | null) =>
+	el?.textContent === text && Array.from(el.children).every((c) => c.textContent !== text);
+const names = () => Array.from(document.querySelectorAll("strong")).map((el) => el.textContent);
+
 describe("SSH agent requests", () => {
 	it("selects the requested vault while locked", async () => {
 		const agent = fakeAgent();
@@ -111,13 +116,13 @@ describe("SSH agent requests", () => {
 		const agent = fakeAgent();
 		mount(agent.adapter);
 		await agent.ask({ ...deploy, vaultId: "P", vaultName: "Personal" });
-		expect(screen.getByText("ssh wants to sign a git commit with Deploy")).toBeTruthy();
+		expect(screen.getByText(sentence("ssh wants to sign a git commit with Deploy"))).toBeTruthy();
 		cleanup();
 		h.activeId = "W";
 		const other = fakeAgent();
 		mount(other.adapter);
 		await other.ask({ ...deploy, vaultId: "P", vaultName: "Personal", id: "r2" });
-		expect(screen.queryByText("ssh wants to sign a git commit with Deploy")).toBeNull();
+		expect(screen.queryByText(sentence("ssh wants to sign a git commit with Deploy"))).toBeNull();
 	});
 
 	it("a request with no vault shows on any unlock screen", async () => {
@@ -130,13 +135,30 @@ describe("SSH agent requests", () => {
 		expect(screen.queryByText("bastion wants to use your SSH keys")).toBeNull();
 	});
 
+	it("the switch card picks out the key and both vaults", async () => {
+		h.isLocked = false;
+		const agent = fakeAgent();
+		mount(agent.adapter);
+		await agent.ask({ ...deploy, mode: "switch", vaultId: "W", vaultName: "Work" });
+		expect(names()).toEqual(["Deploy", "Work", "Personal"]);
+	});
+
+	it("the unlock screen's line picks out the key", async () => {
+		const agent = fakeAgent();
+		mount(agent.adapter);
+		await agent.ask({ ...deploy, vaultId: "P", vaultName: "Personal" });
+		expect(names()).toEqual(["Deploy"]);
+	});
+
 	it("the switch card locks, then opens the key's vault", async () => {
 		h.isLocked = false;
 		const agent = fakeAgent();
 		mount(agent.adapter);
 		await agent.ask({ ...deploy, mode: "switch", vaultId: "W", vaultName: "Work" });
 		expect(screen.getByText("Open Work?")).toBeTruthy();
-		expect(screen.getByText("ssh wants to use Deploy from Work. Personal will lock.")).toBeTruthy();
+		expect(
+			screen.getByText(sentence("ssh wants to use Deploy from Work. Personal will lock.")),
+		).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Open Work" }));
 		await waitFor(() => expect(h.calls).toEqual(["lock", "select W"]));
 		expect(agent.answers).toEqual([]);
@@ -159,7 +181,7 @@ describe("SSH agent requests", () => {
 		mount(agent.adapter);
 		await agent.ask({ keyName: "Deploy", purpose: "sign-in", mode: "confirm", vaultId: "P" });
 		expect(screen.getByText("Allow this use of Deploy?")).toBeTruthy();
-		expect(screen.getByText("ssh wants to sign in to a server with Deploy")).toBeTruthy();
+		expect(screen.getByText(sentence("ssh wants to sign in to a server with Deploy"))).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Allow" }));
 		await waitFor(() => expect(agent.answers).toEqual([["r1", true]]));
 	});
@@ -189,7 +211,9 @@ describe("SSH agent requests", () => {
 			{ id: "r0", caller: "ssh", mode: "unlock", vaultId: "P", keyName: "Deploy", purpose: "git" },
 		]);
 		mount(agent.adapter);
-		expect(await screen.findByText("ssh wants to sign a git commit with Deploy")).toBeTruthy();
+		expect(
+			await screen.findByText(sentence("ssh wants to sign a git commit with Deploy")),
+		).toBeTruthy();
 	});
 
 	it("picking another vault while locked isn't undone", async () => {
@@ -211,8 +235,19 @@ describe("SSH agent requests", () => {
 	});
 
 	it("words each kind of request", () => {
-		const r = (over: Partial<SshAgentRequest>) =>
-			requestLine({ id: "x", caller: "git", mode: "unlock", keyName: "Deploy", ...over });
+		const r = (over: Partial<SshAgentRequest>) => {
+			const line = requestLine({
+				id: "x",
+				caller: "git",
+				mode: "unlock",
+				keyName: "Deploy",
+				...over,
+			});
+			const { container, unmount } = render(<I18nProvider i18n={i18n}>{line}</I18nProvider>);
+			const text = container.textContent;
+			unmount();
+			return text;
+		};
 		expect(r({ purpose: "git" })).toBe("git wants to sign a git commit with Deploy");
 		expect(r({ purpose: "message" })).toBe("git wants to sign a message with Deploy");
 		expect(r({ purpose: "sign-in" })).toBe("git wants to sign in to a server with Deploy");

@@ -96,8 +96,8 @@ msgstr "{0}개 더는 이미 보유한 항목과 비슷하여(동일한 사이�
 
 #. placeholder {0}: current.caller
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
-msgstr "{0}이(가) {keyName}을(를) {vaultName}에서 사용하려고 합니다. {openVault}이(가) 잠급니다."
+#~ msgid "{0} wants to use {keyName} from {vaultName}. {openVault} will lock."
+#~ msgstr "{0}이(가) {keyName}을(를) {vaultName}에서 사용하려고 합니다. {openVault}이(가) 잠급니다."
 
 #: packages/core/src/app/bulk-actions/tags.tsx
 msgid "{affected, plural, one {Tag # entry} other {Tag # entries}}"
@@ -124,16 +124,32 @@ msgid "{browserName} also syncs with {others}. Combining moves only this browser
 msgstr "{browserName}은(는) {others}과(와)도 동기화됩니다. 통합하면 이 브라우저만 이동하며, 나머지는 {browserName}에 남습니다."
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign a git commit with {keyName}"
-msgstr "{caller}이(가) {keyName}을(를) 사용하여 git 커밋에 서명하려고 합니다."
+#~ msgid "{caller} wants to sign a git commit with {keyName}"
+#~ msgstr "{caller}이(가) {keyName}을(를) 사용하여 git 커밋에 서명하려고 합니다."
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign a message with {keyName}"
-msgstr "{caller}이(가) {keyName}을(를) 사용하여 메시지에 서명하려고 합니다."
+msgid "{caller} wants to sign a git commit with <0>{keyName}</0>"
+msgstr "{caller}에서 <0>{keyName}</0> 키로 git 커밋에 서명하려고 합니다."
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{caller} wants to sign in to a server with {keyName}"
-msgstr "{caller}이(가) {keyName}을(를) 사용하여 서버에 로그인하려고 합니다."
+#~ msgid "{caller} wants to sign a message with {keyName}"
+#~ msgstr "{caller}이(가) {keyName}을(를) 사용하여 메시지에 서명하려고 합니다."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign a message with <0>{keyName}</0>"
+msgstr "{caller}에서 <0>{keyName}</0> 키로 메시지에 서명하려고 합니다."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+#~ msgid "{caller} wants to sign in to a server with {keyName}"
+#~ msgstr "{caller}이(가) {keyName}을(를) 사용하여 서버에 로그인하려고 합니다."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to sign in to a server with <0>{keyName}</0>"
+msgstr "{caller}에서 <0>{keyName}</0> 키로 서버에 로그인하려고 합니다."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{caller} wants to use <0>{keyName}</0> from <1>{vaultName}</1>. <2>{openVault}</2> will lock."
+msgstr "{caller}에서 <0>{keyName}</0> 키를 <1>{vaultName}</1>에서 사용하려고 합니다. <2>{openVault}</2>이(가) 잠깁니다."
 
 #: packages/core/src/app/screens/Settings/components/CombineResult.tsx
 msgid "{conflicted, plural, one {# entry has a sync conflict. Only the version shown came across.} other {# entries have a sync conflict. Only the version shown came across.}}"
@@ -225,8 +241,12 @@ msgid "{rp} wants to use your passkey. Confirm it's you to continue."
 msgstr "{rp}에서 사용자의 패스키를 사용하려고 합니다. 계속하려면 본인임을 확인하세요."
 
 #: packages/core/src/app/components/SshAgentRequests.tsx
-msgid "{server} wants to use {keyName}"
-msgstr "{server}이(가) {keyName}을(를) 사용하려고 합니다."
+#~ msgid "{server} wants to use {keyName}"
+#~ msgstr "{server}이(가) {keyName}을(를) 사용하려고 합니다."
+
+#: packages/core/src/app/components/SshAgentRequests.tsx
+msgid "{server} wants to use <0>{keyName}</0>"
+msgstr "{server}에서 <0>{keyName}</0> 키를 사용하려고 합니다."
 
 #: packages/core/src/app/screens/Import/ImportShell.tsx
 msgid "{skippedFiles, plural, one {# attachment in this file is left out: this browser can add files only once it's linked to the Bramble desktop app.} other {# attachments in this file are left out: this browser can add files only once it's linked to the Bramble desktop app.}}"

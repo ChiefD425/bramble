@@ -1,7 +1,5 @@
-import { i18n } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react/macro";
-import { useEffect, useRef } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { SshAgentRequest } from "../../adapters/ssh-agent";
 import { useSshAgentRequests } from "../../hooks/useSshAgentRequests";
 import { useVault, useVaultActions } from "../../hooks/useVault";
@@ -10,21 +8,43 @@ import { displayLabel } from "../../vault/vault-registry";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/modal";
 
+/** A key or vault name, picked out from the sentence around it. */
+function Name({ children }: { children: ReactNode }) {
+	return <strong className="font-medium text-foreground">{children}</strong>;
+}
+
 /** Who wants what, in one line. The caller's name is only a label: any program can claim one. */
-export function requestLine(r: SshAgentRequest): string {
+export function requestLine(r: SshAgentRequest): ReactNode {
 	const { caller, keyName, server } = r;
 	if (!keyName) {
 		const who = server ?? caller;
-		return i18n._(msg`${who} wants to use your SSH keys`);
+		return <Trans>{who} wants to use your SSH keys</Trans>;
 	}
-	if (server) return i18n._(msg`${server} wants to use ${keyName}`);
+	if (server)
+		return (
+			<Trans>
+				{server} wants to use <Name>{keyName}</Name>
+			</Trans>
+		);
 	switch (r.purpose) {
 		case "git":
-			return i18n._(msg`${caller} wants to sign a git commit with ${keyName}`);
+			return (
+				<Trans>
+					{caller} wants to sign a git commit with <Name>{keyName}</Name>
+				</Trans>
+			);
 		case "message":
-			return i18n._(msg`${caller} wants to sign a message with ${keyName}`);
+			return (
+				<Trans>
+					{caller} wants to sign a message with <Name>{keyName}</Name>
+				</Trans>
+			);
 		default:
-			return i18n._(msg`${caller} wants to sign in to a server with ${keyName}`);
+			return (
+				<Trans>
+					{caller} wants to sign in to a server with <Name>{keyName}</Name>
+				</Trans>
+			);
 	}
 }
 
@@ -54,7 +74,8 @@ export function SshAgentRequests() {
 	const openVault = openIndex >= 0 ? displayLabel(vaults[openIndex]!, openIndex) : "";
 	const vaultName = current.vaultName ?? "";
 	const keyName = current.keyName ?? "";
-	const card = (title: string, body: string, yes: string, onYes: () => void, no: string) => (
+	const caller = current.caller;
+	const card = (title: string, body: ReactNode, yes: string, onYes: () => void, no: string) => (
 		<Modal open onClose={() => void answer(false)} className="max-w-sm">
 			<div className="p-6 space-y-4">
 				<h2 className="text-base font-medium">{title}</h2>
@@ -73,7 +94,10 @@ export function SshAgentRequests() {
 		case "switch":
 			return card(
 				t`Open ${vaultName}?`,
-				t`${current.caller} wants to use ${keyName} from ${vaultName}. ${openVault} will lock.`,
+				<Trans>
+					{caller} wants to use <Name>{keyName}</Name> from <Name>{vaultName}</Name>.{" "}
+					<Name>{openVault}</Name> will lock.
+				</Trans>,
 				t`Open ${vaultName}`,
 				() =>
 					void (async () => {
@@ -117,7 +141,7 @@ export function SshAgentRequestLine() {
 	return (
 		<div className="mt-3 flex items-center justify-center gap-2 text-sm">
 			<span className="text-muted-foreground">{requestLine(current)}</span>
-			<Button variant="link" size="none" className="text-xs" onClick={() => void answer(false)}>
+			<Button variant="secondary" size="sm" onClick={() => void answer(false)}>
 				{t`Cancel`}
 			</Button>
 		</div>
