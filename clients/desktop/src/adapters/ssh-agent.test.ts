@@ -25,7 +25,6 @@ describe("desktopSshAgent", () => {
 		expect(invoke).toHaveBeenCalledWith("ssh_agent_set", {
 			enabled: undefined,
 			askEachUse: true,
-			onlyTheirHosts: undefined,
 		});
 	});
 

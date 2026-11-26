@@ -521,6 +521,10 @@ msgstr "Adicionar campos personalizados para armazenar informações adicionais,
 msgid "Add field"
 msgstr "Adicionar campo"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add host"
+msgstr "Adicionar host"
+
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Add it for me"
 msgstr "Adicionar para mim"
@@ -541,6 +545,10 @@ msgstr "Adicionar o código 2FA a {0}"
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Add the desktop's vault"
 msgstr "Adicionar o cofre do desktop"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add the servers ssh uses this key for, like github.com or 10.0.0.5."
+msgstr "Adicione os servidores para os quais o SSH usa esta chave, como github.com ou 10.0.0.5."
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
@@ -1015,8 +1023,8 @@ msgid "Bramble needs your permission to talk to the desktop app on this computer
 msgstr "O Bramble precisa da sua permissão para se comunicar com o aplicativo de desktop neste computador. Seu navegador pedirá confirmação."
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Bramble offers this key only to these hosts."
-msgstr "O Bramble oferece esta chave somente a estes hosts."
+#~ msgid "Bramble offers this key only to these hosts."
+#~ msgstr "O Bramble oferece esta chave somente a estes hosts."
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
@@ -1522,6 +1530,10 @@ msgstr "Copiar log"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Copy previous password"
 msgstr "Copiar senha anterior"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy shell line"
+msgstr "Copiar linha do shell"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Copy SSH config line"
@@ -2379,12 +2391,16 @@ msgid "Horse"
 msgstr "Cavalo"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Host"
+msgstr "Host"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Hosts"
 msgstr "Hosts"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Hosts (optional)"
-msgstr "Hosts (opcional)"
+#~ msgid "Hosts (optional)"
+#~ msgstr "Hosts (opcional)"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
@@ -3169,8 +3185,8 @@ msgstr "Desativado. Você desbloqueia ao tocar em uma chave."
 #~ msgstr "Desligado. Você desbloqueia com uma chave de segurança."
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Offer keys only to their hosts"
-msgstr "Oferecer chaves somente aos hosts delas"
+#~ msgid "Offer keys only to their hosts"
+#~ msgstr "Oferecer chaves somente aos hosts delas"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3707,6 +3723,10 @@ msgstr "Remover anexo"
 msgid "Remove field"
 msgstr "Remover campo"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Remove host"
+msgstr "Remover host"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Remove passkey"
 msgstr "Remover chave de acesso"
@@ -4103,8 +4123,16 @@ msgstr "URL do servidor"
 #~ msgstr "URL do servidor (somente auto-hospedado)"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Servers not named on any key see none of your keys."
-msgstr "Servidores que não constam em nenhuma chave não veem nenhuma das suas chaves."
+#~ msgid "Servers no key names, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+#~ msgstr "Servidores sem nomes de chave e a assinatura de commits Git usam o seu agente SSH habitual. Para usar o Bramble para eles também, adicione esta linha ao perfil do shell, por exemplo, ~/.zshrc."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+msgstr "Servidores não nomeados em uma chave e a assinatura de commits do Git usam seu agente SSH habitual. Para usar o Bramble para eles também, adicione esta linha ao seu perfil de shell, como ~/.zshrc."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers not named on any key see none of your keys."
+#~ msgstr "Servidores que não constam em nenhuma chave não veem nenhuma das suas chaves."
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
@@ -5311,6 +5339,10 @@ msgstr "Usar {currentSite}"
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Use a different language from your system"
 msgstr "Use um idioma diferente do sistema"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use Bramble for every server"
+msgstr "Usar Bramble para todos os servidores"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Use Bramble for passkeys"

@@ -33,7 +33,6 @@ beforeAll(() => {
 const OFF: SshAgentStatus = {
 	enabled: false,
 	askEachUse: false,
-	onlyTheirHosts: false,
 	setup: "not-added",
 	canAddLine: true,
 	includeLine: "Include ~/.ssh/bramble/config",
@@ -125,15 +124,28 @@ describe("SshAgentSection", () => {
 		expect(screen.queryByRole("button", { name: "Add it for me" })).toBeNull();
 	});
 
-	it("the two options call set", async () => {
+	it("Ask before each use calls set", async () => {
 		const a = adapter(ON);
 		mount(a);
-		fireEvent.click(await screen.findByRole("button", { name: "Ask before each use" }));
-		await waitFor(() => expect(a.set).toHaveBeenCalledWith({ askEachUse: true }));
+		const toggle = await screen.findByRole("button", { name: "Ask before each use" });
 		await act(async () => {
-			fireEvent.click(screen.getByRole("button", { name: "Offer keys only to their hosts" }));
+			fireEvent.click(toggle);
 		});
-		await waitFor(() => expect(a.set).toHaveBeenCalledWith({ onlyTheirHosts: true }));
+		await waitFor(() => expect(a.set).toHaveBeenCalledWith({ askEachUse: true }));
+	});
+
+	// Bramble's config names only the hosts on its keys; the rest are the user's to send here.
+	it("offers the shell line for every other server, and copies it", async () => {
+		const line = "export SSH_AUTH_SOCK='/x/ssh-agent.sock'";
+		const { copy } = mount(adapter({ ...ON, shellLine: line }));
+		expect(await screen.findByText(line)).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Offer keys only to their hosts" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Copy shell line" }));
+		await waitFor(() => expect(copy).toHaveBeenCalledWith(line));
+		cleanup();
+		mount(adapter({ ...ON, shellLine: null }));
+		await screen.findByText("Add this line to the top of ~/.ssh/config");
+		expect(screen.queryByRole("button", { name: "Copy shell line" })).toBeNull();
 	});
 
 	it("names keys it can't use, hosts it left out, and the fix", async () => {

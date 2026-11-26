@@ -46,38 +46,54 @@ function mount(entry = KEY) {
 const save = () => sshKeyMode.toEntry(form.getValues()) as SshKeyEntryData;
 
 describe("SSH key hosts and agent switch", () => {
-	it("hosts round-trip one per line", () => {
+	it("hosts round-trip as one row each", () => {
 		const entry = { ...KEY, hosts: ["github.com", "*.example.com"] };
-		expect(sshKeyMode.toForm(entry).hosts).toBe("github.com\n*.example.com");
+		expect(sshKeyMode.toForm(entry).hosts).toEqual([
+			{ value: "github.com" },
+			{ value: "*.example.com" },
+		]);
 		expect((sshKeyMode.toEntry(sshKeyMode.toForm(entry)) as SshKeyEntryData).hosts).toEqual([
 			"github.com",
 			"*.example.com",
 		]);
 	});
 
-	it("user@ is stripped and a bad host shows the error", async () => {
+	it("Add host adds a row; user@ is stripped, empty rows dropped, a bad host flagged", async () => {
 		mount();
-		const hosts = screen.getByLabelText("Hosts (optional)");
-		fireEvent.change(hosts, { target: { value: "git@github.com\n\n10.0.0.5" } });
-		let ok = false;
-		await act(async () => {
-			ok = await form.trigger("hosts");
-		});
-		expect(ok).toBe(true);
-		expect(save().hosts).toEqual(["github.com", "10.0.0.5"]);
-
-		fireEvent.change(hosts, { target: { value: "github.com\na b" } });
+		expect(screen.queryByLabelText("Host")).toBeNull();
+		const add = screen.getByRole("button", { name: "Add host" });
+		fireEvent.click(add);
+		fireEvent.click(add);
+		fireEvent.click(add);
+		const rows = screen.getAllByLabelText("Host");
+		expect(rows).toHaveLength(3);
+		fireEvent.change(rows[0]!, { target: { value: "git@github.com" } });
+		fireEvent.change(rows[1]!, { target: { value: "a b" } });
+		let ok = true;
 		await act(async () => {
 			ok = await form.trigger("hosts");
 		});
 		expect(ok).toBe(false);
 		expect(await screen.findByText("Use only the host, like github.com or 10.0.0.5")).toBeTruthy();
+
+		fireEvent.change(rows[1]!, { target: { value: "10.0.0.5" } });
+		await act(async () => {
+			ok = await form.trigger("hosts");
+		});
+		expect(ok).toBe(true);
+		expect(save().hosts).toEqual(["github.com", "10.0.0.5"]);
+	});
+
+	it("Remove host takes out its row", () => {
+		mount({ ...KEY, hosts: ["a.example", "b.example"] });
+		fireEvent.click(screen.getAllByRole("button", { name: "Remove host" })[0]!);
+		expect(save().hosts).toEqual(["b.example"]);
 	});
 
 	it("clearing every host clears the field", () => {
 		const cleared = sshKeyMode.toEntry({
 			...sshKeyMode.toForm({ ...KEY, hosts: ["a"] }),
-			hosts: "",
+			hosts: [],
 		});
 		expect(cleared).toHaveProperty("hosts", undefined);
 	});
@@ -94,7 +110,7 @@ describe("SSH key hosts and agent switch", () => {
 	it("a hosts value that isn't a list breaks nothing", () => {
 		const odd = { ...KEY, id: "k", hosts: "github.com" } as unknown as SshKeyEntryData;
 		expect(() => sshKeyMode.searchText?.(odd as never)).not.toThrow();
-		expect(sshKeyMode.toForm(odd).hosts).toBe("");
+		expect(sshKeyMode.toForm(odd).hosts).toEqual([]);
 		expect(toSshKeys([odd as never])[0]?.hosts).toEqual([]);
 	});
 
@@ -106,16 +122,21 @@ describe("SSH key hosts and agent switch", () => {
 	it("the entry page lists the hosts and says when the agent is off", () => {
 		const Detail = sshKeyMode.Detail;
 		const entry = { ...KEY, id: "k", hosts: ["github.com", "10.0.0.5"], agentDisabled: true };
+		const copy = vi.fn();
 		render(
 			<I18nProvider i18n={i18n}>
 				<Detail
 					entry={entry as unknown as EntryDetailBodyProps["entry"]}
 					copied={null}
-					copy={vi.fn()}
+					copy={copy}
 				/>
 			</I18nProvider>,
 		);
-		expect(screen.getByText("github.com, 10.0.0.5")).toBeTruthy();
+		expect(screen.getByText("Hosts")).toBeTruthy();
+		expect(screen.getByText("github.com")).toBeTruthy();
+		expect(screen.getByText("10.0.0.5")).toBeTruthy();
+		fireEvent.click(screen.getAllByRole("button", { name: "Copy host" })[1]!);
+		expect(copy).toHaveBeenCalledWith("host-1", "10.0.0.5");
 		expect(screen.getByText("Not used by the SSH agent")).toBeTruthy();
 	});
 });

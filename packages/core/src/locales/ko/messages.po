@@ -442,6 +442,10 @@ msgstr "보안 질문, 청구 우편번호, 계좌 번호 등 추가 정보를 �
 msgid "Add field"
 msgstr "필드 추가"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add host"
+msgstr "호스트 추가"
+
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Add it for me"
 msgstr "대신 추가"
@@ -462,6 +466,10 @@ msgstr "2FA 코드를 {0}에 추가"
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Add the desktop's vault"
 msgstr "데스크톱의 저장소 추가"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add the servers ssh uses this key for, like github.com or 10.0.0.5."
+msgstr "SSH가 이 키를 사용하는 서버(예: github.com 또는 10.0.0.5)를 추가하십시오."
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
@@ -915,8 +923,8 @@ msgid "Bramble needs your permission to talk to the desktop app on this computer
 msgstr "Bramble이 이 컴퓨터의 데스크톱 앱과 통신하려면 권한이 필요합니다. 브라우저에서 확인을 요청합니다."
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Bramble offers this key only to these hosts."
-msgstr "Bramble은 이 키를 해당 호스트에만 제공합니다."
+#~ msgid "Bramble offers this key only to these hosts."
+#~ msgstr "Bramble은 이 키를 해당 호스트에만 제공합니다."
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
@@ -1406,6 +1414,10 @@ msgstr "로그 복사"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Copy previous password"
 msgstr "이전 비밀번호 복사"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy shell line"
+msgstr "셸 명령 복사"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Copy SSH config line"
@@ -2211,12 +2223,16 @@ msgid "Horse"
 msgstr "말"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Host"
+msgstr "호스트"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Hosts"
 msgstr "호스트"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Hosts (optional)"
-msgstr "호스트(선택 사항)"
+#~ msgid "Hosts (optional)"
+#~ msgstr "호스트(선택 사항)"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
@@ -2908,8 +2924,8 @@ msgid "Off. You unlock by tapping a key."
 msgstr "끔. 키를 탭하여 잠금 해제합니다."
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Offer keys only to their hosts"
-msgstr "해당 호스트에만 키 제공"
+#~ msgid "Offer keys only to their hosts"
+#~ msgstr "해당 호스트에만 키 제공"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3414,6 +3430,10 @@ msgstr "첨부 파일 제거"
 msgid "Remove field"
 msgstr "필드 제거"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Remove host"
+msgstr "호스트 제거"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Remove passkey"
 msgstr "패스키 제거"
@@ -3786,8 +3806,16 @@ msgid "Server URL"
 msgstr "서버 URL"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Servers not named on any key see none of your keys."
-msgstr "어떤 키에도 호스트로 지정되지 않은 서버에는 키가 제공되지 않습니다."
+#~ msgid "Servers no key names, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+#~ msgstr "키 이름이 없는 서버와 git 커밋 서명에는 평소 사용하는 SSH 에이전트를 사용하십시오. Bramble에서도 사용하려면 ~/.zshrc와 같은 셸 프로필에 이 줄을 추가하십시오."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+msgstr "키에 지정되지 않은 서버와 git 커밋 서명에는 일반 SSH 에이전트가 사용됩니다. 이러한 작업에도 Bramble을 사용하려면 ~/.zshrc와 같은 셸 프로필에 다음 줄을 추가하십시오."
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers not named on any key see none of your keys."
+#~ msgstr "어떤 키에도 호스트로 지정되지 않은 서버에는 키가 제공되지 않습니다."
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
@@ -4885,6 +4913,10 @@ msgstr "{currentSite} 사용"
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Use a different language from your system"
 msgstr "시스템 언어와 다른 언어 사용"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use Bramble for every server"
+msgstr "모든 서버에 Bramble 사용"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Use Bramble for passkeys"

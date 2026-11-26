@@ -1,5 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
-import { Check, Copy, ShieldQuestion, TerminalSquare, Waypoints } from "lucide-react";
+import { Check, Copy, ShieldQuestion, TerminalSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SshAgentStatus, SshKeyProblem } from "../../../../adapters/ssh-agent";
 import { usePlatform } from "../../../../context/PlatformContext";
@@ -8,14 +8,41 @@ import { Button } from "../../../components/ui/button";
 import { Toggle } from "../../../components/ui/toggle";
 import { Row, Section } from "./primitives";
 
-/** The desktop's SSH agent: the switch, the one line for ~/.ssh/config, the two options, and the
- * keys it can't use. Renders itself away where the platform has no agent. See docs/ssh-agent.md. */
+/** A line to paste somewhere, with its copy button. */
+function CopyLine({ line, label }: { line: string; label: string }) {
+	const { clipboard } = usePlatform();
+	const [copied, setCopied] = useState(false);
+	const copy = async () => {
+		await (clipboard.copyPlain ?? clipboard.copy)(line);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
+	return (
+		<div className="flex items-center gap-2">
+			<code className="flex-1 min-w-0 truncate rounded-md border border-border/50 px-3 py-2 text-xs font-mono">
+				{line}
+			</code>
+			<Button
+				variant="ghost"
+				size="none"
+				onClick={() => void copy()}
+				className="p-2 rounded-md"
+				aria-label={label}
+			>
+				{copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+			</Button>
+		</div>
+	);
+}
+
+/** The desktop's SSH agent: the switch, the line for ~/.ssh/config, the line for a shell profile,
+ * the option, and the keys it can't use. Renders itself away where the platform has no agent.
+ * See docs/ssh-agent.md. */
 export function SshAgentSection() {
-	const { sshAgent, clipboard } = usePlatform();
+	const { sshAgent } = usePlatform();
 	const { refreshAutofillIndex } = useVaultActions();
 	const { t } = useLingui();
 	const [status, setStatus] = useState<SshAgentStatus | null>(null);
-	const [copied, setCopied] = useState(false);
 	const [failed, setFailed] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -55,12 +82,6 @@ export function SshAgentSection() {
 		}
 	};
 
-	const copyLine = async () => {
-		await (clipboard.copyPlain ?? clipboard.copy)(status.includeLine);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 1500);
-	};
-
 	const problem: Record<SshKeyProblem, string> = {
 		"encrypted-pem": t`it's in an old encrypted format`,
 		"security-key": t`its private key is on a security key`,
@@ -93,30 +114,23 @@ export function SshAgentSection() {
 				<>
 					<div className="space-y-2">
 						<p className="text-sm">{setupTitle}</p>
-						<div className="flex items-center gap-2">
-							<code className="flex-1 min-w-0 truncate rounded-md border border-border/50 px-3 py-2 text-xs font-mono">
-								{status.includeLine}
-							</code>
-							<Button
-								variant="ghost"
-								size="none"
-								onClick={() => void copyLine()}
-								className="p-2 rounded-md"
-								aria-label={t`Copy SSH config line`}
-							>
-								{copied ? (
-									<Check className="w-3.5 h-3.5 text-primary" />
-								) : (
-									<Copy className="w-3.5 h-3.5" />
-								)}
-							</Button>
-						</div>
+						<CopyLine line={status.includeLine} label={t`Copy SSH config line`} />
 						{status.canAddLine && status.setup !== "set-up" && (
 							<Button variant="secondary" size="sm" onClick={() => void addLine()}>
 								{t`Add it for me`}
 							</Button>
 						)}
 					</div>
+
+					{status.shellLine && (
+						<div className="space-y-2">
+							<p className="text-sm">{t`Use Bramble for every server`}</p>
+							<p className="text-xs text-muted-foreground">
+								{t`Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc.`}
+							</p>
+							<CopyLine line={status.shellLine} label={t`Copy shell line`} />
+						</div>
+					)}
 
 					{status.error && (
 						<p className="text-xs text-destructive">
@@ -140,18 +154,6 @@ export function SshAgentSection() {
 							checked={status.askEachUse}
 							onChange={(on) => void set({ askEachUse: on })}
 							label={t`Ask before each use`}
-						/>
-					</Row>
-
-					<Row
-						icon={<Waypoints className="w-4 h-4 text-primary" />}
-						title={t`Offer keys only to their hosts`}
-						subtitle={t`Servers not named on any key see none of your keys.`}
-					>
-						<Toggle
-							checked={status.onlyTheirHosts}
-							onChange={(on) => void set({ onlyTheirHosts: on })}
-							label={t`Offer keys only to their hosts`}
 						/>
 					</Row>
 

@@ -619,8 +619,8 @@ mod tests {
                 .to_vec(),
             hosts: vec!["localhost".into()],
         };
-        ssh_config::write_main(home.path(), &address, false).unwrap();
-        ssh_config::write_vault(home.path(), "A", &[("1".into(), named)]).unwrap();
+        ssh_config::write_main(home.path()).unwrap();
+        ssh_config::write_vault(home.path(), "A", &address, &[("1".into(), named)]).unwrap();
         let server = sshd(dir.path());
 
         let out = ssh(home.path(), dir.path(), server.port, &[], "true");
@@ -648,7 +648,16 @@ mod tests {
             hooks.clone(),
         )
         .unwrap();
-        ssh_config::write_main(home.path(), &address, false).unwrap();
+        // The host is named on the key, so ssh asks Bramble; the forwarded side lists through it.
+        let named = ssh_config::VaultKey {
+            blob: crate::ssh_agent::keys::parse(ED, None)
+                .unwrap()
+                .public_blob()
+                .to_vec(),
+            hosts: vec!["localhost".into()],
+        };
+        ssh_config::write_main(home.path()).unwrap();
+        ssh_config::write_vault(home.path(), "A", &address, &[("1".into(), named)]).unwrap();
         let server = sshd(dir.path());
 
         let out = ssh(home.path(), dir.path(), server.port, &["-A"], "ssh-add -L");

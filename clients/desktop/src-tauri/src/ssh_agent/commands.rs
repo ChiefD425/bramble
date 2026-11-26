@@ -13,7 +13,7 @@ use super::{
     agent, listener,
     ssh_config::{self, Setup, VaultKey},
     store::{self, Ask, KeyInput, Prepared, Store, UnusableKey},
-    Agent, ASK_EACH_USE, ENABLED, ONLY_THEIR_HOSTS,
+    Agent, ASK_EACH_USE, ENABLED,
 };
 
 /// Every write to the key lists and `~/.ssh/bramble` holds this, so a sequence check and the
@@ -34,10 +34,11 @@ pub struct LeftOutHost {
 pub struct SshAgentStatus {
     pub enabled: bool,
     pub ask_each_use: bool,
-    pub only_their_hosts: bool,
     pub setup: Setup,
     pub can_add_line: bool,
     pub include_line: &'static str,
+    /// Points `SSH_AUTH_SOCK` at the agent, for hosts no key names and git commit signing.
+    pub shell_line: Option<String>,
     /// "path-too-long", "bind-failed" or "config-failed".
     pub error: Option<&'static str>,
     pub unusable: Vec<UnusableKey>,
@@ -48,7 +49,6 @@ pub(super) struct Paths<'a> {
     pub root: &'a Path,
     pub home: Option<&'a Path>,
     pub agent_address: Option<&'a str>,
-    pub only_their_hosts: bool,
 }
 
 pub(super) fn main_only(label: &str) -> Result<(), String> {
@@ -83,11 +83,9 @@ pub(super) fn save(
     store.prune(listed);
     store::prune_lists(paths.root, listed)?;
     let mut left_out = Vec::new();
-    if let Some(home) = paths.home {
-        if let Some(address) = paths.agent_address {
-            if !home.join(".ssh/bramble/config").exists() {
-                ssh_config::write_main(home, address, paths.only_their_hosts)?;
-            }
+    if let (Some(home), Some(address)) = (paths.home, paths.agent_address) {
+        if !home.join(".ssh/bramble/config").exists() {
+            ssh_config::write_main(home)?;
         }
         let keys: Vec<(String, VaultKey)> = applied
             .hosted
@@ -100,7 +98,7 @@ pub(super) fn save(
                 (id.clone(), key)
             })
             .collect();
-        for out in ssh_config::write_vault(home, vault_id, &keys)? {
+        for out in ssh_config::write_vault(home, vault_id, address, &keys)? {
             let name = applied
                 .list
                 .keys
@@ -119,16 +117,28 @@ pub(super) fn save(
     Ok(Some(left_out))
 }
 
+/// `export SSH_AUTH_SOCK='…'` for a POSIX shell profile. None on Windows, where it hasn't been
+/// tried.
+fn shell_line(address: &str) -> Option<String> {
+    if cfg!(windows) {
+        return None;
+    }
+    Some(format!(
+        "export SSH_AUTH_SOCK='{}'",
+        address.replace('\'', r"'\''")
+    ))
+}
+
 fn status(agent: &Agent) -> SshAgentStatus {
     let state = agent.state();
     let home = agent.home.as_deref();
     SshAgentStatus {
         enabled: agent.store.enabled(),
         ask_each_use: agent.store.ask_each_use(),
-        only_their_hosts: agent.meta_flag(ONLY_THEIR_HOSTS),
         setup: home.map_or(Setup::NotAdded, ssh_config::setup),
         can_add_line: home.is_some_and(ssh_config::can_add_line),
         include_line: ssh_config::INCLUDE_LINE,
+        shell_line: state.address.as_deref().and_then(shell_line),
         error: state.error,
         unusable: agent.store.unusable(),
         left_out: state.left_out.clone(),
@@ -146,7 +156,6 @@ pub fn ssh_agent_set(
     window: Window,
     enabled: Option<bool>,
     ask_each_use: Option<bool>,
-    only_their_hosts: Option<bool>,
 ) -> Result<SshAgentStatus, String> {
     main_only(window.label())?;
     let agent = agent()?;
@@ -154,9 +163,6 @@ pub fn ssh_agent_set(
     if let Some(on) = ask_each_use {
         agent.set_meta_flag(ASK_EACH_USE, on)?;
         agent.store.set_ask_each_use(on);
-    }
-    if let Some(on) = only_their_hosts {
-        agent.set_meta_flag(ONLY_THEIR_HOSTS, on)?;
     }
     match enabled {
         Some(true) if !agent.store.enabled() => {
@@ -177,11 +183,7 @@ pub fn ssh_agent_set(
             state.error = None;
             state.left_out.clear();
         }
-        _ => {
-            if only_their_hosts.is_some() && agent.store.enabled() {
-                agent.write_main().map_err(err)?;
-            }
-        }
+        _ => {}
     }
     Ok(status(agent))
 }
@@ -219,7 +221,6 @@ pub async fn ssh_agent_set_keys(
         root: &agent.root,
         home: agent.home.as_deref(),
         agent_address: address.as_deref(),
-        only_their_hosts: agent.meta_flag(ONLY_THEIR_HOSTS),
     };
     let saved = save(
         &agent.store,
@@ -282,6 +283,19 @@ mod tests {
     use super::*;
     use crate::ssh_agent::store::KeyInput;
 
+    #[cfg(unix)]
+    #[test]
+    fn the_shell_line_quotes_the_whole_path() {
+        assert_eq!(
+            shell_line("/Users/a/Library/Application Support/x/ssh-agent.sock").unwrap(),
+            "export SSH_AUTH_SOCK='/Users/a/Library/Application Support/x/ssh-agent.sock'"
+        );
+        assert_eq!(
+            shell_line("/home/o'neil/a.sock").unwrap(),
+            r"export SSH_AUTH_SOCK='/home/o'\''neil/a.sock'"
+        );
+    }
+
     const ED: &str = include_str!("fixtures/ed25519");
     const ECDSA: &str = include_str!("fixtures/ecdsa256");
 
@@ -312,7 +326,6 @@ mod tests {
                 root: self.root.path(),
                 home: Some(self.home.path()),
                 agent_address: Some("/tmp/agent.sock"),
-                only_their_hosts: false,
             }
         }
         fn conf(&self) -> String {

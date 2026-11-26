@@ -26,7 +26,6 @@ export const desktopSshAgent: SshAgentAdapter = {
 		invoke<SshAgentStatus>("ssh_agent_set", {
 			enabled: patch.enabled,
 			askEachUse: patch.askEachUse,
-			onlyTheirHosts: patch.onlyTheirHosts,
 		}),
 	addIncludeLine: () => invoke<SshAgentStatus>("ssh_agent_add_include"),
 	onRequest: (callback) => subscribe<SshAgentRequest>("ssh-agent://request", callback),

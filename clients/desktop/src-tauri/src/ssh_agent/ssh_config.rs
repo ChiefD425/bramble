@@ -102,15 +102,13 @@ fn make_private_dir(dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// `~/.ssh/bramble/config`: the vault files, and the agent for every host.
-pub fn write_main(home: &Path, agent_address: &str, only_their_hosts: bool) -> io::Result<()> {
+/// `~/.ssh/bramble/config`: the vault files, and nothing of its own. Each named host sends ssh to
+/// the agent in its own block, so a host no key names keeps whatever the user's config or
+/// `SSH_AUTH_SOCK` gives it: the user's own `IdentityAgent` lines still win where they set one.
+pub fn write_main(home: &Path) -> io::Result<()> {
     let dir = bramble_dir(home);
     let vaults = quoted(&format!("{}/vaults/*.conf", dir.display()))?;
-    let agent = quoted(agent_address)?;
-    let mut text = format!("{HEADER}Include {vaults}\nHost *\n  IdentityAgent {agent}\n");
-    if only_their_hosts {
-        text.push_str("  IdentitiesOnly yes\n");
-    }
+    let text = format!("{HEADER}Include {vaults}\n");
     ensure_ssh_dir(home)?;
     make_private_dir(&dir)?;
     write_private(&dir.join("config"), text.as_bytes())
@@ -121,11 +119,13 @@ pub fn write_main(home: &Path, agent_address: &str, only_their_hosts: bool) -> i
 pub fn write_vault(
     home: &Path,
     vault_id: &str,
+    agent_address: &str,
     keys: &[(String, VaultKey)],
 ) -> io::Result<Vec<LeftOut>> {
     if !valid_vault_id(vault_id) {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "vault id"));
     }
+    let agent = quoted(agent_address)?;
     let dir = bramble_dir(home);
     let mut left_out = Vec::new();
     let mut blocks = Vec::new();
@@ -152,7 +152,7 @@ pub fn write_vault(
         let name = format!("{vault_id}-{}.pub", hex(&Sha256::digest(&key.blob)));
         let path = quoted(&dir.join("keys").join(&name).display().to_string())?;
         blocks.push(format!(
-            "Host {}\n  IdentityFile {path}\n  IdentitiesOnly yes\n",
+            "Host {}\n  IdentityAgent {agent}\n  IdentityFile {path}\n  IdentitiesOnly yes\n",
             hosts.join(" ")
         ));
         pubs.push((name, pub_line(&key.blob)?));
@@ -524,7 +524,7 @@ mod tests {
             assert!(!valid_host(h), "{h:?}");
         }
         let keys = [("e1".to_string(), vk(ED_PUB, &bad))];
-        let left = write_vault(home.path(), "A", &keys).unwrap();
+        let left = write_vault(home.path(), "A", "/a.sock", &keys).unwrap();
         assert_eq!(left.len(), bad.len());
         assert!(left.iter().all(|l| l.entry_id == "e1"));
         assert!(!home.path().join(".ssh/bramble/vaults/A.conf").exists());
@@ -538,7 +538,7 @@ mod tests {
     fn a_bad_vault_id_writes_nothing() {
         let home = tempfile::tempdir().unwrap();
         let keys = [("e1".to_string(), vk(ED_PUB, &["github.com"]))];
-        assert!(write_vault(home.path(), "../x", &keys).is_err());
+        assert!(write_vault(home.path(), "../x", "/a.sock", &keys).is_err());
         assert!(files(home.path()).is_empty());
     }
 
@@ -552,7 +552,9 @@ mod tests {
             ),
             ("e2".to_string(), vk(ECDSA_PUB, &[])),
         ];
-        assert!(write_vault(home.path(), "A", &keys).unwrap().is_empty());
+        assert!(write_vault(home.path(), "A", "/a.sock", &keys)
+            .unwrap()
+            .is_empty());
         let h = home.path().display();
         let pub_name = format!("A-{}.pub", sha_hex(&blob(ED_PUB)));
         let conf = fs::read_to_string(home.path().join(".ssh/bramble/vaults/A.conf")).unwrap();
@@ -561,6 +563,7 @@ mod tests {
             format!(
                 "# Written by Bramble. Changes here are overwritten.\n\n\
                  Host github.com *.example.com\n  \
+                 IdentityAgent \"/a.sock\"\n  \
                  IdentityFile \"{h}/.ssh/bramble/keys/{pub_name}\"\n  \
                  IdentitiesOnly yes\n"
             )
@@ -588,30 +591,92 @@ mod tests {
     }
 
     #[test]
-    fn main_config_gains_identities_only_when_asked() {
+    fn the_main_config_claims_no_host_of_its_own() {
         let home = tempfile::tempdir().unwrap();
         let h = home.path().display();
-        write_main(home.path(), "/run/agent.sock", false).unwrap();
+        write_main(home.path()).unwrap();
         let expected = format!(
             "# Written by Bramble. Changes here are overwritten.\n\
-             Include \"{h}/.ssh/bramble/vaults/*.conf\"\n\
-             Host *\n  \
-             IdentityAgent \"/run/agent.sock\"\n"
+             Include \"{h}/.ssh/bramble/vaults/*.conf\"\n"
         );
         let main = home.path().join(".ssh/bramble/config");
         assert_eq!(fs::read_to_string(&main).unwrap(), expected);
-        write_main(home.path(), "/run/agent.sock", true).unwrap();
-        assert_eq!(
-            fs::read_to_string(&main).unwrap(),
-            format!("{expected}  IdentitiesOnly yes\n")
+    }
+
+    #[test]
+    fn each_named_host_is_sent_to_the_agent() {
+        let home = tempfile::tempdir().unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/run/agent.sock",
+            &[("1".into(), vk(ED_PUB, &["h.example"]))],
+        )
+        .unwrap();
+        let conf = fs::read_to_string(home.path().join(".ssh/bramble/vaults/A.conf")).unwrap();
+        assert!(
+            conf.contains("Host h.example\n  IdentityAgent \"/run/agent.sock\"\n"),
+            "{conf}"
         );
+    }
+
+    #[test]
+    #[ignore = "needs OpenSSH's ssh on PATH"]
+    fn real_ssh_keeps_the_users_own_agent_for_hosts_no_key_names() {
+        let home = tempfile::tempdir().unwrap();
+        write_main(home.path()).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/tmp/bramble-agent.sock",
+            &[("1".into(), vk(ED_PUB, &["named.example"]))],
+        )
+        .unwrap();
+        let config = home.path().join(".ssh/bramble/config");
+        let user = home.path().join("user-config");
+        fs::write(
+            &user,
+            format!(
+                "Include \"{}\"\n\nHost mine.example\n  IdentityAgent /tmp/other-agent.sock\n",
+                config.display()
+            ),
+        )
+        .unwrap();
+        let agent_for = |host: &str| {
+            let out = Command::new("ssh")
+                .args(["-G", "-F"])
+                .arg(&user)
+                .arg(host)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .find(|l| l.starts_with("identityagent "))
+                .unwrap_or("")
+                .to_string()
+        };
+        assert_eq!(
+            agent_for("named.example"),
+            "identityagent /tmp/bramble-agent.sock"
+        );
+        assert_eq!(
+            agent_for("mine.example"),
+            "identityagent /tmp/other-agent.sock"
+        );
+        assert!(!agent_for("other.example").contains("bramble"));
     }
 
     #[test]
     fn a_quote_or_newline_in_a_path_writes_nothing() {
         let home = tempfile::tempdir().unwrap();
-        assert!(write_main(home.path(), "/run/a\"gent", false).is_err());
-        assert!(write_main(home.path(), "/run/a\ngent", false).is_err());
+        let keys = [("1".to_string(), vk(ED_PUB, &["h"]))];
+        assert!(write_vault(home.path(), "A", "/run/a\"gent", &keys).is_err());
+        assert!(write_vault(home.path(), "A", "/run/a\ngent", &keys).is_err());
         assert!(files(home.path()).is_empty());
     }
 
@@ -620,16 +685,18 @@ mod tests {
         let home = tempfile::tempdir().unwrap();
         fs::create_dir_all(home.path().join(".ssh")).unwrap();
         fs::write(home.path().join(".ssh/id_ed25519.pub"), "mine").unwrap();
-        write_main(home.path(), "/a.sock", false).unwrap();
+        write_main(home.path()).unwrap();
         write_vault(
             home.path(),
             "A",
+            "/a.sock",
             &[("1".into(), vk(ED_PUB, &["a.example"]))],
         )
         .unwrap();
         write_vault(
             home.path(),
             "B",
+            "/a.sock",
             &[("2".into(), vk(ECDSA_PUB, &["b.example"]))],
         )
         .unwrap();
@@ -769,8 +836,14 @@ mod tests {
 
         fs::remove_file(&mine).unwrap();
         fs::remove_file(home.path().join(".ssh/bramble/config")).unwrap();
-        write_main(home.path(), "/a.sock", false).unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
+        write_main(home.path()).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ED_PUB, &["h"]))],
+        )
+        .unwrap();
         delete_all(home.path()).unwrap();
         assert!(
             !home.path().join(".ssh/bramble").exists(),
@@ -781,11 +854,17 @@ mod tests {
     #[test]
     fn quoted_paths_double_their_backslashes() {
         let home = tempfile::tempdir().unwrap();
-        write_main(home.path(), r"\\.\pipe\agent", false).unwrap();
-        let main = fs::read_to_string(home.path().join(".ssh/bramble/config")).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            r"\\.\pipe\agent",
+            &[("1".into(), vk(ED_PUB, &["h"]))],
+        )
+        .unwrap();
+        let conf = fs::read_to_string(home.path().join(".ssh/bramble/vaults/A.conf")).unwrap();
         assert!(
-            main.contains(r#"IdentityAgent "\\\\.\\pipe\\agent""#),
-            "{main}"
+            conf.contains(r#"IdentityAgent "\\\\.\\pipe\\agent""#),
+            "{conf}"
         );
     }
 
@@ -793,15 +872,27 @@ mod tests {
     #[test]
     fn write_main_makes_a_missing_ssh_dir_owner_only() {
         let home = tempfile::tempdir().unwrap();
-        write_main(home.path(), "/a.sock", false).unwrap();
+        write_main(home.path()).unwrap();
         assert_eq!(mode(&home.path().join(".ssh")), 0o700);
     }
 
     #[test]
     fn a_replaced_key_leaves_no_stale_pub() {
         let home = tempfile::tempdir().unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ECDSA_PUB, &["h"]))]).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ED_PUB, &["h"]))],
+        )
+        .unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ECDSA_PUB, &["h"]))],
+        )
+        .unwrap();
         let pubs: Vec<_> = files(home.path())
             .into_iter()
             .filter(|f| f.ends_with(".pub"))
@@ -812,16 +903,34 @@ mod tests {
     #[test]
     fn a_vault_with_no_hosts_has_no_conf() {
         let home = tempfile::tempdir().unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &[]))]).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ED_PUB, &["h"]))],
+        )
+        .unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ED_PUB, &[]))],
+        )
+        .unwrap();
         assert!(files(home.path()).is_empty());
     }
 
     #[test]
     fn no_temporary_files_are_left() {
         let home = tempfile::tempdir().unwrap();
-        write_main(home.path(), "/a.sock", true).unwrap();
-        write_vault(home.path(), "A", &[("1".into(), vk(ED_PUB, &["h"]))]).unwrap();
+        write_main(home.path()).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/a.sock",
+            &[("1".into(), vk(ED_PUB, &["h"]))],
+        )
+        .unwrap();
         add_line(home.path()).unwrap();
         for f in files(home.path()) {
             assert!(!f.contains(".tmp"), "{f}");
@@ -839,10 +948,11 @@ mod tests {
     #[ignore = "needs OpenSSH's ssh on PATH"]
     fn real_ssh_accepts_the_files() {
         let home = tempfile::tempdir().unwrap();
-        write_main(home.path(), "/tmp/bramble-test-agent.sock", false).unwrap();
+        write_main(home.path()).unwrap();
         write_vault(
             home.path(),
             "A",
+            "/tmp/bramble-test-agent.sock",
             &[("1".into(), vk(ED_PUB, &["named.example"]))],
         )
         .unwrap();
@@ -870,7 +980,13 @@ mod tests {
         );
 
         // Backslashes reach ssh as written: a Windows path or pipe name must survive its parser.
-        write_main(home.path(), "/tmp/a\\b.sock", false).unwrap();
+        write_vault(
+            home.path(),
+            "A",
+            "/tmp/a\\b.sock",
+            &[("1".into(), vk(ED_PUB, &["x"]))],
+        )
+        .unwrap();
         let out = Command::new("ssh")
             .args(["-G", "-F"])
             .arg(&config)

@@ -27,7 +27,6 @@ use store::{Ask, Hooks, Store};
 /// launch, before any window exists.
 const ENABLED: &str = "ssh-agent.enabled";
 const ASK_EACH_USE: &str = "ssh-agent.askEachUse";
-const ONLY_THEIR_HOSTS: &str = "ssh-agent.onlyTheirHosts";
 
 const REQUEST_EVENT: &str = "ssh-agent://request";
 const DONE_EVENT: &str = "ssh-agent://done";
@@ -59,10 +58,6 @@ fn agent() -> Result<&'static Agent, String> {
 impl Agent {
     fn state(&self) -> MutexGuard<'_, AgentState> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    fn meta_flag(&self, key: &str) -> bool {
-        meta_flag(&self.root, key)
     }
 
     fn set_meta_flag(&self, key: &str, on: bool) -> Result<(), String> {
@@ -100,9 +95,7 @@ impl Agent {
     fn write_main(&self) -> std::io::Result<()> {
         let address = self.state().address.clone();
         match (&self.home, address) {
-            (Some(home), Some(address)) => {
-                ssh_config::write_main(home, &address, self.meta_flag(ONLY_THEIR_HOSTS))
-            }
+            (Some(home), Some(_)) => ssh_config::write_main(home),
             _ => Ok(()),
         }
     }

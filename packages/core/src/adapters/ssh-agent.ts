@@ -16,12 +16,14 @@ export type SshKeyProblem =
 export interface SshAgentStatus {
 	enabled: boolean;
 	askEachUse: boolean;
-	onlyTheirHosts: boolean;
 	/** Where `~/.ssh/config` includes Bramble's config: first, lower down, or not at all. */
 	setup: "set-up" | "not-added" | "not-first";
 	/** Bramble may add the line itself: false for a symlinked or read-only config. */
 	canAddLine: boolean;
 	includeLine: string;
+	/** `export SSH_AUTH_SOCK=…` for a shell profile: hosts no key names, and git commit signing,
+	 * then use Bramble too. Absent while it isn't listening, and on Windows. */
+	shellLine?: string | null;
 	error?: "path-too-long" | "bind-failed" | "config-failed";
 	unusable: { entryId: string; name: string; reason: SshKeyProblem }[];
 	leftOut: { entryId: string; name: string; host: string }[];
@@ -43,9 +45,7 @@ export interface SshAgentRequest {
 
 export interface SshAgentAdapter {
 	status(): Promise<SshAgentStatus>;
-	set(
-		patch: Partial<Pick<SshAgentStatus, "enabled" | "askEachUse" | "onlyTheirHosts">>,
-	): Promise<SshAgentStatus>;
+	set(patch: Partial<Pick<SshAgentStatus, "enabled" | "askEachUse">>): Promise<SshAgentStatus>;
 	addIncludeLine(): Promise<SshAgentStatus>;
 	onRequest(callback: (request: SshAgentRequest) => void): () => void;
 	onDone(callback: (id: string) => void): () => void;

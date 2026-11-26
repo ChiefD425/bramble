@@ -521,6 +521,10 @@ msgstr "বাড়তি তথ্য রাখতে কাস্টম ফ�
 msgid "Add field"
 msgstr "ফিল্ড যোগ করুন"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add host"
+msgstr "হোস্ট যোগ করুন"
+
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Add it for me"
 msgstr "আমার জন্য এটি যোগ করুন"
@@ -541,6 +545,10 @@ msgstr "2FA কোডটি {0}-এ যোগ করুন"
 #: packages/core/src/app/screens/Settings/components/DesktopLinkSection.tsx
 msgid "Add the desktop's vault"
 msgstr "ডেস্কটপের ভল্ট যোগ করুন"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Add the servers ssh uses this key for, like github.com or 10.0.0.5."
+msgstr "SSH এই কীটি যে সার্ভারগুলির জন্য ব্যবহার করে, সেগুলি যোগ করুন, যেমন github.com বা 10.0.0.5।"
 
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Add the websites this login covers. Leave empty for a credential not tied to a site."
@@ -1011,8 +1019,8 @@ msgid "Bramble needs your permission to talk to the desktop app on this computer
 msgstr "এই কম্পিউটারের ডেস্কটপ অ্যাপের সাথে যোগাযোগ করতে Bramble-এর আপনার অনুমতি লাগবে। আপনার ব্রাউজার আপনাকে নিশ্চিত করতে বলবে।"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Bramble offers this key only to these hosts."
-msgstr "Bramble এই হোস্টগুলিতে কেবল এই কীটি অফার করে।"
+#~ msgid "Bramble offers this key only to these hosts."
+#~ msgstr "Bramble এই হোস্টগুলিতে কেবল এই কীটি অফার করে।"
 
 #: packages/core/src/app/screens/Settings/components/BackupSection.tsx
 msgid "Bramble only needs to upload and list. Restricting the key to this one bucket, and leaving out delete, limits what it can do if it is ever stolen."
@@ -1518,6 +1526,10 @@ msgstr "লগ কপি করুন"
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Copy previous password"
 msgstr "আগের পাসওয়ার্ড কপি করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Copy shell line"
+msgstr "শেল লাইন কপি করুন"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
 msgid "Copy SSH config line"
@@ -2379,12 +2391,16 @@ msgid "Horse"
 msgstr "ঘোড়া"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Host"
+msgstr "হোস্ট"
+
+#: packages/core/src/app/entry-modes/ssh-key.tsx
 msgid "Hosts"
 msgstr "হোস্ট"
 
 #: packages/core/src/app/entry-modes/ssh-key.tsx
-msgid "Hosts (optional)"
-msgstr "হোস্ট (ঐচ্ছিক)"
+#~ msgid "Hosts (optional)"
+#~ msgstr "হোস্ট (ঐচ্ছিক)"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Hourglass"
@@ -3169,8 +3185,8 @@ msgstr "বন্ধ। আপনি সিকিউরিটি কি-তে �
 #~ msgstr "Off. You unlock with a security key."
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Offer keys only to their hosts"
-msgstr "কীগুলো কেবল তাদের হোস্টে অফার করুন"
+#~ msgid "Offer keys only to their hosts"
+#~ msgstr "কীগুলো কেবল তাদের হোস্টে অফার করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Offer saved logins, cards, and generated passwords in a dropdown on the page. When off, copy from the vault instead."
@@ -3707,6 +3723,10 @@ msgstr "সংযুক্তি সরান"
 msgid "Remove field"
 msgstr "ফিল্ড বাদ দিন"
 
+#: packages/core/src/app/entry-modes/ssh-key.tsx
+msgid "Remove host"
+msgstr "হোস্ট সরান"
+
 #: packages/core/src/app/entry-modes/login.tsx
 msgid "Remove passkey"
 msgstr "পাসকি সরান"
@@ -4095,8 +4115,16 @@ msgstr "সার্ভার URL"
 #~ msgstr "Server URL (self-hosted only)"
 
 #: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
-msgid "Servers not named on any key see none of your keys."
-msgstr "কোনো কী-তে নাম নেই এমন সার্ভারগুলো আপনার কোনো কী দেখতে পায় না।"
+#~ msgid "Servers no key names, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+#~ msgstr "কোনো কী-নাম নেই এমন সার্ভার এবং git কমিট স্বাক্ষরের জন্য আপনার স্বাভাবিক SSH এজেন্ট ব্যবহার করুন। সেগুলির জন্যও Bramble ব্যবহার করতে, এই লাইনটি আপনার শেল প্রোফাইলে যোগ করুন, যেমন ~/.zshrc।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Servers not named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add this line to your shell profile, such as ~/.zshrc."
+msgstr "কি-তে নাম দেওয়া নেই এমন সার্ভার এবং git কমিট সাইনিংয়ের জন্য আপনার স্বাভাবিক SSH এজেন্ট ব্যবহার করুন। সেগুলোর জন্যও Bramble ব্যবহার করতে, আপনার শেল প্রোফাইলে এই লাইনটি যোগ করুন, যেমন ~/.zshrc।"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+#~ msgid "Servers not named on any key see none of your keys."
+#~ msgstr "কোনো কী-তে নাম নেই এমন সার্ভারগুলো আপনার কোনো কী দেখতে পায় না।"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Set by a policy or another extension"
@@ -5299,6 +5327,10 @@ msgstr "{currentSite} ব্যবহার করুন"
 #: packages/core/src/app/screens/Settings/components/AppearanceSection.tsx
 msgid "Use a different language from your system"
 msgstr "সিস্টেমের ভাষার বদলে অন্য ভাষা ব্যবহার করুন"
+
+#: packages/core/src/app/screens/Settings/components/SshAgentSection.tsx
+msgid "Use Bramble for every server"
+msgstr "প্রতিটি সার্ভারে Bramble ব্যবহার করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Use Bramble for passkeys"

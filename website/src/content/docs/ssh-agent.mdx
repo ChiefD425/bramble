@@ -23,7 +23,9 @@ keywords:
   - Hosts
   - Use with the SSH agent
   - Ask before each use
-  - Offer keys only to their hosts
+  - Use Bramble for every server
+  - Add host
+  - YubiKey agent
   - Add it for me
 updatedDate: 2026-11-25
 since: "b33f6e32"
@@ -47,9 +49,13 @@ Bramble has to be running for `ssh` to reach it, so let it start at login.
 
 ## Tell a key where it's used
 
-Open an SSH key in your vault, choose **Edit**, and list its **Hosts**, one per line: what you type after `ssh`, such as `github.com`, `10.0.0.5`, `*.example.com`, or an alias from your own config. `ssh` then offers that host this key only, from the first connection.
+Open an SSH key in your vault, choose **Edit**, and under **Hosts** choose **Add host** for each server: what you type after `ssh`, such as `github.com`, `10.0.0.5`, `*.example.com`, or an alias from your own config. `ssh` then offers that host this key only, from the first connection.
 
-A host no key names is offered every key, from every vault, the open vault's first. Many servers stop after six tries with **Too many authentication failures**; naming the host on the right key fixes it. To offer keys only to the hosts they name, turn on **Offer keys only to their hosts**.
+A host no key names keeps your own SSH setup, such as another agent or a key file, so turning Bramble on changes nothing for it.
+
+## Use Bramble for every server
+
+To have Bramble offer its keys to servers not named on any key, add the line Settings shows under **Use Bramble for every server** to your shell profile, such as `~/.zshrc`, and open a new terminal. It's the same line git commit signing needs (below). Those servers are then offered every key, from every vault, the open vault's first. Many servers stop after six tries with **Too many authentication failures**; naming the host on the right key fixes it.
 
 Turn off **Use with the SSH agent** on a key that should never sign from the terminal, such as a certificate authority key.
 
@@ -66,10 +72,10 @@ With `ssh -A` or `ForwardAgent yes`, the server you log in to can use your keys.
 
 ## Sign git commits
 
-Git signs through `ssh-keygen`, which finds an agent only through `SSH_AUTH_SOCK`, never through `~/.ssh/config`. Point it at Bramble in your shell profile, such as `~/.zshrc`:
+Git signs through `ssh-keygen`, which finds an agent only through `SSH_AUTH_SOCK`, never through `~/.ssh/config`. Add the line Settings shows under **Use Bramble for every server** to your shell profile. On a Mac it is:
 
 ```sh
-export SSH_AUTH_SOCK="$HOME/Library/Application Support/app.bramble.desktop/ssh-agent.sock"
+export SSH_AUTH_SOCK='/Users/you/Library/Application Support/app.bramble.desktop/ssh-agent.sock'
 ```
 
 On Linux the path is `~/.local/share/app.bramble.desktop/ssh-agent.sock`. Then tell git which key to sign with:
@@ -88,7 +94,7 @@ Settings lists any key the agent can't use, and why. Keys saved in the old encry
 
 ## Windows
 
-Settings shows the line for your `.ssh\config`. Git for Windows comes with its own `ssh`, which can't reach Bramble; point Git at Windows' own:
+Settings shows the line for your `.ssh\config`. It doesn't offer **Use Bramble for every server** on Windows yet, so Bramble's keys reach only the hosts named on them, and git commit signing doesn't use Bramble. Git for Windows comes with its own `ssh`, which can't reach Bramble; point Git at Windows' own:
 
 ```sh
 git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe

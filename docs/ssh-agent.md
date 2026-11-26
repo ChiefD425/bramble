@@ -2,13 +2,13 @@
 
 **Status: built 2026-11-25, unreleased.** Phase 6 of [desktop-port.md](desktop-port.md). Checked on
 macOS against OpenSSH 10.2 (`ssh-add`, `ssh-keygen -Y`, a real `sshd` login, `ssh -A`) and in the
-desktop e2e (`e2e/desktop-link/ssh-agent.spec.ts`). By hand on a Mac (2026-11-25, builds of
-e0757256 to 79773ce8): a named host offered only its key, an unnamed host every key, **Offer keys
-only to their hosts** offering none, a Touch ID unlock from a terminal request, the switch card for
-a key in another vault, git commit signing, auto-lock ending silent signing, and turning the agent
-off removing its files. Not yet run by hand: **Ask before each use**, `ssh -A`, a YubiKey or
-master-password unlock from a request, and the fixes from that session (the window going back,
-Touch ID by itself after the Lock button, closing as Cancel). Not yet run on Windows or Linux.
+desktop e2e (`e2e/desktop-link/ssh-agent.spec.ts`). Everything in the Mac test plan passed by hand
+(2026-11-25, builds of e0757256 to 79773ce8): named and unnamed hosts, unlock from a terminal
+request with Touch ID, a YubiKey and the master password, the window going back afterwards, the
+switch card, Ask before each use, `ssh -A`, git commit signing, auto-lock and turning the agent
+off. Not yet run by hand: the change that followed, where Bramble's config claims only named hosts,
+the shell line replaces **Offer keys only to their hosts**, and Hosts became one field per host.
+Not yet run on Windows or Linux.
 
 ## Bottom line
 
@@ -19,8 +19,11 @@ Touch ID by itself after the Lock button, closing as Cancel). Not yet run on Win
 - **A key can name its hosts.** `ssh 123.123.123.123` is offered only the key whose Hosts list says
   `123.123.123.123`, from the first connection on. `ssh` does the matching, from a config Bramble
   writes, because the agent protocol never tells an agent which host it is for.
-- **Every vault's keys are offered** to a host no key names, as the macOS AutoFill sheet offers
-  every vault's logins in Safari. A switch turns that off.
+- **A host no key names keeps the user's own setup.** Bramble's config claims only the hosts named
+  on its keys, so an agent the user set up for other hosts (a YubiKey agent, the system's) still
+  serves them, and their own per-host `IdentityAgent` lines still win. Pointing `SSH_AUTH_SOCK` at
+  Bramble hands it every other host as well: every vault's keys, the open vault's first, as the
+  macOS AutoFill sheet offers every vault's logins in Safari. Git commit signing needs that line.
 - **Unlocked means it just works.** While the key's vault is open, signing asks nothing, for the
   auto-lock time the user set (15 minutes by default). A switch makes it ask every time.
 - **Locked means Bramble comes forward on the unlock screen** of the vault holding the key, with
@@ -47,7 +50,7 @@ Touch ID by itself after the Lock button, closing as Cancel). Not yet run on Win
 
 | Field | Form | Stored | Meaning |
 |---|---|---|---|
-| Hosts | **Hosts (optional)**, one per line, hint "Bramble offers this key only to these hosts." | `hosts?: string[]` | What you type after `ssh`: `github.com`, `123.123.123.123`, `*.example.com`, or an alias like `prod` or `github-work`. |
+| Hosts | **Hosts**, one field per host with **Add host** and a remove button, as a login's **Websites**; empty, "Add the servers ssh uses this key for, like github.com or 10.0.0.5." | `hosts?: string[]` | What you type after `ssh`: `github.com`, `123.123.123.123`, `*.example.com`, or an alias like `prod` or `github-work`. |
 | Use with the SSH agent | A switch, on by default | `agentDisabled?: true` only when off | Off: the key is never listed or written to the config. For keys that must never sign silently, such as an SSH certificate authority. |
 
 - **A host is only a host.** Letters, digits and `. - _ * ? : %` (wildcards, IPv6, zone ids). The
@@ -58,7 +61,8 @@ Touch ID by itself after the Lock button, closing as Cancel). Not yet run on Win
 - **Hosts are their own field, not `urls`.** About ten places read `urls` as websites (TOTP setup
   suggestions, entry de-duplication, KeePass export); server addresses must not reach them.
   `hosts` is an ordinary part for sync: concurrent edits on two devices ask the user to choose.
-- **The entry page** lists the hosts, and search matches them.
+- **The entry page** lists the hosts, one row each with its own copy button, as a login's
+  websites, and search matches them.
 - **Exports and imports carry hosts.** KeePass and CXF exports add a `Hosts` field beside the key's
   other fields; a `.bramble` backup carries both fields as they are. A LastPass `SSH Key` note's
   `Hostname` becomes the key's host when it is one, and stays a custom field when it isn't.
@@ -87,13 +91,17 @@ Settings > General > **SSH agent**, desktop only:
   - The row reads **Added to ~/.ssh/config** when the line is in the file before any `Host` or
     `Match`, and **Move this line to the top of ~/.ssh/config** when it's lower down.
 - **Ask before each use**, off. "Bramble asks every time a key is used, even while unlocked."
-- **Offer keys only to their hosts**, off. "Servers not named on any key see none of your keys."
+- **Use Bramble for every server**, shown while the agent listens (macOS and Linux): "Servers not
+  named on a key, and git commit signing, use your usual SSH agent. To use Bramble for them too, add
+  this line to your shell profile, such as ~/.zshrc." with `export SSH_AUTH_SOCK='…'` and
+  **Copy**. Bramble never edits a shell profile. It replaced a switch that wrote
+  `Host *` / `IdentitiesOnly yes`, which overrode the user's own per-host agent lines too.
 - **Keys Bramble can't use**, with the reason and the fix, and hosts it left out.
 
 ## Files Bramble writes
 
 ```
-~/.ssh/bramble/config             written at switch-on, rewritten when a setting changes
+~/.ssh/bramble/config             written whenever the agent starts
 ~/.ssh/bramble/vaults/<id>.conf   one per vault, written whenever that vault is open
 ~/.ssh/bramble/keys/<sha256>.pub  public key of each key that names a host
 ```
@@ -101,15 +109,12 @@ Settings > General > **SSH agent**, desktop only:
 ```
 # ~/.ssh/bramble/config (written by Bramble)
 Include ~/.ssh/bramble/vaults/*.conf
-Host *
-  IdentityAgent "~/Library/Application Support/app.bramble.desktop/ssh-agent.sock"
-  # only with Offer keys only to their hosts:
-  IdentitiesOnly yes
 ```
 
 ```
 # ~/.ssh/bramble/vaults/<id>.conf (written by Bramble)
 Host 123.123.123.123 *.example.com
+  IdentityAgent "~/Library/Application Support/app.bramble.desktop/ssh-agent.sock"
   IdentityFile ~/.ssh/bramble/keys/9f2c….pub
   IdentitiesOnly yes
 ```
@@ -118,8 +123,11 @@ Host 123.123.123.123 *.example.com
   adds up across blocks, so two keys naming the same host are both offered, in order.
 - `ssh` matches what was typed, so aliases from the user's own config, jump hosts (the jump runs
   its own `ssh`) and every tool that runs `ssh` behave the same.
-- `ssh` takes the first value it finds for a setting, so Bramble's lines win over the user's for
-  the same host. Help says to put any host-specific `IdentityAgent` above the `Include` line.
+- `ssh` takes the first value it finds for a setting. The `Include` comes first, so for a host
+  named on a key Bramble's lines win: naming it there is the choice. For any other host Bramble
+  sets nothing, so the user's own `IdentityAgent`, `IdentitiesOnly` and `SSH_AUTH_SOCK` decide.
+  The first build put `Host *` / `IdentityAgent` in the main config, which took every host from
+  an agent the user had pinned for it (a YubiKey agent for GitHub, found 2026-11-25).
 - **Bramble owns these files; nobody edits them.** Every save of an SSH key rewrites its vault's
   `.conf`, `.pub` files and key list, because the save already sends the keys to Rust. A rename
   touches only the list (no names here); a changed host rewrites the `.conf`; a replaced or deleted
@@ -310,8 +318,9 @@ What remains once everything above is in place:
   file in `~/.ssh` can be copied once and used forever.
 - **Any program can read the key list and the files in `~/.ssh/bramble`**: public keys, key names,
   and which hosts each key is for.
-- **A server no key names sees every public key** while `ssh` tries them, which can link keys from
-  different vaults. Hosts, or Offer keys only to their hosts, end that.
+- **With `SSH_AUTH_SOCK` pointed at Bramble, a server no key names sees every public key** while
+  `ssh` tries them, which can link keys from different vaults. Hosts end that; without the line,
+  such a server never reaches Bramble.
 - **Forwarded requests from clients older than OpenSSH 8.9 look local.**
 - **A lookalike window could ask for the master password** once users expect `ssh` to bring Bramble
   forward. The Touch ID and Windows Hello system prompts are harder to fake.
