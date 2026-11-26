@@ -6,18 +6,21 @@ pub mod keys;
 pub mod listener;
 pub mod protocol;
 pub mod ssh_config;
+pub mod step_back;
 pub mod store;
 
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex, MutexGuard, OnceLock},
+    time::Duration,
 };
 
 use serde_json::Value;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
-use crate::storage::ops;
+use crate::{lifetime, storage::ops};
 use commands::LeftOutHost;
+use step_back::{Before, Raised};
 use store::{Ask, Hooks, Store};
 
 /// The settings, in the app's meta like the Quick Access shortcut: they must be readable at
@@ -28,6 +31,9 @@ const ONLY_THEIR_HOSTS: &str = "ssh-agent.onlyTheirHosts";
 
 const REQUEST_EVENT: &str = "ssh-agent://request";
 const DONE_EVENT: &str = "ssh-agent://done";
+
+/// How long nothing has to be asking before the window goes back.
+const SETTLE: Duration = Duration::from_millis(400);
 
 pub(crate) struct Agent {
     root: PathBuf,
@@ -126,7 +132,10 @@ pub fn start(app: AppHandle, root: &Path) {
         root: root.to_path_buf(),
         home,
         store: Arc::new(Store::new(lists, enabled, meta_flag(root, ASK_EACH_USE))),
-        hooks: Arc::new(AppHooks { app }),
+        hooks: Arc::new(AppHooks {
+            app,
+            raised: Arc::default(),
+        }),
         state: Mutex::new(AgentState::default()),
     };
     if AGENT.set(agent).is_err() {
@@ -148,6 +157,7 @@ pub fn forget_keys() {
 
 struct AppHooks {
     app: AppHandle,
+    raised: Arc<Mutex<Raised>>,
 }
 
 impl Hooks for AppHooks {
@@ -156,16 +166,74 @@ impl Hooks for AppHooks {
     }
 
     fn ask(&self, ask: &Ask) {
+        // Read before taking the lock: the getters wait on the main thread, which takes the lock
+        // to settle.
+        let before = window_now(&self.app);
+        lock(&self.raised).ask(&ask.id, before);
         if let Err(e) = self.app.emit(REQUEST_EVENT, ask) {
             log::warn!("ssh agent request not delivered: {e}");
         }
         let app = self.app.clone();
         let _ = self
             .app
-            .run_on_main_thread(move || crate::lifetime::show_main(&app));
+            .run_on_main_thread(move || lifetime::show_main(&app));
     }
 
     fn done(&self, id: &str) {
         let _ = self.app.emit(DONE_EVENT, serde_json::json!({ "id": id }));
+        let Some(epoch) = lock(&self.raised).done(id) else {
+            return;
+        };
+        let app = self.app.clone();
+        let raised = self.raised.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(SETTLE);
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                let before = lock(&raised).settle(epoch);
+                if let Some(before) = before {
+                    step_back(&handle, before);
+                }
+            });
+        });
+    }
+}
+
+fn lock(raised: &Mutex<Raised>) -> MutexGuard<'_, Raised> {
+    raised.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// What the vault window is doing now.
+fn window_now(app: &AppHandle) -> Before {
+    let Some(window) = app.get_webview_window(lifetime::MAIN) else {
+        return Before::Hidden;
+    };
+    if !window.is_visible().unwrap_or(false) {
+        Before::Hidden
+    } else if window.is_minimized().unwrap_or(false) {
+        Before::Minimized
+    } else if window.is_focused().unwrap_or(false) {
+        Before::InUse
+    } else {
+        Before::Background
+    }
+}
+
+/// Put the window back where a request found it. On the main thread.
+fn step_back(app: &AppHandle, before: Before) {
+    match before {
+        Before::InUse => {}
+        Before::Hidden => lifetime::hide_main(app),
+        Before::Background | Before::Minimized => {
+            // Hiding the app is how macOS hands focus back to the app before it; elsewhere,
+            // minimising the window does.
+            if before == Before::Minimized || cfg!(not(target_os = "macos")) {
+                if let Some(window) = app.get_webview_window(lifetime::MAIN) {
+                    let _ = window.minimize();
+                }
+            }
+            #[cfg(target_os = "macos")]
+            let _ = app.hide();
+        }
     }
 }

@@ -172,6 +172,13 @@ Host 123.123.123.123 *.example.com
 The line names the purpose, read from the data to sign: "sign in to a server", "sign a git commit"
 (an SSHSIG request in the `git` namespace) or "sign a message" (any other SSHSIG request).
 
+4. **The window goes back** once nothing has asked for 0.4 seconds: hidden again if it was hidden;
+   if it was behind another app or minimised, the app hides on macOS, which hands focus back to the
+   terminal, and the window minimises elsewhere. A window the user was already in stays. Where it
+   was is read when the first card comes up, so an unlock that turns into a switch doesn't count
+   the window it raised itself. The wait is for that turn: the store ends one ask just before it
+   raises the next. (`ssh_agent/step_back.rs`)
+
 ## A server reached with `ssh -A`
 
 With agent forwarding, the server you're logged into can talk to Bramble. OpenSSH 8.9 and later
@@ -325,6 +332,7 @@ phone apps never link it. No `core-rust` change.
   can name itself `ssh`.
 - `commands.rs`: the Tauri commands, main window only, and the settings, kept in the app's meta
   like the Quick Access shortcut rather than as webview prefs.
+- `step_back.rs`: where the window was before a request raised it, and when to put it back.
 
 **New crates:** `ssh-key` 0.6 (the OpenSSH container, bcrypt-pbkdf decryption, the wire encodings)
 without its `rsa` feature, which pins `rsa` 0.9 and RUSTSEC-2023-0071; `rsa` 0.10 directly, the
