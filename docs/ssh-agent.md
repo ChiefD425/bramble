@@ -160,8 +160,11 @@ Host 123.123.123.123 *.example.com
      sign in to a server with GitHub", **Allow** and **Deny**.
    - **Bramble is locked:** the vault window comes forward on that vault's unlock screen with a
      line saying who asked, for which key and why, and **Cancel**. The request waits. When the
-     vault opens, the signature goes out. Cancel, or two minutes with no unlock, answers with a
-     failure and ssh moves on to its next key or method.
+     vault opens, the signature goes out. Cancel, closing the window, or two minutes with no
+     unlock answers with a failure and ssh moves on to its next key or method. With **Unlock on
+     open** on, Touch ID or Windows Hello comes up by itself, once per request, even after the
+     Lock button ([auth-and-unlock.md](auth-and-unlock.md)). A request that joins one already
+     waiting brings the window forward again, wherever the user put it.
    - **Another vault is open:** a card in the open vault: "ssh wants to use Deploy from Work.
      Open Work? Personal will lock." **Open Work** locks the open vault and shows Work's unlock
      screen, as Lock then Choose a different vault does today; **Cancel** fails the request and

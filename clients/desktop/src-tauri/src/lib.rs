@@ -89,6 +89,7 @@ fn quit_app(app: tauri::AppHandle) {
 /// however it is built, and the accelerators have to be handled where the keystrokes land.
 #[tauri::command]
 fn hide_to_tray(app: tauri::AppHandle) {
+    ssh_agent::cancel_waiting();
     lifetime::hide_main(&app);
 }
 
@@ -252,6 +253,7 @@ pub fn run() {
             // no way back into the app.
             WindowEvent::CloseRequested { api, .. } if window.label() == lifetime::MAIN => {
                 let app = window.app_handle().clone();
+                ssh_agent::cancel_waiting();
                 // Logged because "the close button does nothing" is otherwise unfalsifiable from
                 // the outside: these lines distinguish an event that never arrived from a close
                 // that did not take.

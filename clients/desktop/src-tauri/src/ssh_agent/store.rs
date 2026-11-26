@@ -103,6 +103,8 @@ pub struct Conn {
 pub trait Hooks: Send + Sync {
     fn locked(&self) -> bool;
     fn ask(&self, ask: &Ask);
+    /// Another request joined `ask`: bring it forward again, wherever the user put the window.
+    fn raise(&self, ask: &Ask);
     fn done(&self, id: &str);
 }
 
@@ -391,6 +393,17 @@ impl Store {
     }
 
     /// The user's answer to an ask.
+    /// Fail every waiting request, as Cancel on each would: the user closed the window showing
+    /// them.
+    pub fn cancel_all(&self) {
+        let mut st = self.state();
+        for p in st.pending.values_mut() {
+            p.answer.get_or_insert(false);
+        }
+        drop(st);
+        self.changed.notify_all();
+    }
+
     pub fn answer(&self, id: &str, approve: bool) {
         let mut st = self.state();
         if let Some(p) = st.pending.get_mut(id) {
@@ -484,7 +497,12 @@ impl Store {
                             .flatten();
                         if let Some((id, p)) = joined {
                             p.waiters += 1;
+                            let ask = p.ask.clone();
                             mine = Some((id.clone(), false));
+                            drop(st);
+                            hooks.raise(&ask);
+                            st = self.state();
+                            continue;
                         } else if st.pending.len() >= MAX_PENDING {
                             break None;
                         } else {
@@ -792,6 +810,7 @@ mod tests {
     struct TestHooks {
         locked: AtomicBool,
         asks: Mutex<Vec<Ask>>,
+        raised: Mutex<Vec<String>>,
         done: Mutex<Vec<String>>,
     }
 
@@ -801,6 +820,9 @@ mod tests {
         }
         fn ask(&self, ask: &Ask) {
             self.asks.lock().unwrap().push(ask.clone());
+        }
+        fn raise(&self, ask: &Ask) {
+            self.raised.lock().unwrap().push(ask.id.clone());
         }
         fn done(&self, id: &str) {
             self.done.lock().unwrap().push(id.to_string());
@@ -1309,6 +1331,65 @@ mod tests {
         assert!(second.join().unwrap().is_none(), "it needed its own yes");
         let asks = hooks.asks();
         assert_eq!(asks.last().map(|a| a.mode), Some(Mode::Confirm));
+    }
+
+    #[test]
+    fn a_request_that_joins_a_waiting_ask_brings_the_window_forward_again() {
+        let store = Arc::new(Store::new(
+            vec![list_of("A", &[("K", blob(ED))])],
+            true,
+            false,
+        ));
+        let hooks = TestHooks::locked();
+        let first = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, SHORT))
+        };
+        let ask = hooks.wait_ask();
+        let second = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, SHORT))
+        };
+        thread::sleep(Duration::from_millis(50));
+        assert_eq!(hooks.asks().len(), 1, "the second joins the unlock");
+        assert_eq!(*hooks.raised.lock().unwrap(), vec![ask.id]);
+        assert!(first.join().unwrap().is_none());
+        assert!(second.join().unwrap().is_none());
+    }
+
+    #[test]
+    fn cancel_all_fails_every_waiting_request_at_once() {
+        let lists = vec![
+            list_of("A", &[("KA", blob(ED))]),
+            list_of("B", &[("KB", blob(ECDSA))]),
+        ];
+        let store = Arc::new(Store::new(lists, true, false));
+        let hooks = TestHooks::locked();
+        let a = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ED), b"d", 0, &local(), &*hooks, LONG))
+        };
+        hooks.wait_ask();
+        let b = {
+            let (store, hooks) = (store.clone(), hooks.clone());
+            thread::spawn(move || store.sign(&blob(ECDSA), b"d", 0, &local(), &*hooks, LONG))
+        };
+        for _ in 0..200 {
+            if store.pending_asks().len() == 2 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(store.pending_asks().len(), 2);
+        let started = Instant::now();
+        store.cancel_all();
+        assert!(a.join().unwrap().is_none());
+        assert!(b.join().unwrap().is_none());
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "not left to time out"
+        );
+        assert!(store.pending_asks().is_empty());
     }
 
     #[test]

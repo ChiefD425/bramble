@@ -56,7 +56,7 @@ Turn off **Use with the SSH agent** on a key that should never sign from the ter
 ## When Bramble asks
 
 - **Unlocked:** nothing is asked, for as long as your [auto-lock](/docs/auto-lock) time. Signing doesn't keep the vault open longer.
-- **Locked:** Bramble comes forward on the unlock screen of the vault holding the key, with a line such as "ssh wants to sign a git commit with Deploy". Unlock and the terminal carries on, while Bramble goes back to where it was. **Cancel**, or two minutes without an unlock, makes `ssh` move on, usually to **Permission denied (publickey)**.
+- **Locked:** Bramble comes forward on the unlock screen of the vault holding the key, with a line such as "ssh wants to sign a git commit with Deploy". With **Unlock on open** on, Touch ID or Windows Hello comes up by itself. Unlock and the terminal carries on, while Bramble goes back to where it was. **Cancel**, closing the window, or two minutes without an unlock makes `ssh` move on, usually to **Permission denied (publickey)**.
 - **Another vault is open:** a card offers to open the key's vault. Opening it locks the vault you have open.
 - **Ask before each use:** turn this on in Settings to be asked every time a key is used, even while unlocked.
 

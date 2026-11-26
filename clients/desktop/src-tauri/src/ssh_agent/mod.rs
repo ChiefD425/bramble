@@ -155,6 +155,13 @@ pub fn forget_keys() {
     }
 }
 
+/// The user closed the window showing the requests: each fails, as its Cancel would.
+pub fn cancel_waiting() {
+    if let Some(agent) = AGENT.get() {
+        agent.store.cancel_all();
+    }
+}
+
 struct AppHooks {
     app: AppHandle,
     raised: Arc<Mutex<Raised>>,
@@ -173,6 +180,13 @@ impl Hooks for AppHooks {
         if let Err(e) = self.app.emit(REQUEST_EVENT, ask) {
             log::warn!("ssh agent request not delivered: {e}");
         }
+        let app = self.app.clone();
+        let _ = self
+            .app
+            .run_on_main_thread(move || lifetime::show_main(&app));
+    }
+
+    fn raise(&self, _ask: &Ask) {
         let app = self.app.clone();
         let _ = self
             .app

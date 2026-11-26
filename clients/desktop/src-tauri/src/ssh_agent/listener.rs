@@ -365,6 +365,7 @@ mod tests {
             self.asks.lock().unwrap().push(ask.clone());
             self.store.answer(&ask.id, true);
         }
+        fn raise(&self, _ask: &Ask) {}
         fn done(&self, _id: &str) {}
     }
 
