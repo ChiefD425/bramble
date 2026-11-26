@@ -96,9 +96,12 @@ function makePlatform() {
 	} as unknown as Platform;
 	return {
 		platform,
-		/** The shell loaded `vaultId`'s key from AutoFill. */
+		/** AutoFill was unlocked for `vaultId`. Rust keeps a key only for the vault it has open, v1
+		 * here, so another vault's unlock leaves the shell locked; the event is sent anyway, to check
+		 * the window ignores it. (Unlocking the shell for any vault let the mount's own lock check
+		 * race the event and open the vault, so this test failed about half the time.) */
 		unlockedInAutofill: (vaultId: string) => {
-			locked = false;
+			if (vaultId === "v1") locked = false;
 			heard?.(vaultId);
 		},
 		listening: () => heard !== null,
