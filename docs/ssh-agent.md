@@ -2,8 +2,13 @@
 
 **Status: built 2026-11-25, unreleased.** Phase 6 of [desktop-port.md](desktop-port.md). Checked on
 macOS against OpenSSH 10.2 (`ssh-add`, `ssh-keygen -Y`, a real `sshd` login, `ssh -A`) and in the
-desktop e2e (`e2e/desktop-link/ssh-agent.spec.ts`). Not yet run on Windows or Linux, and the Mac
-checks with Touch ID and a security key are owed.
+desktop e2e (`e2e/desktop-link/ssh-agent.spec.ts`). By hand on a Mac (2026-11-25, builds of
+e0757256 to 79773ce8): a named host offered only its key, an unnamed host every key, **Offer keys
+only to their hosts** offering none, a Touch ID unlock from a terminal request, the switch card for
+a key in another vault, git commit signing, auto-lock ending silent signing, and turning the agent
+off removing its files. Not yet run by hand: **Ask before each use**, `ssh -A`, a YubiKey or
+master-password unlock from a request, and the fixes from that session (the window going back,
+Touch ID by itself after the Lock button, closing as Cancel). Not yet run on Windows or Linux.
 
 ## Bottom line
 
@@ -359,8 +364,7 @@ first release that fixes it (2026-11-08); `p384` and `p521` for the larger ECDSA
 
 ## Still to check
 
-- Whether macOS brings the window to the front for an unlock request when another app has focus.
-  The e2e raises the window itself, so it doesn't prove this. If it can't reliably, a notification
-  or a bouncing Dock icon is the fallback.
+- Whether macOS brings the window to the front over a full-screen app. Over Terminal it does
+  (2026-11-25). If it can't, a notification or a bouncing Dock icon is the fallback.
 - Whether Windows OpenSSH reads `Include` and a pipe in `IdentityAgent`. If not, Windows sets
   `SSH_AUTH_SOCK` and has no hosts. The Windows code compiles; it hasn't run on a Windows machine.
