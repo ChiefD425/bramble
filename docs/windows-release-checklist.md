@@ -37,6 +37,10 @@ None of this can be automated honestly: it needs a real desktop, a real browser,
 - [ ] Install, then install again over it: an update in place must not lose the vault or force a
       logout. (The updater is the usual update path, but users do reinstall.)
 - [ ] Install on a clean Windows 10 VM: WebView2 bootstrapping and the 1909-era floor.
+- [ ] On Windows 11 with Smart App Control **on**: install, launch, link a browser (the proxy
+      runs), and uninstall with "remove my data" ticked (the uninstaller runs the app once more).
+      Nothing is blocked. `Get-AuthenticodeSignature` on `bramble-desktop.exe`,
+      `bramble-proxy.exe` and `uninstall.exe` in the install folder says `Valid`.
 
 ### Vault
 

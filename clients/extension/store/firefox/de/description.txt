@@ -1,49 +1,49 @@
-Bramble ist ein kostenloser, quelloffener Passwortmanager, der Ihre Geheimnisse auf Ihren eigenen Geräten verwahrt. Kein Konto, kein Server, der Ihren Tresor hält, kein Unternehmen, das gehackt werden und alles preisgeben könnte. Sie halten den Tresor, Sie halten das Passwort, das ist alles.
+Bramble ist ein kostenloser Open-Source-Passwortmanager, der Ihre Geheimnisse auf Ihren eigenen Geräten bewahrt. Kein Konto, kein Unternehmensserver, dem Sie Ihren Tresor anvertrauen müssen, und keine zentrale Datenbank, die gehackt werden und alles preisgeben kann. Sie halten den Tresor, Sie halten das Passwort, und das war's.
 
-Funktioniert in Firefox, LibreWolf, Waterfox, Zen und anderen Firefox-Browsern. Installieren Sie die Erweiterung, und in rund einer Minute sind Sie einsatzbereit. Bramble hat außerdem Apps für macOS, Linux, iOS und Android, und Ihr Tresor wird zwischen allen Geräten synchronisiert.
+Funktioniert in Firefox, LibreWolf, Waterfox, Zen und anderen Firefox-Browsern. Installieren Sie Bramble, und in etwa einer Minute sind Sie startklar. Bramble hat auch Apps für macOS, Linux, iOS und Android, und Ihr Tresor synchronisiert sich zwischen allen Geräten.
 
-WAS BRAMBLE TUT
+WAS ES TUT
 
-Ihre Passwörter werden auf Ihrem Gerät verschlüsselt und im Erweiterungsspeicher des Browsers gespeichert. Einmal eingerichtet, füllen Sie Logins automatisch aus, speichern neue und generieren sofort Passwörter.
+Ihre Passwörter werden auf Ihrem Gerät verschlüsselt und im Erweiterungsspeicher des Browsers gespeichert. Nach einmaliger Einrichtung füllen Sie Logins automatisch aus, speichern neue und generieren Passwörter sofort.
 
-Haben Sie mehrere Geräte? Koppeln Sie sie, und Bramble synchronisiert Ihren Tresor direkt zwischen ihnen, Ende-zu-Ende-verschlüsselt. Das Relay, das Ihre Geräte verbindet, sieht immer nur Chiffrat und speichert nichts, sodass Ihre Geheimnisse niemals auf einem fremden Server landen.
+Haben Sie mehr als ein Gerät? Koppeln Sie sie, und Bramble synchronisiert Ihren Tresor direkt zwischen ihnen, Ende-zu-Ende-verschlüsselt. Das Relay, das Ihre Geräte zusammenführt, sieht immer nur Geheimtext und speichert nichts, sodass nie etwas Lesbares auf einem fremden Server landet.
 
 FUNKTIONEN
 
-- Local-first, immer. Ihr verschlüsselter Tresor bleibt auf Ihrem Gerät, im Speicher des Browsers. Kein Konto, keine Serverkopie.
-- Peer-to-Peer-Synchronisierung. Ihre Geräte bleiben über eine Ende-zu-Ende-verschlüsselte Verbindung synchron, Eintrag für Eintrag zusammengeführt. Das verbindende Relay sieht immer nur Chiffrat und speichert nichts.
-- Starke Kryptografie. Argon2id für Ihren Schlüssel, AES-256-GCM für Daten, Envelope-Verschlüsselung, damit jeder Eintrag seinen eigenen Schlüssel hat. Nach der Verwendung werden Geheimnisse aus dem Speicher gelöscht.
+- Lokal zuerst, immer. Ihr verschlüsselter Tresor bleibt auf Ihrem Gerät, im Speicher des Browsers. Kein Konto und keine Kopie anderswo, es sei denn, Sie sichern ihn auf einem von Ihnen gewählten Speicher.
+- Peer-to-Peer-Synchronisierung. Ihre Geräte bleiben über eine Ende-zu-Ende-verschlüsselte Verbindung synchron, Eintrag für Eintrag zusammengeführt. Das Relay, das sie verbindet, sieht immer nur Geheimtext und speichert nichts.
+- Ernste Kryptografie. Argon2id für Ihren Schlüssel, AES-256-GCM für Daten, Envelope-Verschlüsselung, sodass jeder Eintrag einen eigenen Schlüssel hat. Geheimnisse werden nach Gebrauch aus dem Speicher gelöscht.
 - Alles verschlüsselt. Website-Namen, Benutzernamen, Notizen – alles.
-- Domänen-intelligentes Autofill. www.example.com, ca.accounts.example.com und example.com passen alle zu einem Login. Das Dropdown auf der Seite erreicht Formulare in iframes und im Shadow DOM.
-- Passkeys. Bramble ist Ihr eigener Passkey-Authentifikator: Erstellen Sie Passkeys und melden Sie sich damit an, gespeichert in Ihrem Tresor und wie alles andere synchronisiert.
+- Intelligentes Domain-Autofill. www.example.com, ca.accounts.example.com und example.com passen alle zu einem Login. Das Dropdown auf der Seite erreicht Formulare in iframes und Shadow DOM.
+- Passkeys. Bramble ist Ihr eigener Passkey-Authenticator: Erstellen Sie Passkeys und melden Sie sich damit an; sie werden in Ihrem Tresor gespeichert und wie alles andere synchronisiert.
 - Mehr als Logins. Logins, Zahlungskarten, sichere Notizen und SSH-Schlüssel, jeweils mit eigenen Feldern.
-- E-Mail-Aliasse. Erhalten Sie für jede Website eine eindeutige Weiterleitungsadresse über Addy.io, SimpleLogin oder Fastmail oder von einer Domain, die Ihnen gehört – direkt im Anmeldeformular angeboten.
-- Tippen zum Entsperren. Verwenden Sie Touch ID oder Windows Hello zusammen mit Ihrem Master-Passwort – oder als alleinigen Zugang.
-- Wiederherstellungscodes. Jeder Tresor erhält bei der Einrichtung einen sicheren Wiederherstellungscode: ein ausdruckbares Backup, das ihn unabhängig von Ihrem Master-Passwort entsperrt.
-- TOTP-/2FA-Codes. Fügen Sie eine otpauth:// URI oder ein Secret ein, und Bramble generiert die Codes.
-- Verschlüsselte Backups. Exportieren Sie Ihren Tresor jederzeit in eine verschlüsselte Datei oder planen Sie verschlüsselte Backups zu Dropbox, einem S3-kompatiblen Bucket oder WebDAV. Der Anbieter sieht immer nur Chiffrat.
-- Kein Lock-in. Exportieren Sie jederzeit in eine Standard-KeePass-Datei (.kdbx), wenn Sie Bramble verlassen möchten.
-- Mehrere Tresore. Führen Sie getrennte Tresore nebeneinander, jeder geschützt durch ein eigenes Master-Passwort.
-- Integrierter Passwort-Generator.
-- Optionale Leak-Prüfung. „Have I Been Pwned“-Abgleich mit k-Anonymität, sodass nichts über Ihr Passwort Ihren Rechner verlässt. Standardmäßig deaktiviert.
+- E-Mail-Aliasse. Erhalten Sie eine eindeutige Weiterleitungsadresse für jede Website über Addy.io, SimpleLogin oder Fastmail oder über eine eigene Domain – direkt im Registrierungsformular angeboten.
+- Zum Entsperren tippen. Verwenden Sie Touch ID oder Windows Hello zusammen mit Ihrem Master-Passwort oder machen Sie es zu Ihrer einzigen Zugangsmöglichkeit.
+- Wiederherstellungscodes. Jeder Tresor erhält bei der Einrichtung einen sicheren Wiederherstellungscode: ein druckbares Backup, das ihn unabhängig von Ihrem Master-Passwort entsperrt.
+- TOTP-/2FA-Codes. Fügen Sie eine otpauth://-URI oder ein Secret ein, und Bramble generiert die Codes.
+- Verschlüsselte Backups. Exportieren Sie Ihren Tresor jederzeit in eine verschlüsselte Datei oder planen Sie verschlüsselte Backups mit Dropbox, einem S3-kompatiblen Bucket oder WebDAV. Der Anbieter sieht immer nur Geheimtext.
+- Kein Lock-in. Exportieren Sie jederzeit in eine Standard-KeePass-Datei (.kdbx), wenn Sie wechseln möchten.
+- Mehrere Tresore. Verwalten Sie separate Tresore nebeneinander, jeden hinter seinem eigenen Master-Passwort.
+- Integrierter Passwortgenerator.
+- Optionale Leck-Prüfung. Abfrage bei Have I Been Pwned mit k-Anonymität: Es wird nur ein kurzes Präfix des Passwort-Hashes gesendet, nie das Passwort. Standardmäßig deaktiviert.
 - Automatische Sperre nach 15 Minuten Inaktivität (konfigurierbar).
 - Import aus 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords und Google Password Manager.
 
-WARUM LOCAL-FIRST
+WARUM LOKAL ZUERST
 
-Cloud-Manager bewahren die Tresore aller Nutzer auf ihren Servern auf – ein einziges großes Ziel. Wenn einer kompromittiert wird, werden nicht nur ein Tresor, sondern Millionen auf einmal offengelegt, oft erst Monate später bekannt gegeben.
+Cloud-Manager bewahren die Tresore aller Nutzer auf ihren Servern auf – ein einziges großes Angriffsziel. Wenn einer gehackt wird, werden nicht nur ein Tresor, sondern Millionen auf einmal offengelegt – oft erst Monate später bekannt gegeben.
 
 Bramble dreht das um:
 
-- Kein Server, der gehackt werden kann. Ihr Tresor verlässt niemals Ihre Kontrolle.
+- Kein zentraler Haufen von Tresoren, der gehackt werden kann. Ihr Tresor verlässt Ihre Geräte niemals unverschlüsselt.
 - Kein Konto, kein Abo, keine Werbung, keine Telemetrie. Nichts, wofür Sie sich anmelden müssen.
-- Ihre Daten, Ihre Geräte. Synchronisieren Sie sie zwischen Ihren eigenen Geräten, behalten Sie sie auf einem Rechner oder sichern Sie sie verschlüsselt in einem Speicher Ihrer Wahl. Lesbares wird niemals auf dem Server anderer abgelegt.
-- Sie müssen nur dem Code vertrauen. Bramble ist Open Source unter der GPL, und der Code ist öffentlich auf GitHub.
+- Ihre Daten, Ihre Geräte. Synchronisieren Sie sie über Ihre eigenen Geräte, behalten Sie sie auf einem Rechner oder sichern Sie sie verschlüsselt in einem Speicher Ihrer Wahl. Nie liegt etwas Lesbares auf dem Server eines anderen.
+- Nichts, dem Sie vertrauen müssen, außer dem Code. Bramble ist Open Source unter der GPL, und der Code ist öffentlich auf GitHub.
 
 WIE DIE VERSCHLÜSSELUNG FUNKTIONIERT
 
-Bramble verwendet LUKS-artige Schlüsselslots und Envelope-Verschlüsselung. Ein einziger zufälliger Tresor-Schlüssel schützt Ihre Daten. Jede Entsperrmethode (Master-Passwort, Touch ID oder Windows Hello, Wiederherstellungscode) leitet ihren eigenen Key-Encryption-Key ab, der eine Kopie desselben Tresor-Schlüssels entschlüsselt. Dadurch wird beim Hinzufügen oder Entfernen einer Entsperrmethode kein einziger Eintrag neu verschlüsselt. Der Tresor-Schlüssel entschlüsselt dann für jeden Eintrag einen frischen Eintragsschlüssel. Alles ist AES-256-GCM.
+Bramble verwendet LUKS-artige Schlüssel-Slots und Envelope-Verschlüsselung. Ein zufälliger Vault Key schützt Ihre Daten. Jede Entsperrmethode (Master-Passwort, Touch ID oder Windows Hello, Wiederherstellungscode) leitet ihren eigenen Key-Encryption-Key ab, der eine Kopie desselben Vault Key entschlüsselt. Dadurch wird beim Hinzufügen oder Widerrufen einer Entsperrmethode kein einziger Eintrag erneut verschlüsselt. Der Vault Key entschlüsselt dann für jeden Eintrag einen frischen Schlüssel. Alles ist AES-256-GCM.
 
-KOMMEN SIE VON KEEPASS?
+SIE KOMMEN VON KEEPASS?
 
-Hier fühlen Sie sich zu Hause: Ihr verschlüsselter Tresor, Ihre Kontrolle, kein Cloud-Vermittler. Bramble importiert Ihre KDBX4-Dateien (inklusive Schlüsseldateien) und exportiert jederzeit zurück nach .kdbx, wann immer Sie möchten. Die Unterschiede: Autofill ist integriert, mit Domain-Abgleich und einem Dropdown auf der Seite, daher keine Plugin-Brücke; die Synchronisierung zwischen Ihren Geräten ist ebenfalls integriert; und es gibt einen modernen Build mit Argon2id und AES-256-GCM statt einer Vielzahl von Plugins. Saubere Oberfläche, Dark Mode inklusive.
+Sie werden sich zu Hause fühlen: Ihr verschlüsselter Tresor, Ihre Kontrolle und kein fremder Server erforderlich. Bramble importiert Ihre KDBX4-Dateien (Schlüsseldateien inklusive) und exportiert sie jederzeit wieder in das .kdbx-Format, wann immer Sie möchten. Die Unterschiede: Autofill ist integriert, mit Domain-Abgleich und einem Dropdown auf der Seite – eine Plugin-Brücke entfällt. Die Synchronisierung zwischen Ihren Geräten ist ebenfalls integriert. Und es gibt einen einzigen modernen Build mit Argon2id und AES-256-GCM statt eines Wildwuchses an Plugins. Saubere Oberfläche, Dark Mode inklusive.

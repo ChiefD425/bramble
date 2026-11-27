@@ -60,6 +60,7 @@ abstract class BrambleUnlockActivity : AppCompatActivity() {
 
     final override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ScreenCapture.apply(this)
         coreWasLocked = CoreSession.withLock { isLocked() }
         root = FrameLayout(this).apply {
             setBackgroundColor(color(R.color.bramble_af_background))

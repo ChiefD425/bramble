@@ -49,6 +49,9 @@ window-vibrancy = "0.8.0"
 # another app later will (Accessibility), but that is auto-type's problem, not this one.
 tauri-plugin-global-shortcut = "2.3.2"
 sha2 = "0.10.9"
+# 2FA codes for the quick-access panel's copy (src/totp.rs). Both already in the tree.
+hmac = "0.12.1"
+sha1 = "0.10.7"
 getrandom = "0.3.4"
 base64 = "0.23.1"
 # Backup uploads run here, not in the webview: no S3 endpoint or WebDAV server grants CORS to

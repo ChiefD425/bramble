@@ -140,6 +140,14 @@ export const desktopShell: ShellAdapter = {
 		set: (shortcut: string | null) => invoke<void>("spotlight_set_shortcut", { shortcut }),
 	},
 
+	// Content protection on both windows (src-tauri/src/screen_capture.rs); none on Linux.
+	screenCapture: {
+		available: () => invoke<boolean>("screen_capture_available"),
+		setBlocked: (blocked: boolean) => invoke<void>("screen_capture_set", { blocked }),
+		pause: (ms: number) => invoke<number>("screen_capture_pause", { ms }),
+		pausedUntil: () => invoke<number>("screen_capture_paused_until"),
+	},
+
 	// The panel asking this window to open an entry. One window, so this is a route change
 	// rather than a new context; the router's guards still apply.
 	onNavigateRequest: (callback) => {

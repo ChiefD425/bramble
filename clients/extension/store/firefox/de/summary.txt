@@ -1,1 +1,1 @@
-Kostenloser Open-Source-Passwortmanager. Ihr Tresor bleibt auf Ihren eigenen Geräten verschlüsselt und synchronisiert sich zwischen ihnen – ohne Konto und ohne Server, der ihn speichert.
+Kostenloser Open-Source-Passwortmanager. Ihr Tresor bleibt auf Ihren eigenen Geräten verschlüsselt und wird zwischen diesen synchronisiert – ohne Konto und ohne dass auf einem Server etwas lesbar ist.

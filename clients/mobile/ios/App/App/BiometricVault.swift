@@ -394,5 +394,6 @@ public class BiometricBridgeViewController: CAPBridgeViewController {
 		bridge?.registerPluginInstance(CredentialExchangePlugin())
 		bridge?.registerPluginInstance(AppReviewPlugin())
 		bridge?.registerPluginInstance(NativeHttpPlugin())
+		bridge?.registerPluginInstance(ScreenCapturePlugin())
 	}
 }

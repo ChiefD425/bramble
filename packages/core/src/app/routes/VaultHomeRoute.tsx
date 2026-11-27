@@ -33,7 +33,7 @@ import {
 import { DEFAULT_SEARCH, type VaultSearch } from "../screens/VaultHome/vault-search";
 
 /**
- * Where the list was when a lock took it down. The router records a list's offset when a
+ * Where the list was when leaving the app locked it. The router records a list's offset when a
  * navigation leaves it, but a lock unmounts the list before navigating to the unlock screen.
  * The unlock returns to the same href in the same vault, which reopens the list here, once.
  */
@@ -59,10 +59,12 @@ export function VaultHomeRoute() {
 		}),
 		[raw.q, raw.type, raw.sort, prefs.vaultSort, raw.archived, raw.attachments, raw.health],
 	);
-	const { entries, files, conflicts, ready, isLocked, deleteEntry, touchEntry } = useVault();
-	// Read when the list unmounts: true only if a lock is what took it down.
+	const { entries, files, conflicts, ready, isLocked, lockedAway, deleteEntry, touchEntry } =
+		useVault();
+	// Read when the list unmounts: true only if leaving the app locked it, the one lock whose
+	// unlock comes back here.
 	const locking = useRef(false);
-	locking.current = isLocked;
+	locking.current = isLocked && lockedAway;
 	const { shell } = usePlatform();
 	const { show } = useToast();
 	const { t } = useLingui();

@@ -6,7 +6,7 @@
 // that don't surface session lifecycle. See CONTEXT.md and docs/cryptography.md.
 
 import type { VaultCrypto } from "../wasm";
-import type { CryptoAdapter } from "./crypto";
+import type { CryptoAdapter, ExternalLockCause } from "./crypto";
 
 export interface CryptoAdapterHooks {
 	/** Fired after a successful unlock (the VEK is now loaded). */
@@ -14,7 +14,7 @@ export interface CryptoAdapterHooks {
 	/** Fired after lock(). */
 	onLocked?: () => void;
 	/** Subscription seams the CryptoAdapter must expose; default to no-ops. */
-	onExternalLock?: (cb: () => void) => () => void;
+	onExternalLock?: (cb: (cause?: ExternalLockCause) => void) => () => void;
 	onExternalChange?: (cb: () => void) => () => void;
 }
 

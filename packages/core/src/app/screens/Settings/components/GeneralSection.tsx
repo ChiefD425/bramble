@@ -26,6 +26,7 @@ import { useDefaultPasswordManager } from "../../../hooks/useDefaultPasswordMana
 import { useRenameVault } from "../../../hooks/useVaultName";
 import { Row, Section } from "./primitives";
 import { QuickAccessShortcutRow } from "./QuickAccessShortcutRow";
+import { ScreenCaptureRow } from "./ScreenCaptureRow";
 
 // Auto-lock timeout values: -1 = Immediate, >0 = minutes, 0 = Never. "Immediate" locks the
 // moment the app/UI is no longer in use (mobile: on backgrounding; extension: when the last
@@ -243,6 +244,8 @@ export function GeneralSection() {
 					</SelectField>
 				</div>
 			</Row>
+
+			<ScreenCaptureRow />
 
 			{/* Breach check is opt-in and the only network egress, so the subtitle
 			    is explicit about what's sent. */}

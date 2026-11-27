@@ -1,1 +1,1 @@
-Senhas criptografadas localmente, sem conta ou nuvem. Inclui Passkeys, Preenchimento automático, TOTP e importação de KeePass, Apple ou Google.
+Senhas criptografadas localmente, sem conta; sincronização/backups com criptografia ponta a ponta. Chaves de acesso, AutoFill, 2FA e importação KeePass, Apple ou Google.

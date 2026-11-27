@@ -278,6 +278,7 @@ A search input with results below it, combobox-style:
 | `↑` / `↓` | Move selection |
 | `Enter` | Fill |
 | `Cmd/Ctrl+O` | Open the Bramble main window focused on that entry |
+| `Cmd/Ctrl+T` | Copy that entry's 2FA code (shown only when it has one) |
 | `Cmd/Ctrl+E` | Edit that entry |
 
 Show `⌘` on macOS and `Ctrl` elsewhere rather than hardcoding either.

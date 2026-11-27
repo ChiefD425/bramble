@@ -1,1 +1,1 @@
-Bramble: Password Manager
+Bramble: Mots de passe

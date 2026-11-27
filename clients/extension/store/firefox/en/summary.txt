@@ -1,1 +1,1 @@
-Free, open source password manager. Your vault stays encrypted on your own devices and syncs between them, with no account and no server holding it.
+Free, open source password manager. Your vault stays encrypted on your own devices and syncs between them, with no account and nothing readable on any server.

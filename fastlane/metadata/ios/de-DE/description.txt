@@ -1,19 +1,20 @@
-Bramble ist ein lokal zuerst arbeitender Passwortmanager. Ihre Passwörter befinden sich in einem verschlüsselten Tresor auf Ihrem Gerät und nicht auf einem fremden Server. Es gibt kein Konto zu erstellen und nichts, das nach Hause telefoniert.
+Bramble ist ein Passwortmanager nach dem Local-first-Prinzip. Ihre Passwörter liegen in einem verschlüsselten Tresor auf Ihrem Gerät, und Sie benötigen kein Konto, um die App zu nutzen. Alles, was das Gerät verlässt – für Synchronisierung oder Backups –, wird zuerst Ende-zu-Ende-verschlüsselt, sodass kein Server es lesen kann.
 
-Alles Kryptografische läuft in einer Rust-Kernkomponente: Argon2id leitet Ihren Schlüssel ab, AES-256-GCM verschlüsselt Ihre Daten, und die Envelope Encryption weist jedem Eintrag seinen eigenen Schlüssel zu. Seitennamen, Benutzernamen und Notizen sind alle verschlüsselt, und Geheimnisse werden nach Gebrauch aus dem Speicher gelöscht.
+Alle kryptografischen Vorgänge laufen in einem Rust-Kern: Argon2id leitet Ihren Schlüssel ab, AES-256-GCM verschlüsselt Ihre Daten und Envelope Encryption gibt jedem Eintrag einen eigenen Schlüssel. Websitenamen, Benutzernamen und Notizen sind alle verschlüsselt, und Geheimnisse werden nach der Verwendung aus dem Speicher gelöscht.
 
 FUNKTIONEN
-- Automatische Ausfüllung von Passwörtern und Einmalcodes in Apps und Safari, direkt von der Tastatur aus.
-- Passkeys: Erstellen und Anmelden mit Passkeys, wobei Bramble Ihr eigener Authenticator für unterstützte Websites und Apps ist.
-- Entsperren mit Face ID oder Touch ID, Ihrem Masterpasswort oder einem Wiederherstellungscode.
-- Speichern von Logins, Zahlungskarten, sicheren Notizen und SSH-Schlüsseln, jeweils mit eigenen Feldern.
-- Integrierter starker Passwortgenerator.
-- TOTP / 2FA: Fügen Sie eine otpauth URI oder ein Geheimnis hinzu und Bramble generiert die sechsstelligen Codes.
-- Import aus KeePass (KDBX4), Schlüsseldateien sind enthalten.
-- Wiederherstellungscode: Ein druckbarer, hochentropischer Backup, der Ihren Tresor unabhängig von Ihrem Masterpasswort entsperrt.
-- Optionale Breach Checkung unter Verwendung von k-Anonymität, sodass nichts über Ihr Passwort Ihr Gerät verlässt.
+- AutoFill von Passwörtern und Einmalcodes in Apps und Safari, direkt über die Tastatur.
+- Passkeys: Erstellen und Anmelden mit Passkeys – mit Bramble als Ihrem eigenen Authenticator – für Websites und Apps, die diese unterstützen.
+- Entsperren mit Face ID oder Touch ID, Ihrem Master-Passwort oder einem Wiederherstellungscode.
+- Logins, Zahlungskarten, sichere Notizen und SSH-Schlüssel speichern, jeweils mit eigenen Feldern.
+- Integrierter Generator für starke Passwörter.
+- TOTP / 2FA: otpauth-URI oder Secret hinzufügen – Bramble generiert die sechsstelligen Codes.
+- Import aus KeePass (KDBX4), einschließlich Schlüsseldateien.
+- Wiederherstellungscode: ein druckbares Backup mit hoher Entropie, das Ihren Tresor unabhängig von Ihrem Master-Passwort entsperrt.
+- Optionale Prüfung auf Datenlecks mittels k-Anonymität: Es wird nur ein kurzes Präfix des Passwort-Hashes gesendet, niemals das Passwort selbst.
 - Automatische Sperre nach Inaktivität.
-- Synchronisierung zwischen Ihren eigenen Geräten Peer-to-Peer. Kein Cloud, kein Relais, das Ihre Daten hält.
+- Synchronisierung zwischen Ihren eigenen Geräten, Ende-zu-Ende-verschlüsselt: direkt Peer-to-Peer oder über einen optionalen Mailbox-Server, der ausschließlich versiegelte Daten speichert.
+- Optionale verschlüsselte Backups auf einen Speicher Ihrer Wahl, z. B. einen S3-kompatiblen Bucket oder einen WebDAV-Server.
 
 DATENSCHUTZ
-Bramble hat kein Konto, kein Abonnement und keine Telemetrie. Ihr Tresor verlässt niemals Ihre Kontrolle, und der Code läuft vollständig auf Ihrem Gerät.
+Bramble ist kostenlos und Open Source (GPLv3) und enthält keine Telemetrie. Sie benötigen kein Konto, die gesamte Verschlüsselung findet auf Ihrem Gerät statt, und nur Ihre Geräte können Ihren Tresor lesen. Die einzige Anfrage, die Bramble von sich aus stellt, ist eine tägliche Prüfung auf Updates, die Sie in den Einstellungen deaktivieren können.

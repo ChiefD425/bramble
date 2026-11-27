@@ -30,6 +30,7 @@ mod oauth;
 #[cfg(target_os = "macos")]
 mod otpauth;
 mod pairing;
+mod screen_capture;
 mod secure_store;
 mod socket;
 // Shared with the proxy binary through `#[path]` rather than linked, so the app only uses
@@ -41,6 +42,7 @@ mod ssh_agent;
 mod storage;
 mod stream;
 mod sync_crypto;
+mod totp;
 #[cfg(desktop)]
 mod update_log;
 #[cfg(desktop)]
@@ -196,6 +198,8 @@ pub fn run() {
             if let Some(window) = app.get_webview_window(spotlight::LABEL) {
                 spotlight::apply_backdrop(&window);
             }
+            // Both windows start protected (tauri.conf.json); this lifts it if Settings said so.
+            screen_capture::apply(app.handle());
             lifetime::install_tray(app.handle())?;
             // Logged, not fatal: another app holding the keys must not stop Bramble starting.
             if let Err(e) =
@@ -367,6 +371,10 @@ pub fn run() {
             spotlight::spotlight_hide,
             spotlight::spotlight_shortcut,
             spotlight::spotlight_set_shortcut,
+            screen_capture::screen_capture_available,
+            screen_capture::screen_capture_set,
+            screen_capture::screen_capture_pause,
+            screen_capture::screen_capture_paused_until,
             spotlight::spotlight_open_main,
             spotlight::spotlight_open_entry,
             spotlight::spotlight_set_height,
@@ -377,6 +385,7 @@ pub fn run() {
             pairing::pairing_public_key,
             index_store::spotlight_search,
             index_store::spotlight_copy_password,
+            index_store::spotlight_copy_totp,
             index_store::link_set_index,
             index_store::link_clear_index,
             ssh_agent::commands::ssh_agent_status,

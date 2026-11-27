@@ -25,6 +25,14 @@ export const PO_CATALOG = (code) => repo(`packages/core/src/locales/${code}/mess
 // beside Android's. The Fastfile hands this exact path to deliver; deliver's default
 // (fastlane/metadata) would reject the non-locale `ios` child.
 export const FASTLANE_DIR = repo("fastlane/metadata/ios");
+// App Store localizations that exist only for search: a storefront indexes them as well as its
+// own language (the US store reads es-MX beside en-US), so each holds its own `own` files and
+// symlinks the rest to `from`, which the translation run already keeps current.
+export const APP_STORE_MIRRORS = [
+	{ appStore: "es-MX", from: "es-ES", own: ["keywords.txt"] },
+	// Portugal says "palavra-passe" or "password", not "senha": its own search fields, Brazil's prose.
+	{ appStore: "pt-PT", from: "pt-BR", own: ["name.txt", "subtitle.txt", "keywords.txt"] },
+];
 // Android store-listing metadata, in fastlane's supply layout: `<root>/fastlane/metadata/android/
 // <locale>/`, which is where every tool that consumes it looks. Locale dirs reuse the iOS
 // `appStore` codes; en-US is hand-authored and the rest are AI-translated from it, see

@@ -13,11 +13,12 @@
 // Exit 0 = all locales complete; exit 1 = something is missing (with a report).
 
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	ANDROID_FASTLANE_DIR,
 	ANDROID_RES,
+	APP_STORE_MIRRORS,
 	CHROME_LOCALES_DIR,
 	FASTLANE_DIR,
 	LOCALES,
@@ -154,7 +155,7 @@ const LIMITS = { "keywords.txt": 100, "subtitle.txt": 30, "promotional_text.txt"
 const srcDir = join(FASTLANE_DIR, "en-US");
 if (existsSync(srcDir)) {
 	const files = readdirSync(srcDir).filter((f) => f.endsWith(".txt"));
-	for (const { appStore } of LOCALES) {
+	for (const { appStore } of [...LOCALES, ...APP_STORE_MIRRORS]) {
 		const dir = join(FASTLANE_DIR, appStore);
 		for (const f of files) {
 			const path = join(dir, f);
@@ -164,6 +165,14 @@ if (existsSync(srcDir)) {
 			}
 			const len = readFileSync(path, "utf8").trim().length;
 			if (LIMITS[f] && len > LIMITS[f]) note(`fastlane[${appStore}/${f}]: ${len} > ${LIMITS[f]} char cap`);
+		}
+	}
+	for (const { appStore, from, own } of APP_STORE_MIRRORS) {
+		for (const f of files.filter((f) => !own.includes(f))) {
+			const path = join(FASTLANE_DIR, appStore, f);
+			if (!lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() || readlinkSync(path) !== `../${from}/${f}`) {
+				note(`fastlane[${appStore}/${f}]: should be a symlink to ../${from}/${f} (run pnpm i18n:native)`);
+			}
 		}
 	}
 }

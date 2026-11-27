@@ -1,0 +1,1 @@
+../pt-BR/release_notes.txt

@@ -1,9 +1,9 @@
 Novedades de esta versión:
 
-- El bloqueo automático de la app ya no bloquea el autocompletado, que mantiene su propio temporizador y lo reinicia con cada relleno.
-- Con «Comprobar contraseñas por filtraciones» activado, Bramble ahora comprueba todos los inicios de sesión en segundo plano, no solo los que abre, y cada inicio de sesión muestra cuándo se comprobó por última vez.
-- Duplique un elemento o adjúntele un archivo desde su menú ⋮ en la lista.
-- Una bóveda que no puede abrir ahora se puede eliminar de la lista de bóvedas sin su contraseña: elija «Eliminar una caja fuerte».
-- Las copias ahora se borran después del tiempo establecido en Configuración → General → «Limpieza automática de portapapeles», en lugar de siempre después de 30 segundos.
+- El bloqueo automático de la app ya no bloquea el autorrelleno, que mantiene su propio temporizador y lo reinicia con cada uso.
+- Con Comprobar contraseñas en filtraciones activado, Bramble ahora comprueba todos los inicios de sesión en segundo plano, no solo los que se abren, y cada inicio de sesión muestra cuándo se comprobó por última vez.
+- Duplicar un elemento o adjuntarle un archivo desde su menú ⋮ en la lista.
+- Una bóveda que no se puede abrir ahora puede eliminarse de la lista de bóvedas, sin su contraseña: elija Eliminar una bóveda.
+- Las copias se eliminan ahora después del tiempo establecido en Ajustes → General → Borrado automático del portapapeles, en lugar de siempre a los 30 segundos.
 
-Sin cuenta, sin nube. Todo se queda en sus dispositivos.
+No se necesita una cuenta y todo lo que sale de su dispositivo está cifrado de extremo a extremo.

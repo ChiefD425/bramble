@@ -1,1 +1,1 @@
-পাসওয়ার্ড,পাসকি,অটোফিল,ভল্ট,লগইন,সিঙ্ক,নিরাপত্তা,KeePass,2FA,TOTP,password,offline
+পাসওয়ার্ড,ম্যানেজার,অটোফিল,লগইন,নিরাপত্তা,KeePass,TOTP,authenticator,generator,open,source

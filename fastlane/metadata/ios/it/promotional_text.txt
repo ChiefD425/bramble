@@ -1,1 +1,1 @@
-Niente account, cloud o azienda custode. Le password rimangono cifrate sul suo dispositivo. Include Passkey, AutoFill, TOTP e importazione da KeePass, Apple e Google.
+Le password restano crittografate sul dispositivo, senza account. Sincronizzazione e backup end-to-end. Passkey, AutoFill, 2FA e importazione da KeePass, Apple o Google.

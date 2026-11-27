@@ -59,8 +59,7 @@ export async function lock(page: Page) {
 	await expect(page.getByRole("heading", { name: /master password to unlock/i })).toBeVisible();
 }
 
-/** Lock the way the idle timer does, by firing the background's auto-lock alarm. Unlike the Lock
- * button, this keeps the screen the user was on for after the unlock. */
+/** Lock the way the idle timer does, by firing the background's auto-lock alarm. */
 export async function autoLock(context: BrowserContext, page: Page) {
 	const [sw] = context.serviceWorkers();
 	if (!sw) throw new Error("no extension service worker");

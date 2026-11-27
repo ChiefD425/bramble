@@ -1,1 +1,1 @@
-passkeys,identifiants,motdepasse,sécurité,2FA,TOTP,KeePass,offline,chiffrement,biométrique
+coffre,fort,authentificateur,TOTP,clé,KeePass,générateur,open,source,mdp,identifiants,hors,ligne

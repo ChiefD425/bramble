@@ -21,7 +21,8 @@
 				"minHeight": 420,
 				"center": true,
 				"resizable": true,
-				"fullscreen": false
+				"fullscreen": false,
+				"contentProtected": true
 			},
 			{
 				"label": "spotlight",
@@ -37,7 +38,8 @@
 				"alwaysOnTop": true,
 				"skipTaskbar": true,
 				"resizable": false,
-				"shadow": true
+				"shadow": true,
+				"contentProtected": true
 			}
 		],
 		"security": {

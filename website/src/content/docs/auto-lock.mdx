@@ -141,7 +141,7 @@ Some sites ask Bramble to confirm it's you before a passkey sign-in. Those still
 
 ## The app switcher
 
-Your phone's app switcher doesn't show your vault. On iPhone, Bramble covers its screen with its launch screen when you leave it. On Android, the preview is blank. Screenshots inside Bramble still work.
+Your phone's app switcher doesn't show your vault. On iPhone, <Until commit="b3b23806" on="ios">Bramble covers its screen with its launch screen when you leave it, and screenshots inside Bramble still work.</Until><Since commit="b3b23806" on="ios">the preview is blank and screenshots of Bramble are blocked. If you allow screenshots, Bramble covers its screen with its launch screen instead.</Since> On Android, the preview is blank, and screenshots <Until commit="b3b23806" on="android">inside Bramble still work</Until><Since commit="b3b23806" on="android">of Bramble are blocked</Since>.<Since commit="b3b23806" on="android ios"> To allow them for a while, see [Block screenshots](/docs/block-screenshots).</Since>
 
 Hiding the preview doesn't lock your vault. Only your timeout does.
 

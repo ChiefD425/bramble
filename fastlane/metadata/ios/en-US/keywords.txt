@@ -1,1 +1,1 @@
-passkeys,autofill,2FA,TOTP,KeePass,encryption,offline,security,logins,generator,biometric,sync
+authenticator,totp,otp,open,source,keepass,generator,autofill,secure,login,keychain,encrypted,safe

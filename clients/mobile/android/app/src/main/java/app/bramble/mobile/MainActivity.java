@@ -19,16 +19,20 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(NativeCryptoPlugin.class);
         registerPlugin(NativeHttpPlugin.class);
+        registerPlugin(ScreenCapturePlugin.class);
         super.onCreate(savedInstanceState);
         // Draw under the system bars below Android 15 too, as 15+ forces; mobile.css pads (#173).
         // After super: touching the window decor any earlier builds it with an action bar.
         EdgeToEdge.enable(this);
-        // Keep the vault out of the Recents card (#148) while screenshots in the app still work.
+        // Keep the vault out of the Recents card (#148), even with screenshots allowed.
         if (CARD_SWITCH) setRecentsScreenshotEnabled(false);
+        // A pause ends with the activity that started it, even when the process lives on.
+        ScreenCapture.INSTANCE.endPause();
+        ScreenCapture.INSTANCE.apply(this);
     }
 
-    // Below 13, FLAG_SECURE only while the app is away: the card is taken blank, and
-    // screenshots and recording inside Bramble keep working once it is back.
+    // Below 13, FLAG_SECURE while the app is away blanks the Recents card even with screenshots
+    // allowed; resuming puts the "Block screenshots" setting back.
     @Override
     public void onPause() {
         if (!CARD_SWITCH) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
@@ -38,6 +42,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        if (!CARD_SWITCH) getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        ScreenCapture.INSTANCE.apply(this);
     }
 }

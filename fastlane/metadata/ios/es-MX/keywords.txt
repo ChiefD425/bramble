@@ -1,0 +1,1 @@
+administrador,autenticador,llaves,acceso,código,abierto,generador,seguro,cifrado,privacy,credentials

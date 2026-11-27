@@ -6,16 +6,28 @@
 
 const IMAGE_DIRECTORY_ENTRY_SECURITY = 4;
 
-export function stripAuthenticode(pe: Buffer): Buffer {
-	if (pe.readUInt16LE(0) !== 0x5a4d) throw new Error("not a PE file (no MZ)");
+/** Where the optional header and the security directory entry sit. */
+function locate(pe: Buffer): { optional: number; security: number } {
+	if (pe.length < 0x40 || pe.readUInt16LE(0) !== 0x5a4d) throw new Error("not a PE file (no MZ)");
 	const header = pe.readUInt32LE(0x3c);
-	if (pe.readUInt32LE(header) !== 0x00004550) throw new Error("not a PE file (no PE signature)");
+	if (header + 24 > pe.length || pe.readUInt32LE(header) !== 0x00004550)
+		throw new Error("not a PE file (no PE signature)");
 	const optional = header + 24;
 	const magic = pe.readUInt16LE(optional);
 	const directories = optional + (magic === 0x20b ? 112 : magic === 0x10b ? 96 : -1);
 	if (directories < optional)
 		throw new Error(`unknown optional header magic ${magic.toString(16)}`);
-	const security = directories + IMAGE_DIRECTORY_ENTRY_SECURITY * 8;
+	return { optional, security: directories + IMAGE_DIRECTORY_ENTRY_SECURITY * 8 };
+}
+
+/** Whether the file carries a certificate table, signed by anyone. */
+export function hasAuthenticode(pe: Buffer): boolean {
+	const { security } = locate(pe);
+	return pe.readUInt32LE(security) !== 0 && pe.readUInt32LE(security + 4) !== 0;
+}
+
+export function stripAuthenticode(pe: Buffer): Buffer {
+	const { optional, security } = locate(pe);
 	const tableAt = pe.readUInt32LE(security);
 	const tableSize = pe.readUInt32LE(security + 4);
 

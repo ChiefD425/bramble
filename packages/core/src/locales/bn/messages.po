@@ -660,6 +660,11 @@ msgstr "আবার অনুমতি দিন"
 msgid "Allow and continue"
 msgstr "অনুমতি দিন ও চালিয়ে যান"
 
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Allow for 10 minutes"
+msgstr "১০ মিনিটের জন্য অনুমতি দিন"
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "বিকল্প হিসেবে পাসকোড ব্যবহারের অনুমতি দিন"
@@ -782,6 +787,10 @@ msgstr "আনলক স্ক্রিন আসামাত্রই ট্য
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Bramble-এ এখনও নেই এমন সাইন-ইন সংরক্ষণের জন্য জিজ্ঞাসা করুন।"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Asks macOS to keep Bramble out of screenshots and screen sharing. Many apps ignore it."
+msgstr "Bramble-কে স্ক্রিনশট ও স্ক্রিন শেয়ারিং থেকে দূরে রাখতে macOS-কে অনুরোধ জানায়। অনেক অ্যাপ এটি উপেক্ষা করে।"
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Asks once on the vault list."
@@ -926,6 +935,14 @@ msgstr "বায়োমেট্রিক্স দিয়ে আনলক"
 #: packages/core/src/hooks/useVault.tsx
 msgid "Biometric unlock isn't available on this device."
 msgstr "এই ডিভাইসে বায়োমেট্রিক্স দিয়ে আনলক করা যায় না।"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block now"
+msgstr "এখনই ব্লক করুন"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block screenshots"
+msgstr "স্ক্রিনশট ব্লক করুন"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Book"
@@ -2647,6 +2664,14 @@ msgstr "এটি অফলাইনে কোনো নিরাপদ জা�
 msgid "KeePass master password"
 msgstr "KeePass মাস্টার পাসওয়ার্ড"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen recordings and AI assistants."
+msgstr "Bramble-কে স্ক্রিনশট, স্ক্রিন রেকর্ডিং এবং AI সহায়ক থেকে দূরে রাখে।"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen sharing and Recall."
+msgstr "Bramble-কে স্ক্রিনশট, স্ক্রিন শেয়ারিং এবং Recall থেকে দূরে রাখে।"
+
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Kept in your vault, but hidden from the list and never offered for autofill."
 msgstr "আপনার ভল্টেই থাকবে, কিন্তু তালিকায় দেখাবে না এবং কখনো অটোফিলেও আসবে না।"
@@ -4016,6 +4041,14 @@ msgstr "নির্ধারিত ব্যাকআপ শুধু Bramble �
 msgid "Scissors"
 msgstr "কাঁচি"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Screenshots allowed until {until}"
+msgstr "স্ক্রিনশট {until} পর্যন্ত অনুমোদিত"
+
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+msgid "Screenshots are blocked"
+msgstr "স্ক্রিনশট ব্লক করা আছে"
+
 #: packages/core/src/app/components/ui/scroll-edges.tsx
 msgid "Scroll left"
 msgstr "বামে স্ক্রল করুন"
@@ -4981,6 +5014,10 @@ msgstr "ওয়েব পেজে অটোফিল চালু বা ব�
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle AutoFill suggestions"
 msgstr "AutoFill সাজেশন চালু বা বন্ধ করুন"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Toggle block screenshots"
+msgstr "স্ক্রিনশট ব্লক টগল করুন"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle Bramble passkey provider"

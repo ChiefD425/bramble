@@ -69,6 +69,20 @@ interface CornerSavedInfo {
 	hostname: string;
 }
 
+/** The native side of "Block screenshots". It reads the stored pref itself at launch. */
+export interface ScreenCaptureControl {
+	/** False where the native mechanism is missing on this device, which hides the setting. */
+	available(): Promise<boolean>;
+	/** Block or allow from now on, ending any pause. Persisting the pref is the caller's job. */
+	setBlocked(blocked: boolean): Promise<void>;
+	/** Allow capture for `ms`, then block again. Resolves to when the pause ends (epoch ms). */
+	pause(ms: number): Promise<number>;
+	/** When the current pause ends (epoch ms), or 0. It outlives a reload of the page. */
+	pausedUntil(): Promise<number>;
+	/** iOS: a screenshot was taken while blocked, so it came out blank. Returns an unsubscribe. */
+	onBlockedScreenshot?(callback: () => void): () => void;
+}
+
 export interface ShellAdapter {
 	/** Host extension's display name, read from its manifest. Single source of truth for the user-facing brand. */
 	appName: string;
@@ -311,6 +325,9 @@ export interface ShellAdapter {
 		get(): Promise<string | null>;
 		set(shortcut: string | null): Promise<void>;
 	};
+	/** Keeping Bramble's windows out of screenshots, recording and screen-reading assistants.
+	 * Absent where the OS has no way to (extension, Linux). See docs/screen-capture-blocking.md. */
+	screenCapture?: ScreenCaptureControl;
 	/**
 	 * True where something else keeps this install current: a Linux package manager, for a .deb or
 	 * .rpm from apt.bramble.sh. `updates` is then absent, because the app genuinely cannot replace

@@ -1,0 +1,123 @@
+name: Windows sign round
+# Authenticode-signs every .exe and .dll in an artifact with Azure Artifact Signing, for
+# sign-windows.yml, and checks each came back signed. Nothing is built here: the job that can obtain
+# the signing token runs no third-party code but the pinned login and signing actions.
+#
+# Runs in the `windows-signing` environment, which only main may deploy to, and Azure trusts a
+# GitHub OIDC token for exactly that environment of this repository (a federated credential). So a
+# branch or a fork can build, never sign. Azure's signtool plugin runs only on Windows.
+
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: The artifact to sign
+        required: true
+        type: string
+      signed:
+        description: Name of the artifact for the signed files
+        required: true
+        type: string
+      installer:
+        description: The files are the installer, so check the files inside it are signed too
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+jobs:
+  sign:
+    name: Sign
+    runs-on: windows-latest
+    environment: windows-signing
+    permissions:
+      id-token: write
+    timeout-minutes: 30
+    steps:
+      - name: Download the files
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.files }}
+          path: signed
+
+      # Pinned to commits: these two hold the signing identity.
+      - name: Azure login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          # The app holds one role on one signing account and nothing on any subscription.
+          allow-no-subscriptions: true
+
+      # Timestamped, which is what keeps a signature valid: the certificate itself lives 3 days.
+      - name: Sign
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_CERTIFICATE_PROFILE }}
+          files-folder: ${{ github.workspace }}\signed
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+
+      # The failure worth catching is a silently UNSIGNED file: it looks identical to a signed one
+      # until Windows refuses it. Asks Windows whether each signature validates rather than grepping
+      # the binary for an issuer name. With `installer`, the same for every file it and its uninstaller
+      # unpack (7-Zip reads NSIS archives), which is what Smart App Control judges once installed.
+      - name: Assert everything came back signed
+        shell: pwsh
+        env:
+          INSTALLER: ${{ inputs.installer }}
+        run: |
+          function Assert-Signed($files) {
+            $bad = 0
+            foreach ($f in $files) {
+              $sig = Get-AuthenticodeSignature $f.FullName
+              Write-Output "$($sig.Status) $($f.Name): $($sig.SignerCertificate.Subject)"
+              if ($null -eq $sig.SignerCertificate) {
+                Write-Output "::error::$($f.Name) carries no signature"; $bad++
+              } elseif ($null -eq $sig.TimeStamperCertificate) {
+                Write-Output "::error::$($f.Name) is not timestamped, so its signature dies with the 3-day certificate"; $bad++
+              } elseif ($sig.Status -ne 'Valid') {
+                Write-Output "::error::$($f.Name): the signature does not validate ($($sig.Status))"; $bad++
+              }
+            }
+            if ($bad -gt 0) { exit 1 }
+          }
+
+          $files = @(Get-ChildItem signed -Recurse -File -Include *.exe, *.dll)
+          if ($files.Count -eq 0) { Write-Output "::error::nothing to check"; exit 1 }
+          Assert-Signed $files
+
+          if ($env:INSTALLER -eq 'true') {
+            if ($files.Count -ne 1) { Write-Output "::error::expected one installer, found $($files.Count)"; exit 1 }
+            $inside = Join-Path $env:RUNNER_TEMP inside
+            7z x -bso0 -bsp0 "-o$inside" $files[0].FullName
+            if ($LASTEXITCODE -ne 0) { Write-Output "::error::7-Zip could not unpack the installer"; exit 1 }
+            # The uninstaller is an NSIS archive too, with plugins of its own.
+            7z x -bso0 -bsp0 "-o$inside\uninstaller" "$inside\uninstall.exe"
+            if ($LASTEXITCODE -ne 0) { Write-Output "::error::7-Zip could not unpack the uninstaller"; exit 1 }
+            $packed = @(Get-ChildItem $inside -Recurse -File -Include *.exe, *.dll)
+            if ($packed.Count -lt 3) { Write-Output "::error::only $($packed.Count) executables inside the installer"; exit 1 }
+            Assert-Signed $packed
+          }
+
+      - name: Upload the signed files
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.signed }}
+          path: signed/
+          if-no-files-found: error

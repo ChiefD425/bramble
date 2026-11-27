@@ -39,7 +39,7 @@ The same encrypted vault and the same Rust crypto core sit behind all four, and 
 
 ## What it does
 
-Your passwords are encrypted on your own device and stay there: in the browser's private extension storage, in ordinary files on your own disk in the desktop app, and in app-private encrypted storage on mobile. There's no server holding your vault and no account to sign up for. To use the same vault on more than one device, Bramble syncs it **between your devices, peer-to-peer**, end-to-end encrypted, and never stores it on a server along the way. Want a copy in your own hands? Export an encrypted backup file any time.
+Your passwords are encrypted on your own device and stay there: in the browser's private extension storage, in ordinary files on your own disk in the desktop app, and in app-private encrypted storage on mobile. Bramble runs no server holding your vault, and there's no account to sign up for. To use the same vault on more than one device, Bramble syncs it **between your devices, peer-to-peer**, end-to-end encrypted, and never stores it on a server along the way. Want a copy in your own hands? Export an encrypted backup file any time.
 
 Everything cryptographic happens inside a single Rust core: compiled to WebAssembly in the browser, and to a native library on iOS and Android. Key derivation, encryption, and decryption all run in that core, and derived keys are wiped from memory after use.
 
@@ -109,9 +109,9 @@ The cloud guys keep everyone's vaults on their servers, one giant target. When o
 Bramble flips that around:
 
 - **No server to breach.** Your vault never leaves your control. No central pile of data for anyone to go after.
-- **No account, no subscription, no telemetry.** Nothing to sign up for, nothing phoning home.
+- **No account, no subscription, no telemetry.** Nothing to sign up for. The only thing the apps ask on their own is whether there's an update.
 - **You own your data.** It lives on your devices, syncs between them, and exports to an encrypted file whenever you want an offline copy. Keep it off the internet entirely if you like. Your call.
-- **Cloud-like convenience, without a cloud copy.** Sync keeps every device up to date automatically, like a cloud manager would, but your vault is only ever stored on your devices. Anything a relay passes along is end-to-end encrypted, so there's no central honeypot and no company that can read it.
+- **Cloud-like convenience, without a readable cloud copy.** Sync keeps every device up to date automatically, like a cloud manager would, but your vault is only ever stored on your devices, plus any encrypted backups you choose to make. Anything a relay passes along is end-to-end encrypted, so there's no central honeypot and no company that can read it.
 - **Nothing to trust but the code.** The crypto is open and runs entirely on your device. You're not taking anyone's word that the server "can't read your data."
 
 The tradeoff is real and worth being honest about: there's no "I forgot my password" button on a server somewhere. But you're not without a safety net: every vault gets a recovery code, and you can register a hardware key as another way in. Save the recovery code, keep a second device synced, and export a backup now and then. Lose *all* of your ways in (password, key, and recovery code) and the vault is gone, because nobody else holds a copy.
@@ -163,7 +163,7 @@ Two things worth knowing:
 
 ## How it stacks up against KeePass
 
-If you love KeePass, you'll feel at home: your encrypted database, your control, no cloud holding your vault. Bramble even imports your KDBX4 files. Where it's different:
+If you love KeePass, you'll feel at home: your encrypted database, your control, no one else's cloud required. Bramble even imports your KDBX4 files. Where it's different:
 
 - **🌐 It meets you where you are.** A browser extension, a desktop app, and native iOS and Android apps, all on one vault. No plugin bridge to wire up between a desktop program and your browser, and no fiddling to get autofill working on your phone.
 - **Autofill just works.** Domain matching and an on-page dropdown in the browser, plus system autofill and passkeys on mobile, built in rather than bolted on.

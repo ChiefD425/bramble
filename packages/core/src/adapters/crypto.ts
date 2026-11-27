@@ -170,6 +170,10 @@ export const CRYPTO_PERSISTENCE_FAILED = "vek_persistence_failed";
 /** A vault's key unwrapped but its entries did not load; the vault was locked again. */
 export const VAULT_OPEN_FAILED = "VAULT_OPEN_FAILED";
 
+/** Why the shell locked the vault. `away`: the app left the screen (mobile), and the unlock
+ * returns to where it was. Anything else unlocks to the list. */
+export type ExternalLockCause = "away" | "idle";
+
 /** Vault crypto operations (VEK lifecycle, slot wrap/unwrap, entry encryption, KeePass import). */
 export interface CryptoAdapter {
 	// Return an adapter bound to a specific vault id, so every VEK-scoped op it sends targets
@@ -188,7 +192,7 @@ export interface CryptoAdapter {
 	isLocked(): Promise<boolean>;
 	// Fires on a session lock from outside this UI context (background auto-lock).
 	// Does NOT fire on unlock/resume. Returns an unsubscribe function.
-	onExternalLock(callback: () => void): () => void;
+	onExternalLock(callback: (cause?: ExternalLockCause) => void): () => void;
 	// Fires when the shell loaded a vault's key from outside this UI (the macOS AutoFill extension
 	// unlocked it), with that vault's id. Absent where nothing else can unlock.
 	onExternalUnlock?(callback: (vaultId: string) => void): () => void;

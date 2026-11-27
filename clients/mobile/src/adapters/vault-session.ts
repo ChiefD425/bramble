@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import type { ExternalLockCause } from "@core/adapters/crypto";
 import { loadNativeCrypto } from "../native-crypto";
 import { loadWasm } from "../wasm-loader";
 
@@ -14,11 +15,11 @@ import { loadWasm } from "../wasm-loader";
 /** "auto" is an auto-lock timeout; "user" is every other lock (the Lock button, a delete). */
 export type LockCause = "user" | "auto";
 
-const lockListeners = new Set<() => void>();
+const lockListeners = new Set<(cause: ExternalLockCause) => void>();
 const changeListeners = new Set<() => void>();
 const stateListeners = new Set<(locked: boolean, cause?: LockCause) => void>();
 
-export function onExternalLock(cb: () => void): () => void {
+export function onExternalLock(cb: (cause: ExternalLockCause) => void): () => void {
 	lockListeners.add(cb);
 	return () => lockListeners.delete(cb);
 }
@@ -44,12 +45,13 @@ export function notifyExternalChange(): void {
 	for (const fn of changeListeners) fn();
 }
 
-/** Lock on app background: lock the wasm, relock the UI (onExternalLock), and signal
- * the transition (stops sync). Distinct from the UI-driven crypto adapter `lock()`. */
-export async function lockForLifecycle(): Promise<void> {
+/** Auto-lock: lock the wasm, relock the UI (onExternalLock), and signal the transition (stops
+ * sync). Distinct from the UI-driven crypto adapter `lock()`. `away` is a lock from leaving the
+ * app, whose unlock returns to the screen the user left. */
+export async function lockForLifecycle(cause: ExternalLockCause): Promise<void> {
 	// Native on device (no WASM under Lockdown Mode); WASM only in the dev browser.
 	const crypto = Capacitor.isNativePlatform() ? await loadNativeCrypto() : await loadWasm();
 	await crypto.lock();
-	for (const fn of lockListeners) fn();
+	for (const fn of lockListeners) fn(cause);
 	markLocked("auto");
 }

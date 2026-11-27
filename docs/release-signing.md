@@ -748,7 +748,8 @@ covers three operating systems, so it has more parts than the others:
 3. **macOS** compiles both slices with no secrets and hands over the binaries. Compiling runs every
    crate's build script, so it stays away from the keys; on macOS the signing happens while
    bundling, which is what makes the split possible (`build-macos.ts --compile-only`).
-4. **Windows**, in `sign-windows.yml`, builds the installer and signs it, about 20 minutes in.
+4. **Windows**, in `sign-windows.yml`, builds the installer and signs it and the files inside it,
+   about 40 minutes in.
    Through Azure (the default) there is no approval of its own. Through SignPath it waits for your
    approval in SignPath: the terminal that dispatched the release says so the moment the sign job
    starts, with your signing-requests page, and SignPath emails the link. You have five hours.
@@ -840,20 +841,34 @@ picked by the `WINDOWS_SIGNER` repository variable (`azure` or unset, or `signpa
 Developer ID plays above: without it, Windows warns every person who downloads the installer. The
 certificate is issued to the identity Microsoft validated, so that is the publisher Windows shows.
 
-The signtool plugin runs only on Windows, so `.github/workflows/sign-windows.yml` signs on a
-`windows-latest` runner. It builds the installer first in the pinned cross-compile container on a
-Linux runner, so anyone can rebuild it ([reproducible-builds.md](reproducible-builds.md)). Two jobs,
-as the other release workflows are: **build**, which holds nothing, and **sign**, which never
-checks out the repository and so runs none of its code. Sign runs in the `windows-signing`
-environment, which only `main` may deploy to, and logs in to Azure with a GitHub OIDC token: Azure
-trusts a token for exactly that environment of this repository, so **no Azure secret is stored
-anywhere**. A branch or a fork can build, never sign. There is no approval wait: the certificates
-are short-lived (3 days) and every signature is timestamped, so a signature stays valid after its
-certificate expires.
+The signtool plugin runs only on Windows, so `.github/workflows/sign-windows.yml` signs on
+`windows-latest` runners. It builds in the pinned cross-compile container on Linux runners, so
+anyone can rebuild the installer ([reproducible-builds.md](reproducible-builds.md)). Build jobs hold
+nothing; sign jobs never check out the repository and so run none of its code. Sign jobs run in the
+`windows-signing` environment, which only `main` may deploy to, and log in to Azure with a GitHub
+OIDC token: Azure trusts a token for exactly that environment of this repository, so **no Azure
+secret is stored anywhere**. A branch or a fork can build, never sign. There is no approval wait:
+the certificates are short-lived (3 days) and every signature is timestamped, so a signature stays
+valid after its certificate expires.
 
-On the way out the job asks Windows (`Get-AuthenticodeSignature`) and fails on no signature, no
-timestamp, or a status other than `Valid`. A silently unsigned installer looks identical until a
-user hits SmartScreen.
+**The files inside the installer are signed too**, since Smart App Control judges each one: the
+app, the proxy, the NSIS plugins and the uninstaller. Tauri would sign them while bundling, which
+would put the token beside the build, so builds and signing take turns instead
+(`windows-build-round.yml`, `windows-sign-round.yml`). Tauri's sign command is
+`scripts/windows-sign-handoff.ts`, which hands files across rather than signing them. Tauri signs
+only the NSIS plugins on its own list, and the uninstaller packs others (`LangDLL`, `nsExec`), so
+`windows-build.sh` puts every plugin in its copy of NSIS through the handoff too.
+
+1. **Build**, collecting every file Tauri would sign. **Sign** them.
+2. **Rebuild**, swapping the signed copies in, matched by their bytes with the signature off. The
+   uninstaller packs the signed plugins, so it is new; collect it. **Sign** it.
+3. **Build** again with everything signed swapped in, failing on any file with no signed copy,
+   since that build differs from the one that was signed. **Sign** the installer.
+
+Three builds make it about 40 minutes. Every sign job asks Windows (`Get-AuthenticodeSignature`)
+and fails on no signature, no timestamp, or a status other than `Valid`; the last one also unpacks
+the installer with 7-Zip and checks every file inside. A silently unsigned file looks identical
+until Windows refuses it.
 
 ```sh
 gh workflow run sign-windows.yml -f version=<current desktop version>   # outside a release
@@ -888,13 +903,16 @@ for *the updater*, and only the second is the root of trust for updates.
    take a few days. Individual validation also exists (Canada and the US, needs an Individual
    billing account) but puts the maintainer's legal name on every installer.
 4. Once it is completed, **Certificate profiles → Create → Public Trust**, picking that validation.
-5. **Entra ID → App registrations → New**, no redirect URI. On it, **Certificates & secrets →
-   Federated credentials → Add → GitHub Actions deploying Azure resources**: organization
-   `bramble-sh`, repository `bramble`, entity **Environment**, name `windows-signing`. No client
-   secret.
-6. On the certificate profile, **Access control → Add role assignment → Artifact Signing
-   Certificate Profile Signer** for that app. Nothing on the subscription: the workflow logs in with
-   `allow-no-subscriptions`.
+5. **Entra ID → App registrations → New**, single tenant, no redirect URI. On it, **Certificates &
+   secrets → Federated credentials → Add → GitHub Actions deploying Azure resources**: organization
+   `bramble-sh` (ID `348627466`), repository `bramble` (ID `1255609001`), entity **Environment**,
+   name `windows-signing`. The repository uses GitHub's immutable subject, so the subject must read
+   `repo:bramble-sh@348627466/bramble@1255609001:environment:windows-signing`. No client secret.
+6. On the Artifact Signing **account** (the portal gives profiles no access control of their own),
+   **Access control (IAM) → Add role assignment → Artifact Signing Certificate Profile Signer** for
+   that app. Nothing on the subscription: the workflow logs in with `allow-no-subscriptions`.
+   Without the role, signing fails at "Submitting digest for signing" with `403 (Forbidden)`, after
+   a login that succeeded.
 7. GitHub: create the `windows-signing` environment with **Deployment branches: Selected → `main`**
    and no reviewers, then the repository variables (variables, not secrets; none is sensitive):
 

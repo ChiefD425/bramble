@@ -1,19 +1,20 @@
-Bramble est un gestionnaire de mots de passe local-first. Vos mots de passe résident dans un coffre chiffré sur votre appareil, et non sur un serveur tiers. Aucun compte à créer et aucune communication sortante.
+Bramble est un gestionnaire de mots de passe qui privilégie le stockage local. Vos mots de passe sont conservés dans un coffre-fort chiffré sur votre appareil, et vous n’avez pas besoin de compte pour l’utiliser. Tout ce qui quitte l’appareil, pour la synchronisation ou la sauvegarde, est d’abord chiffré de bout en bout, de sorte qu’aucun serveur ne peut le lire.
 
-L'ensemble des opérations cryptographiques repose sur un noyau Rust : Argon2id dérive votre clé, AES-256-GCM chiffre vos données, et le chiffrement par enveloppe attribue une clé unique à chaque entrée. Les noms de sites, identifiants et notes sont tous chiffrés, et les secrets sont effacés de la mémoire après utilisation.
+Toutes les opérations cryptographiques s’exécutent dans un noyau Rust : Argon2id dérive votre clé, AES-256-GCM chiffre vos données et le chiffrement par enveloppe attribue à chaque entrée sa propre clé. Les noms de sites, les noms d’utilisateur et les notes sont tous chiffrés, et les secrets sont effacés de la mémoire après usage.
 
 FONCTIONNALITÉS
-- Saisie automatique des mots de passe et codes à usage unique dans les applications et votre navigateur.
-- Passkeys : créez et connectez-vous avec des passkeys, en utilisant Bramble comme votre propre authentificateur, pour les sites et applications compatibles.
-- Déverrouillage par empreinte digitale ou reconnaissance faciale, par mot de passe principal, ou par code de récupération.
-- Stockage des identifiants, cartes de paiement, notes sécurisées et clés SSH, chacun avec ses propres champs.
+- Remplissage automatique des mots de passe et des codes à usage unique dans les applications et votre navigateur.
+- Clés d’accès : créez et connectez-vous avec des clés d’accès, avec Bramble comme votre propre authentificateur, pour les sites et les applications qui les prennent en charge.
+- Déverrouillage par votre empreinte digitale ou votre visage, votre mot de passe principal ou un code de récupération.
+- Stockage d’identifiants de connexion, de cartes de paiement, de notes sécurisées et de clés SSH, avec des champs propres à chaque type.
 - Générateur de mots de passe forts intégré.
-- TOTP / 2FA : ajoutez un URI otpauth ou un secret, et Bramble génère les codes à six chiffres.
+- TOTP / 2FA : ajoutez une URI otpauth ou un secret, et Bramble génère les codes à six chiffres.
 - Importation depuis KeePass (KDBX4), fichiers de clés inclus.
-- Code de récupération : une sauvegarde imprimable à haute entropie qui déverrouille votre coffre indépendamment de votre mot de passe principal.
-- Vérification facultative des fuites via k-anonymat, sans qu'aucune information sur votre mot de passe ne quitte votre appareil.
+- Code de récupération : une sauvegarde imprimable à forte entropie qui déverrouille votre coffre-fort indépendamment de votre mot de passe principal.
+- Vérification facultative des violations de données par k-anonymat : seul un court préfixe du hachage du mot de passe est envoyé, jamais le mot de passe.
 - Verrouillage automatique après inactivité.
-- Synchronisation pair-à-pair entre vos propres appareils. Pas de cloud, pas de relais détenant vos données.
+- Synchronisation entre vos propres appareils, chiffrée de bout en bout : directement en pair à pair, ou via un serveur de boîte aux lettres facultatif qui ne conserve que des données scellées.
+- Sauvegardes chiffrées facultatives vers le stockage de votre choix, comme un bucket compatible S3 ou un serveur WebDAV.
 
 CONFIDENTIALITÉ
-Bramble ne nécessite aucun compte, aucun abonnement et ne collecte aucune télémétrie. Votre coffre ne quitte jamais votre contrôle, et le code s'exécute entièrement sur votre appareil.
+Bramble est libre et open source (GPLv3) et n’inclut aucune télémétrie. Vous n’avez pas besoin de compte, tout le chiffrement a lieu sur votre appareil et seuls vos appareils peuvent lire votre coffre-fort. La seule requête que Bramble effectue de lui-même est une vérification quotidienne des mises à jour, que vous pouvez désactiver dans les paramètres.

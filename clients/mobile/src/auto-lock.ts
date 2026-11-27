@@ -42,7 +42,7 @@ async function maybeLock(reason: LockReason): Promise<void> {
 	const decision = decideLock(reason, minutes, now - lastActivity, now < filePickGraceUntil);
 	if (decision.bumpActivity) lastActivity = now;
 	if (decision.consumeGrace) filePickGraceUntil = 0;
-	if (decision.lock) await lockForLifecycle();
+	if (decision.lock) await lockForLifecycle(reason === "idle" ? "idle" : "away");
 }
 
 /** Start inactivity tracking + auto-lock. Returns a cleanup function. */

@@ -236,6 +236,41 @@ describe("VaultRegistryProvider", () => {
 		expect(get().activeId).toBe("a");
 	});
 
+	// #270: the picker clears the choice, then deletes one of two. The one left must be chosen, or
+	// the unlock screen (the router skips the picker for one vault) unlocks no vault at all.
+	it("forgetRecord selects the vault left when none was chosen", async () => {
+		const { get } = mount(two);
+		await act(async () => {});
+		expect(get().activeId).toBeUndefined();
+		await act(async () => {
+			await get().forgetRecord("b");
+		});
+		expect(get().activeId).toBe("a");
+	});
+
+	it("forgetRecord keeps the chosen vault when another goes", async () => {
+		const three = addVault(two, { id: "c", label: "Family", createdAt: 3 });
+		const { get } = mount(three);
+		await act(async () => {});
+		await act(async () => {
+			get().selectVault("c");
+		});
+		await act(async () => {
+			await get().forgetRecord("a");
+		});
+		expect(get().activeId).toBe("c");
+	});
+
+	it("forgetRecord leaves the choice to the picker when several are left", async () => {
+		const three = addVault(two, { id: "c", label: "Family", createdAt: 3 });
+		const { get } = mount(three);
+		await act(async () => {});
+		await act(async () => {
+			await get().forgetRecord("a");
+		});
+		expect(get().activeId).toBeUndefined();
+	});
+
 	it("rename and dropActiveRecord do nothing when no vault is active (can't target another)", async () => {
 		const { get } = mount(two);
 		await act(async () => {});

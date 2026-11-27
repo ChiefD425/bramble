@@ -1,1 +1,1 @@
-Sin cuenta ni nube, nadie custodia su bóveda: contraseñas cifradas en el dispositivo. Claves de acceso, Autocompletar, TOTP e importación desde KeePass, Apple o Google.
+Contraseñas cifradas en el dispositivo, sin cuenta. Sincronización y copias de seguridad cifradas E2E. Passkeys, AutoFill, 2FA e importar desde KeePass, Apple o Google.

@@ -1,49 +1,49 @@
-Bramble è un gestore di password gratuito e open source che conserva i Suoi segreti sui Suoi dispositivi. Nessun account, nessun server che custodisce il Suo vault, nessuna azienda che possa subire una violazione e far trapelare tutto. È Lei a detenere il vault, è Lei a detenere la password, e questo è tutto.
+Bramble è un gestore di password gratuito e open source che conserva i segreti sui dispositivi dell'utente. Nessun account, nessun server aziendale a cui affidare la propria cassaforte e nessun database centrale che possa essere violato e far trapelare tutto. Lei custodisce la cassaforte e custodisce la password: tutto qui.
 
-Funziona con Firefox, LibreWolf, Waterfox, Zen e altri browser basati su Firefox. Basta installarlo e in circa un minuto è operativo. Bramble offre anche app per macOS, Linux, iOS e Android, e il Suo vault si sincronizza tra tutti questi dispositivi.
+Funziona in Firefox, LibreWolf, Waterfox, Zen e altri browser basati su Firefox. Basta installarlo e in circa un minuto è operativo. Bramble offre anche app per macOS, Linux, iOS e Android e la sua cassaforte si sincronizza tra loro.
 
 COSA FA
 
-Le password vengono crittografate sul Suo dispositivo e archiviate nella memoria dell'estensione del browser. Una volta configurato, potrà compilare automaticamente gli accessi, salvarne di nuovi e generare password immediatamente.
+Le password vengono cifrate sul dispositivo e archiviate nella memoria dell'estensione del browser. Basta configurarlo una volta e si inizia subito a compilare automaticamente gli accessi, salvarne di nuovi e generare password.
 
-Ha più di un dispositivo? Li associ e Bramble sincronizza il Suo vault direttamente tra loro, con crittografia end-to-end. Il relay che mette in contatto i Suoi dispositivi vede solo testo cifrato e non archivia nulla, quindi i Suoi segreti non finiscono mai su alcun server.
+Ha più di un dispositivo? Li associ e Bramble sincronizza la sua cassaforte direttamente tra loro, con crittografia end-to-end. Il relay che mette in contatto i dispositivi vede solo testo cifrato e non memorizza nulla, quindi nessun dato leggibile finisce mai su un server altrui.
 
 FUNZIONALITÀ
 
-- Local-first, sempre. Il Suo vault crittografato resta sul Suo dispositivo, nella memoria del browser. Nessun account, nessuna copia sul server.
-- Sincronizzazione peer-to-peer. I Suoi dispositivi restano sincronizzati tramite una connessione crittografata end-to-end, con unione voce per voce. Il relay che li collega vede esclusivamente testo cifrato e non archivia nulla.
-- Crittografia seria. Argon2id per la Sua chiave, AES-256-GCM per i dati, crittografia envelope così ogni voce ha la propria chiave. I segreti vengono azzerati dalla memoria dopo l'uso.
-- Tutto crittografato. Nomi dei siti, nomi utente, note, tutto.
-- Compilazione automatica intelligente per dominio. www.example.com, ca.accounts.example.com e example.com corrispondono tutti allo stesso accesso. Il menu a discesa nella pagina raggiunge i moduli dentro iframe e shadow DOM.
-- Passkey. Bramble è il Suo autenticatore di passkey personale: può creare passkey e accedere con esse, archiviate nel Suo vault e sincronizzate come tutto il resto.
-- Più che semplici accessi. Accessi, carte di pagamento, note sicure e chiavi SSH, ciascuno con i propri campi.
-- Alias email. Può ottenere un indirizzo di inoltro univoco per ogni sito tramite Addy.io, SimpleLogin o Fastmail, oppure da un dominio di Sua proprietà, proposto direttamente nel modulo di registrazione.
-- Sblocco con un tocco. Usi Touch ID o Windows Hello insieme alla Sua password principale, oppure li renda l'unico metodo di accesso.
-- Codici di recupero. Ogni vault riceve un codice di recupero sicuro al momento della configurazione: un backup stampabile che lo sblocca indipendentemente dalla Sua password principale.
+- Local-first, sempre. La cassaforte cifrata resta sul dispositivo, nella memoria del browser. Nessun account e nessuna copia altrove, a meno che non ne esegua il backup su un archivio scelto da lei.
+- Sincronizzazione peer-to-peer. I dispositivi restano sincronizzati tramite una connessione crittografata end-to-end, uniti voce per voce. Il relay che li collega vede solo testo cifrato e non memorizza nulla.
+- Crittografia seria. Argon2id per la chiave, AES-256-GCM per i dati, cifratura a busta per dare a ogni voce la propria chiave. I segreti vengono cancellati dalla memoria dopo l'uso.
+- Tutto cifrato. Nomi dei siti, nomi utente, note, tutto.
+- Compilazione automatica intelligente per dominio. www.example.com, ca.accounts.example.com e example.com corrispondono tutti a un solo accesso. Il menu a discesa nella pagina raggiunge i moduli anche dentro iframe e shadow DOM.
+- Passkey. Bramble è il suo autenticatore di passkey: può creare e accedere con le passkey, archiviate nella cassaforte e sincronizzate come tutto il resto.
+- Oltre agli accessi. Accessi, carte di pagamento, note sicure e chiavi SSH, ognuno con i propri campi.
+- Alias email. Ottenga un indirizzo di inoltro univoco per ciascun sito tramite Addy.io, SimpleLogin o Fastmail, oppure da un dominio di sua proprietà, proposto direttamente nel modulo di registrazione.
+- Sblocco con un tocco. Usi Touch ID o Windows Hello insieme alla password principale, oppure li renda il suo unico metodo di accesso.
+- Codici di recupero. A ogni cassaforte viene assegnato un codice di recupero sicuro al momento della configurazione: un backup stampabile che la sblocca indipendentemente dalla password principale.
 - Codici TOTP / 2FA. Incolli un URI otpauth:// o un segreto e Bramble genera i codici.
-- Backup crittografati. Esporti il Suo vault in un file crittografato in qualsiasi momento, oppure pianifichi backup crittografati su Dropbox, un bucket compatibile con S3 o WebDAV. Il provider vede esclusivamente testo cifrato.
-- Nessun vincolo. Esporti in un file KeePass (.kdbx) standard ogni volta che desidera andarsene.
-- Vault multipli. Mantenga vault separati affiancati, ciascuno protetto dalla propria password principale.
+- Backup cifrati. Esporti la cassaforte in un file cifrato in qualsiasi momento, oppure pianifichi backup cifrati su Dropbox, un bucket compatibile con S3 o WebDAV. Il provider vede solo testo cifrato.
+- Nessun vincolo. Esporti in un file KeePass (.kdbx) standard ogni volta che vuole andarsene.
+- Casseforti multiple. Tenga casseforti separate una accanto all'altra, ognuna protetta dalla propria password principale.
 - Generatore di password integrato.
-- Controllo violazioni opzionale. Verifica tramite Have I Been Pwned con k-anonymity, così nulla della Sua password lascia il Suo dispositivo. Disattivato per impostazione predefinita.
+- Verifica facoltativa delle violazioni. Controllo su Have I Been Pwned tramite k-anonimato: viene inviato solo un breve prefisso dell'hash della password, mai la password. Disattivata per impostazione predefinita.
 - Blocco automatico dopo 15 minuti di inattività (configurabile).
 - Importazione da 1Password, Bitwarden, Proton Pass, LastPass, Dashlane, Enpass, AliasVault, RoboForm, KeePass, Firefox, Apple Passwords e Google Password Manager.
 
 PERCHÉ LOCAL-FIRST
 
-I gestori cloud conservano i vault di tutti sui propri server, che rappresentano un unico, enorme bersaglio. Quando subiscono una violazione, non viene esposto un solo vault, ma milioni contemporaneamente, spesso con notifica solo mesi dopo.
+I gestori cloud conservano le casseforti di tutti sui propri server, il che li rende un unico grande bersaglio. Quando uno di questi viene violato, non trapela una sola cassaforte, ma milioni in una volta sola, e spesso la violazione viene resa nota mesi dopo.
 
 Bramble ribalta la situazione:
 
-- Nessun server da violare. Il Suo vault non lascia mai il Suo controllo.
-- Nessun account, nessun abbonamento, nessuna pubblicità, nessuna telemetria. Niente a cui iscriversi.
-- I Suoi dati, i Suoi dispositivi. Lo sincronizzi tra i Suoi dispositivi, lo tenga su una sola macchina oppure ne esegua il backup crittografato sullo spazio di archiviazione che preferisce. Nulla di leggibile viene mai parcheggiato su server altrui.
-- Niente di cui fidarsi se non il codice. Bramble è open source sotto licenza GPL e il codice è pubblico su GitHub.
+- Nessun accumulo centrale di casseforti da violare. La cassaforte non lascia mai i dispositivi in chiaro.
+- Nessun account, nessun abbonamento, nessuna pubblicità, nessuna telemetria. Nulla a cui iscriversi.
+- I suoi dati, i suoi dispositivi. Li sincronizzi tra i suoi dispositivi, li tenga su una sola macchina o ne esegua il backup cifrato su un archivio scelto da lei. Niente di leggibile viene mai parcheggiato sul server di qualcun altro.
+- Nient'altro di cui fidarsi se non il codice. Bramble è open source sotto licenza GPL e il codice è pubblico su GitHub.
 
 COME FUNZIONA LA CRITTOGRAFIA
 
-Bramble utilizza slot di chiave in stile LUKS e crittografia envelope. Un'unica Vault Key casuale protegge i Suoi dati. Ogni metodo di sblocco (password principale, Touch ID o Windows Hello, codice di recupero) deriva la propria Key-Encryption Key che sblocca una copia della stessa Vault Key, quindi aggiungere o revocare un metodo di sblocco non richiede mai di ricrittografare una singola voce. La Vault Key sblocca poi una nuova chiave per voce per ogni elemento. Tutto è AES-256-GCM.
+Bramble utilizza slot per chiavi in stile LUKS e cifratura a busta. Una singola Vault Key casuale protegge i suoi dati. Ogni metodo di sblocco (password principale, Touch ID o Windows Hello, codice di recupero) deriva la propria Key-Encryption Key che decodifica una copia della stessa Vault Key, quindi aggiungere o revocare un metodo di sblocco non cifra mai nuovamente una singola voce. La Vault Key decodifica poi una nuova chiave per voce per ogni elemento. Tutto è AES-256-GCM.
 
 VIENE DA KEEPASS?
 
-Si sentirà a casa: il Suo vault crittografato, il Suo controllo, nessun intermediario cloud. Bramble importa i Suoi file KDBX4 (inclusi i file chiave) ed esporta di nuovo in .kdbx ogni volta che lo desidera. Le differenze: la compilazione automatica è integrata, con corrispondenza dei domini e menu a discesa nella pagina, quindi non serve alcun ponte tramite plugin; anche la sincronizzazione tra i Suoi dispositivi è integrata; e offre un'unica build moderna con Argon2id e AES-256-GCM invece di una miriade di plugin. Interfaccia pulita, modalità scura inclusa.
+Si sentirà a casa: la sua cassaforte cifrata, il suo controllo e nessun server di terzi necessario. Bramble importa i file KDBX4 (inclusi i file chiave) ed esporta di nuovo in .kdbx ogni volta che lo desidera. Le differenze: la compilazione automatica è integrata, con corrispondenza dei domini e un menu a discesa nella pagina, quindi nessun ponte tra plugin; anche la sincronizzazione tra i suoi dispositivi è integrata; e viene fornita un'unica build moderna con Argon2id e AES-256-GCM, invece di una miriade di plugin. Interfaccia pulita, modalità scura inclusa.

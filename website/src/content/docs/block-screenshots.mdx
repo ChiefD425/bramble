@@ -1,0 +1,61 @@
+---
+title: Block screenshots
+description: Bramble keeps itself out of screenshots, screen recordings and assistants that read your screen. Allow screenshots for 10 minutes, or turn it off.
+section: privacy
+kind: guide
+order: 3
+keywords:
+  - screenshot
+  - screenshots
+  - screen recording
+  - screen sharing
+  - screen mirroring
+  - black screenshot
+  - blank screenshot
+  - can't take screenshot
+  - screenshot not allowed
+  - security policy
+  - Gemini
+  - Circle to Search
+  - Apple Intelligence
+  - Recall
+  - AI assistant
+  - Block screenshots
+  - Allow for 10 minutes
+  - Block now
+  - Screenshots are blocked
+  - Screenshots allowed until
+  - Excluded Apps
+updatedDate: 2026-11-26
+since: "b3b23806"
+sinceOn: "android ios"
+---
+
+Bramble keeps your vault out of screenshots, screen recordings and assistants that read your screen, such as Gemini and Circle to Search. It's on from the start.
+
+## Allow screenshots for a while
+
+To save something as a picture, like a QR code:
+
+1. Open **Settings → General**.
+2. Under **Block screenshots**, choose **Allow for 10 minutes**.
+
+Screenshots work until the time Bramble shows, then they're blocked again. Choose **Block now** to end it sooner. Quitting Bramble ends it too.
+
+On iPhone, a blocked screenshot brings up **Screenshots are blocked**. Choose **Allow for 10 minutes** there, then take the screenshot again.
+
+Your recovery code doesn't need a screenshot: choose **Copy** or **Download** where Bramble shows it.
+
+## Turn it off
+
+Turn off **Block screenshots** in **Settings → General**. Each device has its own setting.
+
+If a screen magnifier or another accessibility tool shows Bramble as blank, turn it off.
+
+## What each device blocks
+
+- **Android:** screenshots, screen recordings, casting and assistants that read the screen. Android tells you the app doesn't allow screenshots. The autofill and passkey unlock screens are blocked too.
+- **iPhone:** screenshots, screen recordings and screen mirroring. The app switcher shows a blank preview. If **Block screenshots** isn't in Settings, your version of iOS doesn't let Bramble block them.
+- **Windows:** <Since commit="b3b23806" on="desktop">screenshots, screen sharing and Recall.</Since><Until commit="b3b23806" on="desktop">nothing yet.</Until>
+- **Mac:** <Since commit="b3b23806" on="desktop">Bramble asks macOS to leave its windows out of screenshots and screen sharing, but many current apps ignore that.</Since><Until commit="b3b23806" on="desktop">nothing yet.</Until> On macOS 27 you can also keep Apple Intelligence out of Bramble: add it under **System Settings → Siri → Excluded Apps**.
+- **Linux and the browser extension:** nothing. They give apps no way to block screenshots, so the setting isn't there.

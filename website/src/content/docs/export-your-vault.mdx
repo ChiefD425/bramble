@@ -91,7 +91,7 @@ The file's password is separate from your master password. Bramble doesn't keep 
 KeePass has only one kind of entry, so a few things change on the way:
 
 - Cards, notes and SSH keys become entries, with their details in extra fields.
-- A login with several websites keeps the first under URL, and the rest as URL 2, URL 3 and so on.
+- A login with several websites keeps the first under URL<Since commit="56ec5314">, and the rest as extra URLs that KeePassXC and Keepass2Android read.</Since><Until commit="56ec5314">, and the rest as URL 2, URL 3 and so on.</Until>
 - Archived entries are included, marked with an Archived field.
 - Passkeys go in the way KeePassXC stores them, so KeePassXC can sign in with them. A login with several passkeys gets an extra entry for each one after the first.
 - Password history is left out. Keep a backup for that.

@@ -581,6 +581,11 @@ msgstr "다시 허용"
 msgid "Allow and continue"
 msgstr "허용하고 계속"
 
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Allow for 10 minutes"
+msgstr "10분간 허용"
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "암호 폴백 허용"
@@ -694,6 +699,10 @@ msgstr "잠금 해제 화면이 나타나면 탭 없이 암호 입력을 요청�
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Bramble에 아직 없는 로그인 정보 저장 여부 묻기"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Asks macOS to keep Bramble out of screenshots and screen sharing. Many apps ignore it."
+msgstr "macOS에 Bramble을 스크린샷과 화면 공유에서 제외하도록 요청합니다. 많은 앱이 이를 무시합니다."
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Asks once on the vault list."
@@ -834,6 +843,14 @@ msgstr "생체 인식 잠금 해제"
 #: packages/core/src/hooks/useVault.tsx
 msgid "Biometric unlock isn't available on this device."
 msgstr "이 기기에서는 생체 인식 잠금 해제를 사용할 수 없습니다."
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block now"
+msgstr "지금 차단"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block screenshots"
+msgstr "스크린샷 차단"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Book"
@@ -2446,6 +2463,14 @@ msgstr "이 코드를 안전한 오프라인 장소에 보관하세요. 이 코�
 msgid "KeePass master password"
 msgstr "KeePass 마스터 비밀번호"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen recordings and AI assistants."
+msgstr "Bramble을 스크린샷, 화면 기록 및 AI 비서에서 제외합니다."
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen sharing and Recall."
+msgstr "Bramble을 스크린샷, 화면 공유 및 Recall에서 제외합니다."
+
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Kept in your vault, but hidden from the list and never offered for autofill."
 msgstr "보관함에 보관되지만 목록에서 숨겨지고 자동 완성에 제공되지 않습니다."
@@ -3719,6 +3744,14 @@ msgstr "예약 백업은 Bramble이 실행 중일 때만 실행됩니다. 로그
 msgid "Scissors"
 msgstr "가위"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Screenshots allowed until {until}"
+msgstr "스크린샷은 {until}까지 허용됩니다"
+
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+msgid "Screenshots are blocked"
+msgstr "스크린샷이 차단되어 있습니다"
+
 #: packages/core/src/app/components/ui/scroll-edges.tsx
 msgid "Scroll left"
 msgstr "왼쪽으로 스크롤"
@@ -4583,6 +4616,10 @@ msgstr "웹 페이지 자동 완성 켜기/끄기"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle AutoFill suggestions"
 msgstr "AutoFill 추천 켜기/끄기"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Toggle block screenshots"
+msgstr "스크린샷 차단 전환"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle Bramble passkey provider"

@@ -54,6 +54,14 @@ describe("auto-lock lifecycle under 'Immediately'", () => {
 		cleanups.push(startAutoLock());
 		handlers.appStateChange?.({ isActive: false });
 		await vi.waitFor(() => expect(lockForLifecycle).toHaveBeenCalledTimes(1));
+		// Leaving the app is not done with it: the unlock returns to the screen it left.
+		expect(lockForLifecycle).toHaveBeenCalledWith("away");
+	});
+
+	it("reports the return backstop as leaving the app too", async () => {
+		cleanups.push(startAutoLock());
+		handlers.resume?.();
+		await vi.waitFor(() => expect(lockForLifecycle).toHaveBeenCalledWith("away"));
 	});
 
 	// The reported bug: opening a file picker backgrounds the app, which locked the vault
@@ -103,5 +111,23 @@ describe("auto-lock lifecycle under 'Immediately'", () => {
 			await flush();
 			expect(lockForLifecycle).not.toHaveBeenCalled();
 		});
+	});
+});
+
+// Idle with the app on screen is the same as anywhere else: the unlock opens the list.
+describe("auto-lock after idling in the app", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("reports the lock as idle", async () => {
+		vi.useFakeTimers();
+		getMeta.mockResolvedValue(1);
+		cleanups.push(startAutoLock());
+		document.dispatchEvent(new Event("pointerdown"));
+		await vi.advanceTimersByTimeAsync(45_000);
+		expect(lockForLifecycle).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(lockForLifecycle).toHaveBeenCalledExactlyOnceWith("idle");
 	});
 });

@@ -1,0 +1,118 @@
+name: Windows build round
+# One build of the Windows installer for sign-windows.yml, in the container anyone can rebuild it in
+# (clients/desktop/docker/windows-build.Dockerfile, docs/reproducible-builds.md). The files inside
+# the installer are Authenticode-signed on a Windows runner between rounds, so a round can swap in
+# the signed copies an earlier one collected (`sign-from`) and collect what still needs signing
+# (`collect`). No signing identity reaches this job: it runs every crate's build script and every
+# npm install hook.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The version the checkout must be
+        required: true
+        type: string
+      sign-from:
+        description: Artifacts of signed files to swap in, as a download-artifact pattern
+        required: false
+        default: ""
+        type: string
+      collect:
+        description: Name of the artifact for the files still to sign, or empty for none
+        required: false
+        default: ""
+        type: string
+      installer:
+        description: Name of the artifact for the installer, or empty for none
+        required: false
+        default: ""
+        type: string
+    outputs:
+      installer-artifact-id:
+        description: The installer artifact's id, for SignPath
+        value: ${{ jobs.build.outputs.installer-artifact-id }}
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    # On arm64, the image's platform, so it runs natively.
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    outputs:
+      installer-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # For the build script and the version check. Everything that builds runs in the container,
+      # with no cache from anywhere: the bytes come from this checkout and the pinned image alone.
+      - name: Setup Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # A workflow_dispatch resolves `main` when it is dispatched, so a race against the push of the
+      # release commit would silently build the PREVIOUS version and sign it.
+      - name: Assert the checkout is the version being released
+        shell: bash
+        run: |
+          set -euo pipefail
+          conf="$(node -p "require('./clients/desktop/src-tauri/tauri.conf.json').version")"
+          if [ "$conf" != "${{ inputs.version }}" ]; then
+            echo "::error::checked out $conf but this run is for ${{ inputs.version }}; the release commit is probably not pushed yet"
+            exit 1
+          fi
+
+      - name: Download the signed files
+        if: ${{ inputs.sign-from != '' }}
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.sign-from }}
+          path: signed
+          merge-multiple: true
+
+      # The updater .sig the bundler makes is over the unsigned bytes with a throwaway key, and stays
+      # behind: build-windows.ts makes the real one over the signed installer.
+      - name: Build the installer
+        shell: bash
+        env:
+          SIGN_FROM: ${{ inputs.sign-from }}
+          COLLECT: ${{ inputs.collect }}
+        run: |
+          set -euo pipefail
+          args=(--container)
+          if [ -n "$SIGN_FROM" ]; then args+=(--sign-from signed); fi
+          if [ -n "$COLLECT" ]; then args+=(--sign-collect); fi
+          node scripts/build-windows.ts "${args[@]}"
+
+      - name: Upload the files to sign
+        if: ${{ inputs.collect != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.collect }}
+          path: clients/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/to-sign/
+          if-no-files-found: error
+
+      # Isolated so exactly one file is handed on.
+      - name: Stage the installer
+        if: ${{ inputs.installer != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p unsigned
+          cp clients/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe unsigned/
+          ls -la unsigned/
+
+      - name: Upload the installer
+        id: installer
+        if: ${{ inputs.installer != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.installer }}
+          path: unsigned/
+          if-no-files-found: error

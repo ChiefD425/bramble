@@ -660,6 +660,11 @@ msgstr "Permitir novamente"
 msgid "Allow and continue"
 msgstr "Permitir e continuar"
 
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Allow for 10 minutes"
+msgstr "Permitir por 10 minutos"
+
 #: packages/core/src/app/screens/Settings/components/BiometricSection.tsx
 msgid "Allow passcode fallback"
 msgstr "Permitir código como alternativa"
@@ -782,6 +787,10 @@ msgstr "Solicitar seu código de acesso assim que a tela de desbloqueio aparecer
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Ask to save a sign-in that Bramble doesn't have yet."
 msgstr "Perguntar se deve salvar um login que o Bramble ainda não tem."
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Asks macOS to keep Bramble out of screenshots and screen sharing. Many apps ignore it."
+msgstr "Pede ao macOS que mantenha o Bramble fora das capturas de tela e do compartilhamento de tela. Muitos aplicativos ignoram isso."
 
 #: packages/core/src/app/screens/Settings/components/SupportSection.tsx
 msgid "Asks once on the vault list."
@@ -926,6 +935,14 @@ msgstr "Desbloqueio biométrico"
 #: packages/core/src/hooks/useVault.tsx
 msgid "Biometric unlock isn't available on this device."
 msgstr "O desbloqueio biométrico não está disponível neste dispositivo."
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block now"
+msgstr "Bloquear agora"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Block screenshots"
+msgstr "Bloquear capturas de tela"
 
 #: packages/core/src/app/components/SasDisplay.tsx
 msgid "Book"
@@ -2647,6 +2664,14 @@ msgstr "Guarde este código em algum lugar seguro e offline. Qualquer pessoa com
 msgid "KeePass master password"
 msgstr "Senha mestra do KeePass"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen recordings and AI assistants."
+msgstr "Mantém o Bramble fora das capturas de tela, das gravações de tela e dos assistentes de IA."
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Keeps Bramble out of screenshots, screen sharing and Recall."
+msgstr "Mantém o Bramble fora das capturas de tela, do compartilhamento de tela e do Recall."
+
 #: packages/core/src/app/screens/EntryDetail/EntryDetail.tsx
 msgid "Kept in your vault, but hidden from the list and never offered for autofill."
 msgstr "Mantido em seu cofre, mas oculto da lista e nunca oferecido para preenchimento automático."
@@ -4024,6 +4049,14 @@ msgstr "Os backups agendados somente são executados enquanto o Bramble estiver 
 msgid "Scissors"
 msgstr "Tesoura"
 
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Screenshots allowed until {until}"
+msgstr "Capturas de tela permitidas até {until}"
+
+#: packages/core/src/app/components/ScreenshotBlockedToast.tsx
+msgid "Screenshots are blocked"
+msgstr "Capturas de tela bloqueadas"
+
 #: packages/core/src/app/components/ui/scroll-edges.tsx
 msgid "Scroll left"
 msgstr "Rolar para a esquerda"
@@ -4985,6 +5018,10 @@ msgstr "Alternar preenchimento automático em páginas da web"
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle AutoFill suggestions"
 msgstr "Alternar sugestões do AutoFill"
+
+#: packages/core/src/app/screens/Settings/components/ScreenCaptureRow.tsx
+msgid "Toggle block screenshots"
+msgstr "Alternar bloqueio de capturas de tela"
 
 #: packages/core/src/app/screens/Settings/components/GeneralSection.tsx
 msgid "Toggle Bramble passkey provider"

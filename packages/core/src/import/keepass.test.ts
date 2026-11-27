@@ -49,6 +49,43 @@ describe("parseKeePass", () => {
 		]);
 	});
 
+	// KeePassXC and Keepass2Android: KP2A_URL, KP2A_URL_1, ... Bramble before #277: URL 2, URL 3, ...
+	it("reads extra URLs in order, from KeePass apps and from older Bramble exports", async () => {
+		const entry = (strings: [string, string][]) =>
+			`<Entry>${strings.map(([k, v]) => `<String><Key>${k}</Key><Value>${v}</Value></String>`).join("")}</Entry>`;
+		const res = await parseKeePass(
+			`<KeePassFile><Root><Group><Name>R</Name>
+      ${entry([
+				["Title", "KeePassXC"],
+				["URL", "https://a.com"],
+				["KP2A_URL_2", "https://d.com"],
+				["KP2A_URL", "https://b.com"],
+				["KP2A_URL_1", "https://c.com"],
+				["KP2A_URL_3", "https://a.com"],
+			])}
+      ${entry([
+				["Title", "Bramble"],
+				["URL", "https://a.com"],
+				["URL 3", "https://c.com"],
+				["URL 2", "https://b.com"],
+			])}
+      ${entry([
+				["Title", "No main URL"],
+				["KP2A_URL", "https://b.com"],
+			])}
+    </Group></Root></KeePassFile>`,
+			noPasskeys,
+		);
+		const [xc, bramble, noMain] = res.imported;
+		// A repeat of a URL already there is not added twice.
+		expect(xc).toMatchObject({
+			urls: ["https://a.com", "https://b.com", "https://c.com", "https://d.com"],
+		});
+		expect(bramble).toMatchObject({ urls: ["https://a.com", "https://b.com", "https://c.com"] });
+		expect(noMain).toMatchObject({ urls: ["https://b.com"] });
+		for (const e of res.imported) expect(e.customFields ?? []).toEqual([]);
+	});
+
 	it("falls back to a bare TOTP Seed when there's no otp URI", async () => {
 		const res = await parseKeePass(
 			`<KeePassFile><Root><Group><Name>R</Name>

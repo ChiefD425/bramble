@@ -1,1 +1,1 @@
-Gestore di password gratuito e open source. La sua cassaforte resta crittografata sui suoi dispositivi e si sincronizza tra loro, senza account e senza server che la conservi.
+Gestore di password gratuito e open source. La cassaforte rimane crittografata sui dispositivi personali e si sincronizza tra loro, senza account e senza nulla di leggibile su alcun server.

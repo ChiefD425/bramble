@@ -7,6 +7,9 @@
 //   pnpm run build:windows --ci-start   dispatch the GitHub build + signing, do not wait
 //   pnpm run build:windows --ci-collect wait for it, download the signed installer, sign it here
 //   node scripts/build-windows.ts --container   the release build, unsigned, in Docker (sign-windows.yml)
+//     --sign-collect     also put every file inside the installer that needs signing in to-sign/
+//     --sign-from <dir>  swap in signed copies from <dir>: files, or a published installer
+//     --sign-lenient     keep a file <dir> has no signed copy of, instead of failing
 //
 // Two routes because the release build and the iteration build want opposite things.
 //
@@ -55,8 +58,24 @@ const ciStart = argv.includes("--ci-start");
 const ciCollect = argv.includes("--ci-collect");
 const container = argv.includes("--container");
 const triple = argv.includes("--arm64") ? "aarch64-pc-windows-msvc" : "x86_64-pc-windows-msvc";
+const signFromAt = argv.indexOf("--sign-from");
+const signFrom = signFromAt === -1 ? undefined : argv[signFromAt + 1];
+if (signFromAt !== -1 && (!signFrom || signFrom.startsWith("--")))
+	fail("build-windows: --sign-from needs a directory");
+const signCollect = argv.includes("--sign-collect");
+const signLenient = argv.includes("--sign-lenient");
 const forwarded = argv.filter(
-	(a) => !["--unsigned", "--arm64", "--ci-start", "--ci-collect", "--container"].includes(a),
+	(a, i) =>
+		![
+			"--unsigned",
+			"--arm64",
+			"--ci-start",
+			"--ci-collect",
+			"--container",
+			"--sign-collect",
+			"--sign-from",
+			"--sign-lenient",
+		].includes(a) && i !== signFromAt + 1,
 );
 
 /** Where both routes put the installer, so everything downstream reads one path. */
@@ -336,11 +355,15 @@ function crossBuild(): void {
 
 /**
  * The release build: cross-compiled in clients/desktop/docker/windows-build.Dockerfile, so anyone
- * with Docker gets the same installer from the same commit (docs/reproducible-builds.md). Unsigned;
- * sign-windows.yml signs it on a Windows runner. linux/arm64 whatever the host, as the image says.
+ * with Docker gets the same installer from the same commit (docs/reproducible-builds.md). Its own
+ * signature comes after: sign-windows.yml signs it on a Windows runner, and the files inside it in
+ * rounds before that, which --sign-collect and --sign-from hand across. linux/arm64 whatever the
+ * host, as the image says.
  */
 function containerBuild(): void {
 	if (triple !== "x86_64-pc-windows-msvc") fail("build-windows: --container builds x64 only");
+	const signed = signFrom ? resolve(signFrom) : undefined;
+	if (signed && !existsSync(signed)) fail(`build-windows: ${signFrom} does not exist`);
 	const image = "bramble-windows-build";
 	const platform = ["--platform", "linux/arm64"];
 	const docker = "clients/desktop/docker";
@@ -366,6 +389,9 @@ function containerBuild(): void {
 			`${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
 			"-e",
 			`SOURCE_DATE_EPOCH=${epoch}`,
+			...(signCollect ? ["-e", "BRAMBLE_SIGN_COLLECT=1"] : []),
+			...(signLenient ? ["-e", "BRAMBLE_SIGN_LENIENT=1"] : []),
+			...(signed ? ["-v", `${signed}:/signed:ro`] : []),
 			"-v",
 			`${ROOT}:/src:ro`,
 			"-v",
@@ -378,7 +404,8 @@ function containerBuild(): void {
 		],
 		{ cwd: ROOT, stdio: "inherit" },
 	);
-	console.log(`\nbuild-windows: unsigned installer in ${BUNDLE}`);
+	console.log(`\nbuild-windows: installer in ${BUNDLE}, its own signature still to come`);
+	if (signCollect) console.log(`build-windows: files to sign in ${join(BUNDLE, "to-sign")}`);
 }
 
 if (container) containerBuild();

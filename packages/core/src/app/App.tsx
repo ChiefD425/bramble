@@ -9,6 +9,7 @@ import { useVaultRegistry, VaultRegistryProvider } from "../hooks/useVaultRegist
 import { setAppBackHandler } from "./android-back";
 import { CornerSavedToast } from "./components/CornerSavedToast";
 import { DevFlagsModal, useHydrateDevFlags } from "./components/DevFlagsModal";
+import { ScreenshotBlockedToast } from "./components/ScreenshotBlockedToast";
 import { SshAgentRequests } from "./components/SshAgentRequests";
 import { ToastProvider } from "./components/ui/toast";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -64,12 +65,12 @@ function InnerApp({
 	pendingLogin?: PendingLogin;
 	pendingTotp?: TotpHandoff;
 }) {
-	const { isLocked, ready, entries, unlockedWithRecoveryCode, lockedByUser } = useVault();
+	const { isLocked, ready, entries, unlockedWithRecoveryCode, lockedAway } = useVault();
 	const { ready: registryReady, vaults, activeId } = useVaultRegistry();
 	const { shell } = usePlatform();
 	const vault = useMemo(
-		() => ({ isLocked, ready, entries, unlockedWithRecoveryCode, lockedByUser }),
-		[isLocked, ready, entries, unlockedWithRecoveryCode, lockedByUser],
+		() => ({ isLocked, ready, entries, unlockedWithRecoveryCode, lockedAway }),
+		[isLocked, ready, entries, unlockedWithRecoveryCode, lockedAway],
 	);
 	// Registry slice for the launch-time picker decision.
 	const registry = useMemo(
@@ -182,6 +183,7 @@ export default function App({
 						    DURING unlock, before the app chrome renders, so a listener scoped to the
 						    unlocked layout would miss the broadcast. */}
 						<CornerSavedToast />
+						<ScreenshotBlockedToast />
 						{/* The flag panel and the overrides it persists. Mounted for every host: the
 						    shortcut is obscure enough not to be found by accident, and what it flips is
 						    UI gating rather than anything standing between a user and their data. */}

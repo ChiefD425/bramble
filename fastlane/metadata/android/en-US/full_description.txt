@@ -1,4 +1,4 @@
-Bramble is a local-first password manager. Your passwords live in an encrypted vault on your device, not on someone else's server. There is no account to create and nothing phoning home.
+Bramble is a local-first password manager. Your passwords live in an encrypted vault on your device, and you don't need an account to use it. Anything that leaves the device, for sync or backup, is end-to-end encrypted first, so no server can read it.
 
 Everything cryptographic runs in a Rust core: Argon2id derives your key, AES-256-GCM encrypts your data, and envelope encryption gives every entry its own key. Site names, usernames, and notes are all encrypted, and secrets are wiped from memory after use.
 
@@ -11,9 +11,10 @@ FEATURES
 - TOTP / 2FA: add an otpauth URI or secret and Bramble generates the six-digit codes.
 - Import from KeePass (KDBX4), key files included.
 - Recovery code: a printable, high-entropy backup that unlocks your vault independently of your master password.
-- Optional breach check using k-anonymity, so nothing about your password leaves your device.
+- Optional breach check using k-anonymity: only a short prefix of the password's hash is sent, never the password.
 - Auto-lock after inactivity.
-- Sync between your own devices peer-to-peer. No cloud, no relay holding your data.
+- Sync between your own devices, end-to-end encrypted: directly peer-to-peer, or through an optional mailbox server that only ever holds sealed data.
+- Optional encrypted backups to storage you choose, such as an S3-compatible bucket or a WebDAV server.
 
 PRIVACY
-Bramble has no account, no subscription, and no telemetry. Your vault never leaves your control, and the code runs entirely on your device.
+Bramble is free and open source (GPLv3) and has no telemetry. You don't need an account, all encryption happens on your device, and only your devices can read your vault. The one request Bramble makes on its own is a daily check for updates, which you can turn off in Settings.

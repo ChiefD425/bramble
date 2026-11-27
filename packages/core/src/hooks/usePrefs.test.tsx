@@ -151,6 +151,7 @@ describe("loading this device's switches", () => {
 		"defaultManagerPromptDismissed",
 		"updateCheck",
 		"supportAskEnabled",
+		"screenCaptureBlocked",
 	] as const;
 
 	it("gives each the value stored under its own key", async () => {

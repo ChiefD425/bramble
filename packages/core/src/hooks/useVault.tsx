@@ -322,6 +322,9 @@ export interface VaultState {
 	isLocked: boolean;
 	/** The last lock came from the Lock button, not an auto-lock. Suppresses biometric auto-unlock. */
 	lockedByUser: boolean;
+	/** The last lock came from leaving the app (mobile), so the unlock returns to the screen it left.
+	 * Every other lock unlocks to the list. */
+	lockedAway: boolean;
 	/** Vault has at least one webauthn slot (gates the "Use security key" button). */
 	hasWebauthnSlot: boolean;
 	/** Vault has a master-password slot. False for a security-key-only vault. */
@@ -664,6 +667,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	const [isLocked, setIsLocked] = useState(true);
 	// Cold start is locked, but nobody locked it; only lock() sets this.
 	const [lockedByUser, setLockedByUser] = useState(false);
+	const [lockedAway, setLockedAway] = useState(false);
 	// Device-local biometric gate (mobile). `available` = hardware present + enrolled;
 	// `enabled` = a VEK is cached behind it on this device.
 	const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -1146,9 +1150,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 		if (!isLocked && activeId) void shell.setActiveVault?.(activeId);
 	}, [isLocked, activeId, shell]);
 
-	// Any unlock clears the explicit-lock mark, rather than each of the four unlock paths doing it.
+	// Any unlock clears the lock marks, rather than each of the four unlock paths doing it.
 	useEffect(() => {
-		if (!isLocked) setLockedByUser(false);
+		if (isLocked) return;
+		setLockedByUser(false);
+		setLockedAway(false);
 	}, [isLocked]);
 
 	// A recovery-code session ends at the next lock or vault switch.
@@ -1163,7 +1169,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 	// Reflect a background-initiated lock (auto-lock alarm): drop decrypted state
 	// so the guard redirects to the unlock screen.
 	useEffect(() => {
-		return crypto.onExternalLock(closeOpenVault);
+		return crypto.onExternalLock((cause) => {
+			setLockedAway(cause === "away");
+			closeOpenVault();
+		});
 	}, [crypto, closeOpenVault]);
 
 	// The macOS AutoFill extension unlocked this vault and the shell loaded its key: open it here
@@ -2376,6 +2385,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			hasVault,
 			isLocked,
 			lockedByUser,
+			lockedAway,
 			ready,
 			joining: pendingJoin !== null,
 			joinError,
@@ -2404,6 +2414,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 			hasVault,
 			isLocked,
 			lockedByUser,
+			lockedAway,
 			ready,
 			pendingJoin,
 			joinError,

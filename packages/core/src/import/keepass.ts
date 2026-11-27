@@ -12,6 +12,9 @@ import type { ImportParserContext, ImportResult } from "./types";
 const FORMAT_ERROR = "This doesn't look like a KeePass 2.x XML export.";
 const RECYCLE_BIN = "Recycle Bin";
 const STANDARD_KEYS = new Set(["Title", "UserName", "Password", "URL", "Notes", "Tags", "Group"]);
+// Extra URLs: KP2A_URL, KP2A_URL_1, ... from KeePassXC and Keepass2Android, and URL 2, URL 3, ...
+// from Bramble's own exports before #277. The number orders them.
+const EXTRA_URL = /^(?:KP2A_URL(?:_(\d+))?|URL (\d+))$/;
 
 // fast-xml-parser yields an object for a single child, an array for repeated.
 function toArray<T>(v: T | T[] | undefined): T[] {
@@ -99,6 +102,7 @@ export function mapKeepassFields(fields: RawField[]): EntryData {
 	let username = "";
 	let password = "";
 	let url = "";
+	const extraUrls: { order: number; value: string }[] = [];
 	let notes = "";
 	let totp: string | undefined;
 	const extras: RawField[] = [];
@@ -143,17 +147,24 @@ export function mapKeepassFields(fields: RawField[]): EntryData {
 				// One tag per level, so "Work/Clients/Acme" is findable by any of them.
 				tags.push(...value.split("/"));
 				break;
-			default:
-				if (!STANDARD_KEYS.has(key)) extras.push({ key, value, hidden });
+			default: {
+				const extraUrl = EXTRA_URL.exec(key);
+				if (extraUrl) {
+					const order = Number(extraUrl[1] ?? extraUrl[2] ?? 0);
+					if (value.trim()) extraUrls.push({ order, value: value.trim() });
+				} else if (!STANDARD_KEYS.has(key)) extras.push({ key, value, hidden });
+			}
 		}
 	}
+	const urls = [url, ...extraUrls.sort((a, b) => a.order - b.order).map((u) => u.value)].filter(
+		(u, i, all) => u && all.indexOf(u) === i,
+	);
 
 	return {
 		type: "login",
 		name,
 		notes: notes || undefined,
-		// KeePass 2.x has one URL per entry; wrap to the array shape.
-		urls: url ? [url] : [],
+		urls,
 		username,
 		password,
 		totp: totp || undefined,

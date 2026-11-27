@@ -58,12 +58,13 @@ describe("toKdbxEntries: logins", () => {
 		expect(isProtected(e, "Title")).toBe(false);
 	});
 
-	it("keeps extra URLs as numbered fields rather than dropping them", async () => {
-		// KeePass 2.x has one URL per entry; a multi-site credential must not lose the rest.
+	// KeePass 2.x has one URL per entry. KeePassXC and Keepass2Android read the rest from these (#277).
+	it("keeps extra URLs where KeePass apps look for them", async () => {
 		const e = login({ urls: ["https://a.com", "https://b.com", "https://c.com"] });
 		expect(value(e, "URL")).toBe("https://a.com");
-		expect(value(e, "URL 2")).toBe("https://b.com");
-		expect(value(e, "URL 3")).toBe("https://c.com");
+		expect(value(e, "KP2A_URL")).toBe("https://b.com");
+		expect(value(e, "KP2A_URL_1")).toBe("https://c.com");
+		expect(value(e, "URL 2")).toBeUndefined();
 	});
 
 	it("writes an otpauth URI to `otp` and a bare secret to `TOTP Seed`", async () => {
@@ -381,6 +382,13 @@ describe("export/import agree", () => {
 			totp: "otpauth://totp/GitHub?secret=JBSWY3DPEHPK3PXP",
 		});
 		expect(back.customFields).toEqual([{ key: "Recovery email", value: "backup@example.com" }]);
+	});
+
+	it("round-trips every URL of a login, in order", async () => {
+		const urls = ["https://a.com", "https://b.com", "https://c.com", "https://d.com"];
+		const back = await roundTrip(login({ urls }));
+		expect(back).toMatchObject({ urls });
+		expect(back.customFields ?? []).toEqual([]);
 	});
 
 	it("re-imports a card as a login carrying its fields (KeePass has no card type)", async () => {
