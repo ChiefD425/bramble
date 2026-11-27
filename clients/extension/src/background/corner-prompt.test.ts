@@ -392,6 +392,7 @@ describe("a suggested password captured a second time", () => {
 		const { resp } = await bg.send(capture("alice@new.example"), pageSender("example.com", 5));
 		expect(resp.data.kind).toBe("update-login");
 		expect(resp.data.candidates).toEqual([{ id: "login1", name: "Example", username: "alice" }]);
+		expect(resp.data.newUsername).toBe("alice@new.example");
 	});
 
 	it("still offers a new login for an unsaved signup beside an existing one", async () => {

@@ -124,6 +124,7 @@ function buildCornerPayload(
 			username: c.username,
 		})),
 		newPassword: capture.password,
+		newUsername: capture.username,
 	};
 	return payload;
 }

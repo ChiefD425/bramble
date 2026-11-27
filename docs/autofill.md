@@ -523,7 +523,8 @@ top-right card offering to save or update.
   response. A stale prompt (vault locked then unlocked, page restored from
   bfcache) cannot commit, because its id no longer matches the live stash.
 - An `update-login` prompt lists candidate logins whose stored password differs
-  from the submitted one. More than one candidate shows a radio group.
+  from the submitted one. More than one candidate shows a radio group. When the
+  update would change a username, the card shows the one it will write.
 - On `save`, an unambiguous single update-candidate is upgraded to an update;
   multiple candidates mean the user explicitly chose "Save", so it stays a new
   entry (supports multiple accounts on one site).
@@ -966,8 +967,11 @@ by the same anti-clickjacking `pickIsTrustworthy` check as a secret pick):
 
 The second capture exists because the first is early: the username is often not
 typed yet, and the card may be dismissed or lost before the account exists. It
-fires only while a field on the page still holds the suggestion, and stays pending
-so a rejected signup can be resubmitted. Both captures are flagged `generated`.
+fires only while a field on the page still holds the suggestion, and never for a
+submit of a form that does not (a search box beside the signup). It stays pending
+so a rejected signup can be resubmitted, but only a changed username captures
+again: that also drops the double send when Enter submits the form, and respects
+a dismissed card. Both captures are flagged `generated`.
 A random 20-character password identifies its login, so once it is saved the
 background says nothing, or offers an update if the username has changed.
 

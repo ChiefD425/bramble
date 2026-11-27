@@ -122,6 +122,7 @@ function buildUpdateLoginBody(p: Extract<CornerPromptPayload, { kind: "update-lo
 		primaryAction,
 		primaryLabel,
 		candidates: p.candidates,
+		newUsername: p.newUsername,
 	});
 }
 
