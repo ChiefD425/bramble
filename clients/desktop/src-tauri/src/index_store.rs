@@ -16,12 +16,14 @@ use std::{
         Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
+
+use crate::totp::Totp;
 
 /// One indexed login. Only the fields the link actually answers with are modelled; the rest of
 /// what `@core` pushes is carried through `serde(default)` obscurity rather than mirrored,
@@ -66,6 +68,16 @@ pub struct MatchSummary {
     pub secondary: String,
 }
 
+/// A quick-access result. Whether an entry has a 2FA code is not a secret: the panel shows the
+/// copy shortcut for it, and the code is made only when that is used.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpotlightMatch {
+    #[serde(flatten)]
+    pub summary: MatchSummary,
+    pub has_totp: bool,
+}
+
 static INDEX: Mutex<Vec<IndexEntry>> = Mutex::new(Vec::new());
 
 pub fn set(entries: Vec<IndexEntry>) {
@@ -104,8 +116,36 @@ pub fn spotlight_copy_password(app: AppHandle, id: String) -> Result<(), String>
     if entry.password.is_empty() {
         return Err("no password".into());
     }
+    copy_for_a_while(&app, entry.password)
+}
+
+/// Put a result's current 2FA code on the clipboard, made here from the index for the same reason
+/// as the password copy, and cleared the same way.
+#[tauri::command]
+pub fn spotlight_copy_totp(app: AppHandle, id: String) -> Result<(), String> {
+    if vault_crypto::is_locked() {
+        return Err("locked".into());
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    copy_for_a_while(&app, totp_code(&id, now)?)
+}
+
+fn totp_code(id: &str, unix_secs: u64) -> Result<String, String> {
+    let entry = secret_for(id).ok_or("unknown entry")?;
+    let totp = entry
+        .totp
+        .as_deref()
+        .and_then(Totp::parse)
+        .ok_or("no 2FA code")?;
+    Ok(totp.code_at(unix_secs))
+}
+
+fn copy_for_a_while(app: &AppHandle, text: String) -> Result<(), String> {
     app.clipboard()
-        .write_text(entry.password)
+        .write_text(text)
         .map_err(|e| format!("clipboard: {e}"))?;
 
     let generation = COPY_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
@@ -131,7 +171,7 @@ pub fn spotlight_copy_password(app: AppHandle, id: String) -> Result<(), String>
 /// an entry called "GitHub" should not sit below one that merely happens to be registered
 /// against a github.com page.
 #[tauri::command]
-pub fn spotlight_search(query: String, limit: usize) -> Vec<MatchSummary> {
+pub fn spotlight_search(query: String, limit: usize) -> Vec<SpotlightMatch> {
     let needle = query.trim().to_ascii_lowercase();
     if needle.is_empty() {
         return Vec::new();
@@ -157,10 +197,13 @@ pub fn spotlight_search(query: String, limit: usize) -> Vec<MatchSummary> {
     hits.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.name.cmp(&b.1.name)));
     hits.truncate(limit);
     hits.into_iter()
-        .map(|(_, e)| MatchSummary {
-            id: e.id.clone(),
-            name: e.name.clone(),
-            secondary: e.username.clone(),
+        .map(|(_, e)| SpotlightMatch {
+            summary: MatchSummary {
+                id: e.id.clone(),
+                name: e.name.clone(),
+                secondary: e.username.clone(),
+            },
+            has_totp: e.totp.as_deref().and_then(Totp::parse).is_some(),
         })
         .collect()
 }
@@ -250,7 +293,7 @@ mod tests {
         // name is what the user gave the entry, so it is what they are typing at.
         let hits = spotlight_search("github".into(), 10);
         assert_eq!(
-            hits.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+            hits.iter().map(|m| m.summary.id.as_str()).collect::<Vec<_>>(),
             ["a", "b"]
         );
 
@@ -276,6 +319,52 @@ mod tests {
         let json = serde_json::to_string(&spotlight_search("git".into(), 10)).unwrap();
         assert!(!json.contains("hunter2"), "password in a search answer: {json}");
         assert!(!json.contains("otpauth"), "totp in a search answer: {json}");
+    }
+
+    #[test]
+    fn search_says_which_results_have_a_2fa_code() {
+        let _g = test_lock();
+        let with = |id: &str, totp: Option<&str>| IndexEntry {
+            id: id.into(),
+            kind: "login".into(),
+            name: format!("site {id}"),
+            totp: totp.map(str::to_string),
+            ..Default::default()
+        };
+        set(vec![
+            with("a", Some("JBSWY3DPEHPK3PXP")),
+            with("b", None),
+            with("c", Some("otpauth://hotp/X?secret=JBSWY3DPEHPK3PXP")),
+        ]);
+
+        let hits = spotlight_search("site".into(), 10);
+        let json = serde_json::to_value(&hits).unwrap();
+        assert_eq!(json[0]["id"], "a");
+        assert_eq!(json[0]["hasTotp"], true);
+        // No code can be made from it, so no shortcut is offered.
+        assert_eq!(json[1]["hasTotp"], false);
+        assert_eq!(json[2]["hasTotp"], false);
+        assert!(!json.to_string().contains("JBSWY3DPEHPK3PXP"));
+    }
+
+    #[test]
+    fn a_2fa_code_is_made_from_the_index() {
+        let _g = test_lock();
+        set(vec![
+            IndexEntry {
+                id: "a".into(),
+                totp: Some("JBSWY3DPEHPK3PXP".into()),
+                ..Default::default()
+            },
+            IndexEntry {
+                id: "b".into(),
+                ..Default::default()
+            },
+        ]);
+
+        assert_eq!(totp_code("a", 59).as_deref(), Ok("996554"));
+        assert!(totp_code("b", 59).is_err());
+        assert!(totp_code("missing", 59).is_err());
     }
 
     #[test]

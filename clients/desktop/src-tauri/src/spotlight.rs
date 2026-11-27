@@ -33,6 +33,9 @@ const MAX_HEIGHT: f64 = 460.0;
 /// Must match the window label in tauri.conf.json.
 pub const LABEL: &str = "spotlight";
 
+/// Sent to the panel each time it opens, so it starts with an empty field and focus in it.
+const SHOWN_EVENT: &str = "spotlight://shown";
+
 /// Toggled with Cmd+Shift+Space on macOS, Ctrl+Shift+Space elsewhere. Deliberately not
 /// Cmd+Space, which is Spotlight's; this is the binding 1Password's quick access uses.
 pub const HOTKEY: &str = "CmdOrCtrl+Shift+Space";
@@ -165,7 +168,7 @@ pub fn toggle(app: &AppHandle) {
         crate::lifetime::show_main(app);
         return;
     }
-    // Open collapsed. The webview clears its query on focus and will ask to grow if anything
+    // Open collapsed. The webview clears its query on opening and will ask to grow if anything
     // matches; starting at the last size would flash an empty results area first.
     if let Ok(scale) = window.scale_factor() {
         if let Ok(size) = window.outer_size() {
@@ -176,6 +179,9 @@ pub fn toggle(app: &AppHandle) {
     position(app, &window);
     let _ = window.show();
     let _ = window.set_focus();
+    // Told rather than left to the webview's focus event, which did not fire again after Cmd+O
+    // raised the vault window from the panel: the next open kept the old search.
+    let _ = app.emit_to(LABEL, SHOWN_EVENT, ());
 }
 
 /// Place the panel on the display the user is actually looking at, a little above centre.

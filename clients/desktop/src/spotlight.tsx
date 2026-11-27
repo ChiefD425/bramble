@@ -3,6 +3,7 @@
 // docs/desktop-port.md for the interaction model they implement.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { ArrowDown, ArrowUp, CornerDownLeft, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -45,18 +46,27 @@ const MOD = /mac/i.test(navigator.userAgent) ? "\u2318" : "Ctrl";
 /** One key, drawn as a key. */
 function Key({ children }: { children: React.ReactNode }) {
 	return (
-		<kbd className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded border border-white/15 bg-white/10 text-[0.7rem] font-medium leading-none text-foreground/80">
+		<kbd className="inline-flex shrink-0 items-center justify-center min-w-5 h-5 px-1.5 rounded border border-white/15 bg-white/10 text-[0.7rem] font-medium leading-none text-foreground/80">
 			{children}
 		</kbd>
 	);
 }
 
-/** A shortcut and what it does. */
-function Hint({ keys, label }: { keys: React.ReactNode; label: string }) {
+/** A shortcut and what it does, on one line. One that `shrinks` cuts its label short rather than
+ * push the rest off the row. */
+function Hint({
+	keys,
+	label,
+	shrinks = false,
+}: {
+	keys: React.ReactNode;
+	label: string;
+	shrinks?: boolean;
+}) {
 	return (
-		<span className="inline-flex items-center gap-1.5">
-			<span className="inline-flex items-center gap-0.5">{keys}</span>
-			<span className="text-foreground/70">{label}</span>
+		<span className={`inline-flex items-center gap-1.5 ${shrinks ? "min-w-0" : "shrink-0"}`}>
+			<span className="inline-flex shrink-0 items-center gap-0.5">{keys}</span>
+			<span className="truncate text-foreground/70">{label}</span>
 		</span>
 	);
 }
@@ -66,7 +76,12 @@ interface Match {
 	id: string;
 	name: string;
 	secondary: string;
+	/** A 2FA code can be copied for it. */
+	hasTotp: boolean;
 }
+
+/** The shell sends this each time the panel opens (src-tauri/src/spotlight.rs). */
+const SHOWN_EVENT = "spotlight://shown";
 
 /** Enough to fill the panel without turning it into a vault browser. */
 const MAX_RESULTS = 8;
@@ -163,7 +178,7 @@ function Spotlight() {
 						// github.com" tells the user what happened, where "could not fill" starts
 						// an investigation.
 						typeof filled === "string"
-							? `${filled}. Password copied instead.`
+							? `${filled[0]?.toUpperCase()}${filled.slice(1)}. Password copied instead.`
 							: copied
 								? "No browser to fill. Password copied instead."
 								: "Could not copy: is the vault still unlocked?",
@@ -173,6 +188,16 @@ function Spotlight() {
 			}
 			// The modifier is whichever this platform uses, matching what the hints show.
 			const mod = MOD === "Ctrl" ? e.ctrlKey : e.metaKey;
+			if (mod && e.key.toLowerCase() === "t") {
+				e.preventDefault();
+				const match = latest.current[selectedRef.current];
+				if (!match?.hasTotp) return;
+				// Made and copied by the shell, so the key never reaches this window.
+				void invoke("spotlight_copy_totp", { id: match.id })
+					.then(() => invoke("spotlight_hide"))
+					.catch(() => setOutcome("Could not copy: is the vault still unlocked?"));
+				return;
+			}
 			if (mod && e.key.toLowerCase() === "o") {
 				e.preventDefault();
 				const match = latest.current[selectedRef.current];
@@ -186,24 +211,31 @@ function Spotlight() {
 	}, []);
 
 	// The panel is shown and hidden rather than created and destroyed, so its React tree
-	// survives between openings and a mount-time focus would only ever fire once. Refocus
-	// and reset on every appearance instead, so it always opens ready to type.
+	// survives between openings and a mount-time focus would only ever fire once. Reset on every
+	// opening instead, so it always opens empty and ready to type.
 	useEffect(() => {
-		const onFocus = () => {
+		const onShown = () => {
 			setQuery("");
 			setOutcome(null);
 			input.current?.focus();
-			input.current?.select();
 			// Re-read on every appearance. Tabs are switched while the panel is hidden, so a
 			// target read once would name a page the fill is not going to.
 			void invoke<string | null>("spotlight_active_tab")
 				.then(setTarget)
 				.catch(() => setTarget(null));
 		};
+		// The window can turn key after the opening was announced; the field takes focus then too.
+		const onFocus = () => input.current?.focus();
+		const stop = listen(SHOWN_EVENT, onShown);
 		window.addEventListener("focus", onFocus);
-		onFocus();
-		return () => window.removeEventListener("focus", onFocus);
+		onShown();
+		return () => {
+			void stop.then((off) => off());
+			window.removeEventListener("focus", onFocus);
+		};
 	}, []);
+
+	const current = results[selected];
 
 	return (
 		<div ref={panel} className="text-foreground">
@@ -257,10 +289,16 @@ function Spotlight() {
 					)}
 				</div>
 			)}
+			{/* What the last Enter did, above the hints rather than among them, on one line. */}
+			{outcome && (
+				<p className="border-t border-white/10 px-5 py-2 text-xs text-foreground/70 truncate">
+					{outcome}
+				</p>
+			)}
 			{/* What you can do from here, on its own rule. Always visible: the panel opens with an
 			    empty field and no results, which is exactly when someone needs telling what it can
 			    do, and a hint that appears only after you have already worked it out is no hint. */}
-			<div className="border-t border-white/10 px-5 h-9 flex items-center gap-4 text-[0.7rem] select-none">
+			<div className="border-t border-white/10 px-5 h-11 flex items-center gap-4 whitespace-nowrap text-[0.7rem] select-none">
 				<Hint
 					keys={
 						<>
@@ -274,9 +312,6 @@ function Spotlight() {
 					}
 					label="Navigate"
 				/>
-				{outcome && (
-					<p className="border-t border-white/10 px-5 py-2 text-xs text-foreground/70">{outcome}</p>
-				)}
 				{/* Names the page a fill would land on, so nobody commits to one blind. Falls back
 				    to the clipboard wording when no browser has reported a page, which is the
 				    honest label for what Enter can still do then. */}
@@ -287,6 +322,7 @@ function Spotlight() {
 						</Key>
 					}
 					label={target ? `Fill on ${target}` : "Copy password"}
+					shrinks
 				/>
 				<Hint
 					keys={
@@ -297,6 +333,19 @@ function Spotlight() {
 					}
 					label="Open in Bramble"
 				/>
+				{/* Last, so the hints before it stay put as the highlight moves on and off entries
+				    with a code. */}
+				{current?.hasTotp && (
+					<Hint
+						keys={
+							<>
+								<Key>{MOD}</Key>
+								<Key>T</Key>
+							</>
+						}
+						label="Copy 2FA code"
+					/>
+				)}
 			</div>
 		</div>
 	);

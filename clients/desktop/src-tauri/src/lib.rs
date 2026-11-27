@@ -42,6 +42,7 @@ mod ssh_agent;
 mod storage;
 mod stream;
 mod sync_crypto;
+mod totp;
 #[cfg(desktop)]
 mod update_log;
 #[cfg(desktop)]
@@ -384,6 +385,7 @@ pub fn run() {
             pairing::pairing_public_key,
             index_store::spotlight_search,
             index_store::spotlight_copy_password,
+            index_store::spotlight_copy_totp,
             index_store::link_set_index,
             index_store::link_clear_index,
             ssh_agent::commands::ssh_agent_status,
