@@ -172,8 +172,7 @@ included.
 **Windows.** The installer used to be built natively on a Windows runner, which nobody without
 Windows and MSVC could repeat. It is now cross-compiled with `cargo-xwin` in
 `clients/desktop/docker/windows-build.Dockerfile` (`build-windows.ts --container`), on a Linux arm64
-runner, and only the Authenticode signing still runs on Windows, over that installer as an
-artifact. The image pins Debian 13 by digest and snapshot (for NSIS 3.11, which Tauri's installer
+runner, and only the Authenticode signing still runs on Windows, over its artifacts. The image pins Debian 13 by digest and snapshot (for NSIS 3.11, which Tauri's installer
 script needs), clang and lld from it, Node, `cargo-xwin`, and the Microsoft CRT and Windows SDK
 versions it downloads. Three things had to change for two builds to agree:
 
@@ -189,5 +188,12 @@ Two builds, as root and as another user, gave the same installer and the same ap
 binaries. `verify-release.ts <version>-desktop --windows` builds a tag the same way and compares
 with the published installer once `scripts/pe-normalize.ts` has taken the Authenticode signature
 off: the certificate table, the padding before it, the checksum and the security directory entry.
-The installer is the only file signed; the binaries inside it are not, so they are compared as
-part of its bytes. Windows has not shipped yet, so its first release is the first one to check.
+
+The files inside the installer are signed too (the app, the proxy, the NSIS plugins and the
+uninstaller), between builds, so a rebuild cannot make them alone. It takes them from the published
+installer instead: 7-Zip unpacks it and the uninstaller inside it, whose plugins are its own, in the
+image, and `scripts/windows-sign-handoff.ts`, as Tauri's
+sign command, swaps in the signed copy of each file whose rebuilt bytes match it with the signature
+off (`--sign-from <dir> --sign-lenient`). A file nothing matches stays unsigned, so the installers
+then differ: every file inside is checked as part of the installer's bytes. Windows has not shipped
+yet, so its first release is the first one to check.

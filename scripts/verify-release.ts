@@ -627,7 +627,10 @@ async function verifyDesktopMacos(tag: string, scratch: string): Promise<boolean
 
 /**
  * Rebuild a desktop release's Windows installer in the tag's own container, as sign-windows.yml
- * does, and compare it with the published one once the Authenticode signature is off it.
+ * does, and compare it with the published one once the Authenticode signature is off it. The files
+ * inside were signed between builds, so the rebuild takes their signed copies out of the published
+ * installer: a file whose rebuilt bytes match no signed copy stays unsigned, and the installers then
+ * differ.
  */
 async function verifyDesktopWindows(
 	tag: string,
@@ -639,27 +642,43 @@ async function verifyDesktopWindows(
 	extractTag(ROOT, tag, src);
 	if (!existsSync(join(src, "clients/desktop/docker/windows-build.Dockerfile")))
 		throw new Error(`${tag} predates the container build of the Windows installer`);
+
+	const name = `Bramble_${version}_x64-setup.exe`;
+	const base = `https://github.com/${REPO}/releases/download/${tag}`;
+	const theirs = await download(`${base}/${name}`);
+	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
+	if (!sums.split("\n").some((l) => l.startsWith(sha256(theirs)) && l.trim().endsWith(` ${name}`)))
+		throw new Error(`${name} does not match the release's SHA256SUMS`);
+	const published = join(scratch, "published");
+	mkdirSync(published, { recursive: true });
+	writeFileSync(join(published, name), theirs);
+
 	const epoch = execFileSync("git", ["-C", ROOT, "log", "-1", "--format=%ct", tag], {
 		encoding: "utf8",
 	}).trim();
 	const cache = process.env.BRAMBLE_VERIFY_CACHE ?? join(homedir(), ".cache/bramble-verify");
 	const work = join(cache, "work-windows");
 	mkdirSync(work, { recursive: true });
-	execFileSync(process.execPath, ["scripts/build-windows.ts", "--container"], {
-		cwd: src,
-		stdio: "inherit",
-		env: { ...process.env, SOURCE_DATE_EPOCH: epoch, BRAMBLE_WINDOWS_WORK: work },
-	});
+	const signedInside = readFileSync(join(src, "scripts/build-windows.ts"), "utf8").includes(
+		"--sign-from",
+	);
+	execFileSync(
+		process.execPath,
+		[
+			"scripts/build-windows.ts",
+			"--container",
+			...(signedInside ? ["--sign-from", published, "--sign-lenient"] : []),
+		],
+		{
+			cwd: src,
+			stdio: "inherit",
+			env: { ...process.env, SOURCE_DATE_EPOCH: epoch, BRAMBLE_WINDOWS_WORK: work },
+		},
+	);
 
-	const name = `Bramble_${version}_x64-setup.exe`;
 	const ours = readFileSync(
 		join(src, "clients/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis", name),
 	);
-	const base = `https://github.com/${REPO}/releases/download/${tag}`;
-	const theirs = await download(`${base}/${name}`);
-	const sums = (await download(`${base}/SHA256SUMS`)).toString("utf8");
-	if (!sums.split("\n").some((l) => l.startsWith(sha256(theirs)) && l.trim().endsWith(` ${name}`)))
-		throw new Error(`${name} does not match the release's SHA256SUMS`);
 	const same = sha256(stripAuthenticode(theirs)) === sha256(stripAuthenticode(ours));
 	console.log(`  ${name}: ${same ? "identical" : "DIFFERS"} once the signature is off`);
 	return same;

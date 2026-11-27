@@ -25,9 +25,11 @@ RUN sed -i \
     && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99snapshot
 
 # clang-cl compiles the C in ring and friends, lld-link links, llvm-lib archives; makensis packs.
+# 7zip unpacks a published installer, whose signed files a rebuild of that release puts back in.
 # libayatana-appindicator3-dev and pkg-config only because the Tauri CLI looks the library up on any
 # Linux host, whatever the target, and aborts without it. Nothing of it reaches the Windows build.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+      7zip \
       ca-certificates \
       libayatana-appindicator3-dev \
       clang \
