@@ -32,6 +32,9 @@ type Pair = { key: string; value: string; protected: boolean };
  * type's own fields first and custom fields last, so a custom key that would shadow
  * one (a field literally named "Password") is the one that gets suffixed.
  */
+/** The field KeePassXC and Keepass2Android read extra URLs from, by prefix. */
+const EXTRA_URL = "KP2A_URL";
+
 class Fields {
 	private readonly out: Pair[] = [];
 	private readonly seen = new Set<string>();
@@ -107,11 +110,11 @@ function toFields(e: EntryData): Pair[] {
 	if (e.type === "login") {
 		f.add("UserName", e.username);
 		f.add("Password", e.password, true);
-		// KeePass 2.x carries one URL per entry; the rest become numbered fields so a
-		// multi-site credential doesn't quietly lose everything but the first.
+		// KeePass 2.x carries one URL per entry. The rest go where KeePassXC and Keepass2Android
+		// keep extra URLs: KP2A_URL, then KP2A_URL_1, KP2A_URL_2 and so on (#277).
 		const [first, ...rest] = e.urls;
 		f.add("URL", first);
-		for (const [i, u] of rest.entries()) f.add(`URL ${i + 2}`, u);
+		for (const [i, u] of rest.entries()) f.add(i === 0 ? EXTRA_URL : `${EXTRA_URL}_${i}`, u);
 		if (e.totp) addTotp(f, e.totp);
 		const [passkey] = e.passkeys ?? [];
 		if (passkey) addPasskey(f, passkey, e.name);
