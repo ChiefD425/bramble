@@ -69,3 +69,31 @@ test("deletes a vault from the picker without unlocking it", async ({ context, e
 	// Unlocks it with its own password, and waits for it to open.
 	await selectVault(popup, /Vault 2/);
 });
+
+// #270: the unlock screen's "Choose a different vault" clears the choice. Deleting one of two then
+// showed the last vault's unlock screen with no vault chosen, and its correct password failed.
+test("deleting one of two vaults from the picker unlocks the one left", async ({
+	context,
+	extensionId,
+}) => {
+	for (let i = 0; i < 2; i++) await createVault(await context.newPage(), extensionId);
+
+	const popup = await context.newPage();
+	await openPopup(popup, extensionId);
+	await lockToPicker(popup);
+	await waitOutPickerClickGuard(popup);
+	await selectVault(popup, /Vault 2/);
+	await lockToPicker(popup);
+	await waitOutPickerClickGuard(popup);
+
+	await popup.getByRole("button", { name: "Delete a vault" }).click();
+	await popup.getByRole("button", { name: "Delete Vault 2" }).click();
+	await popup.getByLabel("Type Vault 2 to confirm").fill("Vault 2");
+	await popup.getByRole("button", { name: "Delete vault", exact: true }).click();
+
+	const pw = popup.locator('input[type="password"]').first();
+	await expect(pw).toBeVisible();
+	await pw.fill(STRONG_PW);
+	await popup.getByRole("button", { name: "Unlock Vault" }).click();
+	await expect(popup.getByRole("button", { name: "Lock vault", exact: true })).toBeVisible();
+});

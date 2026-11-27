@@ -212,9 +212,11 @@ export function VaultRegistryProvider({
 		async (id: string) => {
 			const next = removeVault(parseRegistry(await storage.getMeta(VAULT_REGISTRY_KEY)), id);
 			await persist(next);
-			if (id === activeId) setActiveId(soleVaultId(next));
+			// As on launch: with none chosen (the picker clears the choice) the one left is the one
+			// to unlock, since the router skips the picker for it (#270).
+			setActiveId((cur) => (cur === undefined || cur === id ? soleVaultId(next) : cur));
 		},
-		[storage, persist, activeId],
+		[storage, persist],
 	);
 
 	const value = useMemo<VaultRegistryValue>(
