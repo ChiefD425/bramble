@@ -27,11 +27,11 @@ stub that produced the observations is not in the repository; see
   identity without repackaging the app; a full MSIX was weighed and declined (2026-11-26) because
   it hands updates and signing to Microsoft and breaks the uninstaller's hooks. See
   [Package identity](#package-identity).
-- **It works unsigned, which is what ships first.** Bramble has no trusted Windows certificate yet.
-  An unsigned identity package installs only with administrator rights and registers only for the
-  account that installs it, so turning passkeys on costs one UAC prompt and is out of reach for
-  standard accounts. Microsoft says unsigned packages are meant for testing. When a certificate
-  arrives, the same design installs per user with no prompt; both routes were observed.
+- **Signed from the start.** Azure Artifact Signing approved Bramble and issued its certificate on
+  2026-11-26, so the identity package is signed like the installer and installs per user with no
+  prompt, standard accounts included. An unsigned package also works and stays documented as a
+  fallback, but it needs a UAC prompt, leaves out standard accounts, and Microsoft says unsigned
+  packages are meant for testing. Both routes were observed.
 - **Only the plugin process has identity, never the app.** A small new sidecar,
   `bramble-passkeys.exe`, is what Windows starts. The app keeps running unpackaged, so its
   Windows Hello keys and registry entries work as they do today.
@@ -140,17 +140,24 @@ was the attraction. Against it:
 
 A sparse package costs one extra install step and keeps everything else.
 
-### Signed later, unsigned now
+### Signed, with an unsigned fallback
 
 The identity package must be signed by a certificate Windows trusts, with a subject equal to the
-manifest's `Publisher`. Bramble has none yet (`SIGNPATH_SIGNING_POLICY_SLUG` is `test-signing`;
-the Azure setup `docs/release-signing.md` describes was never created). Windows 11 accepts an unsigned
+manifest's `Publisher`. That is Azure Artifact Signing's certificate
+([release-signing.md](release-signing.md)), approved and issued on 2026-11-26. Its certificates
+last three days, so every signature carries a timestamp
+([Artifact Signing integrations](https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations)).
+The `Publisher` string is copied from a signed file's subject (`Get-AuthenticodeSignature`), never
+typed by hand, since the package's identity is derived from it; that the subject stays the same
+across Azure's three-day certificates is `[unverified]`.
+
+Windows 11 also accepts an unsigned
 package whose `Publisher` carries a special OID, installed with `Add-AppxPackage -AllowUnsigned`
 ([Create an unsigned MSIX package](https://learn.microsoft.com/en-us/windows/msix/package/unsigned-package),
 ms.date 2026-07-02). Microsoft's own words: "Don't use this feature to distribute your app widely."
 Both routes were observed with Developer Mode off:
 
-| | Unsigned (now) | Signed (when a certificate arrives) |
+| | Unsigned (fallback) | Signed (shipping) |
 |---|---|---|
 | Install as a normal user | Refused, `0x80073D2B`: "an unsigned package cannot include Executable activations" | Works |
 | Install elevated in the user's own session | Works, for that user only | Not needed |
@@ -168,21 +175,21 @@ elevation has to happen in the user's desktop session, which is what a UAC promp
 
 Consequences for the design:
 
-1. **Identity only through COM.** Since the unsigned route cannot put identity in the exe's
-   manifest, nothing relies on it in either route. The plugin process gets identity because
+1. **Identity only through COM.** The unsigned route cannot put identity in the exe's manifest,
+   so nothing relies on it in either route; the fallback stays a packaging change only. The plugin process gets identity because
    Windows starts it through the package. Anything else needing identity (registering, publishing
    metadata) runs in that process; the app asks for it by creating an instance of the plugin's COM
    class, which makes Windows start the plugin. Observed: an unpackaged PowerShell creating the
    class started the plugin with identity, and that process registered it.
-2. **Passkeys are opt-in in Bramble's Settings on the unsigned build.** Turning them on asks UAC
-   once to register the identity package. Installs and updates stay free of prompts, and the
-   identity package only changes when its manifest does, so updates rarely need registering again.
-3. **Standard accounts cannot use the unsigned build's passkeys.** Registering needs the user's own
-   elevated session. The signed build removes this.
-4. **A different plugin class ID per identity.** Observed: a class ID stays registered with Windows
+2. **The installer registers the signed package per user, with no prompt.** Bramble then appears
+   in Windows Settings, off until the user turns it on there. The identity package changes only
+   when its manifest does, so most updates do not register it again. The unsigned fallback would
+   move registering behind a toggle in Bramble's Settings with one UAC prompt, and could not serve
+   standard accounts, since registering needs the user's own elevated session.
+3. **A different plugin class ID per identity.** Observed: a class ID stays registered with Windows
    while its package is installed for any account (`0x8009000F`, "Object already exists", for a
    second package using it), so the signed and unsigned identities must not share one.
-5. **The app never gains identity.** Its Windows Hello keys are named per vault through
+4. **The app never gains identity.** Its Windows Hello keys are named per vault through
    `KeyCredentialManager` (`clients/desktop/src-tauri/src/biometric_windows.rs`), and whether those
    keys are scoped by package identity is `[unverified]`. Keeping the app unpackaged means existing
    Windows Hello unlocks cannot be affected.
@@ -190,16 +197,18 @@ Consequences for the design:
 ### Building and shipping the identity package
 
 - **Tooling.** The release build runs on `ubuntu-24.04-arm` and NSIS packs files there
-  (`.github/workflows/sign-windows.yml`), so the `.msix` must exist before NSIS runs. An unsigned,
+  (`.github/workflows/sign-windows.yml`), so the `.msix` must exist before NSIS runs. Before signing, a
   manifest-only `.msix` is a zip with three entries (the manifest, a block map and a content-types
   file), small enough to write deterministically with Node's own `zlib` and `crypto`. Observed: a
   manifest-only package installs and works; the logos are read from the install folder.
   `makeappx`, from the Windows SDK build tools, builds the same package for comparison.
-- **Signing order, later.** A signed identity package must be signed before NSIS packs it, which
-  means signing it in its own round trip, or signing it once and keeping it until its manifest
-  changes.
-- **Reproducible builds.** The unsigned package is deterministic by construction, so it is
-  compared like any other file. A signed one would be compared with its signature entry removed.
+- **Signing order.** The package must be signed before NSIS packs it, but signing happens on a
+  Windows runner after the Linux build. So either `sign-windows.yml` gains a round trip that signs
+  the package before the installer is built, or the package is signed once, timestamped, and kept
+  until its manifest changes. The second is simpler, and the timestamp keeps it valid after the
+  three-day certificate expires.
+- **Reproducible builds.** The package is deterministic before signing, so it is compared with its
+  signature entry (`AppxSignature.p7x`) removed.
 - **winget.** Unchanged; it would install the NSIS installer.
 
 ## Rust access
@@ -261,14 +270,15 @@ for the PIN without trouble.
 - The app accepts a client only if the client process has the plugin's package family name and its
   image is `bramble-passkeys.exe` in the install folder.
 - The plugin accepts a server only if its image is `bramble-desktop.exe` in the install folder.
-- Signed builds add an Authenticode check of the other end's image, with the signer's subject
-  compared to ours.
+- Both also check the other end's Authenticode signature, with the signer's subject compared to
+  ours. An unsigned fallback build would have to skip this.
 - Above all of that, the app signs only what Windows signed. A process faking the plugin cannot
   get a signature for a request Windows never made, because it cannot produce Windows' signature.
 
-The unsigned build's checks are weaker than macOS's against software running as the same user,
-which could replace files in the per-user install folder anyway. The request signature is what
-keeps a rogue caller from using the app as a signing oracle.
+Software running as the same user can replace files in the per-user install folder, but not
+without breaking their signatures, which is what the Authenticode check catches. Without it (the
+unsigned fallback), the request signature is still what keeps a rogue caller from using the app
+as a signing oracle.
 
 ## User verification and what each side shows
 
@@ -388,7 +398,8 @@ on the machine described at the top.
   covered the Hello prompt on a cold start. `bramble-passkeys.exe` is a windows-subsystem binary.
 
 `[unverified]` after iteration 0: an x64 machine (the shipped app is x86_64; the observations are
-ARM64), a real certificate, the real installer and updater, current Edge, Firefox, native apps,
+ARM64), the Azure certificate (the signed route used a test certificate), the real installer and
+updater, current Edge, Firefox, native apps,
 PRF, several passkeys for one site, how long Windows waits, and the plugin starting the app.
 
 ## Iterations
@@ -397,10 +408,13 @@ PRF, several passkeys for one site, how long Windows waits, and the plugin start
 
 No user capability. See above.
 
-### Iteration 1: passkeys on the unsigned GitHub build
+### Iteration 1: passkeys in the signed Windows app
 
-**In Bramble's Settings, the user can** turn on "Use Bramble for passkeys in Windows", approve
-one UAC prompt, and follow a link to the Windows page where they switch Bramble on.
+Follows the Windows desktop release, which ships first without it.
+
+**In Windows Settings, the user can** find Bramble under Passkey managers once Bramble is
+installed, and turn it on with Windows Hello. Bramble's Settings shows whether it is on and links
+to that page.
 
 **In Edge, Chrome and other apps using Windows' passkeys, the user can:**
 
@@ -409,16 +423,10 @@ one UAC prompt, and follow a link to the Windows page where they switch Bramble 
 - Pick their passkey from the browser's autofill menu.
 - Unlock Bramble when asked, with Windows Hello or the master password, and carry on.
 
-**The user still cannot:** fill passwords or codes this way (the extension does), use it from a
-standard account, or use it with Bramble locked without unlocking.
+**The user still cannot:** fill passwords or codes this way (the extension does), or use it with
+Bramble locked without unlocking.
 
-### Iteration 2: the signed identity
-
-When the SignPath Foundation certificate (or another) is in place: sign the identity package,
-install it per user in the NSIS installer with no prompt, use the signed identity's own class ID,
-and move existing users from the unsigned identity to the signed one.
-
-### Iteration 3: leftovers with real data
+### Iteration 2: leftovers with real data
 
 PRF if it is not in iteration 1, signing for a vault other than the open one, and anything Firefox
 or native apps turn up.
@@ -430,5 +438,5 @@ or native apps turn up.
 - Whether `WebAuthNPluginAuthenticatorAddCredentials` works from a process without identity. If it
   does, the app can publish metadata itself instead of through the plugin.
 - How Windows presents an error or a long wait from the plugin.
-- Whether the Microsoft Store should list the signed NSIS installer once a certificate exists
-  (an EXE listing keeps Bramble's signature and updater).
+- Whether the Microsoft Store should list the signed NSIS installer (an EXE listing keeps
+  Bramble's signature and updater).
