@@ -5,6 +5,7 @@
 // and "Unlock on open" prompted straight after the Lock button.
 import { cleanup, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { ExternalLockCause } from "../adapters/crypto";
 import type { Platform } from "../context/PlatformContext";
 import { mountVault } from "../test/vault-harness";
 import { VAULT_REGISTRY_KEY } from "../vault/vault-registry";
@@ -34,7 +35,7 @@ function makePlatform() {
 	const meta = new Map<string, unknown>([
 		[VAULT_REGISTRY_KEY, { vaults: [{ id: "vault-1", label: "", createdAt: 1 }] }],
 	]);
-	let externalLock: (() => void) | undefined;
+	let externalLock: ((cause?: ExternalLockCause) => void) | undefined;
 	let releaseClear: (() => void) | undefined;
 	const platform = {
 		target: "desktop",
@@ -51,7 +52,7 @@ function makePlatform() {
 		},
 		crypto: {
 			isLocked: async () => false,
-			onExternalLock: (cb: () => void) => {
+			onExternalLock: (cb: (cause?: ExternalLockCause) => void) => {
 				externalLock = cb;
 				return () => {};
 			},
@@ -77,7 +78,11 @@ function makePlatform() {
 		},
 		clipboard: {},
 	} as unknown as Platform;
-	return { platform, release: () => releaseClear?.() };
+	return {
+		platform,
+		release: () => releaseClear?.(),
+		autoLock: (cause: ExternalLockCause) => externalLock?.(cause),
+	};
 }
 
 it("marks a Lock-button lock as the user's before the unlock screen can show", async () => {
@@ -94,4 +99,39 @@ it("marks a Lock-button lock as the user's before the unlock screen can show", a
 	p.release();
 	await locking;
 	expect(m.state().lockedByUser).toBe(true);
+});
+
+// Only a lock from leaving the app returns to the screen it left; the router reads this.
+it("marks a lock from leaving the app until the next unlock", async () => {
+	const p = makePlatform();
+	const m = mountVault(p.platform);
+	await waitFor(() => expect(m.actions().unlock).toBeTypeOf("function"));
+	await m.actions().unlock("pw");
+	await waitFor(() => expect(m.state().isLocked).toBe(false));
+
+	p.autoLock("away");
+	await waitFor(() => expect(m.state().isLocked).toBe(true));
+	expect(m.state().lockedAway).toBe(true);
+
+	await m.actions().unlock("pw");
+	await waitFor(() => expect(m.state().isLocked).toBe(false));
+	expect(m.state().lockedAway).toBe(false);
+
+	p.autoLock("idle");
+	await waitFor(() => expect(m.state().isLocked).toBe(true));
+	expect(m.state().lockedAway).toBe(false);
+});
+
+it("does not mark the Lock button as leaving the app", async () => {
+	const p = makePlatform();
+	const m = mountVault(p.platform);
+	await waitFor(() => expect(m.actions().unlock).toBeTypeOf("function"));
+	await m.actions().unlock("pw");
+	await waitFor(() => expect(m.state().isLocked).toBe(false));
+
+	const locking = m.actions().lock();
+	await waitFor(() => expect(m.state().isLocked).toBe(true));
+	p.release();
+	await locking;
+	expect(m.state().lockedAway).toBe(false);
 });

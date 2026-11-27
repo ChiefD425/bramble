@@ -57,7 +57,7 @@ const TotpSetupRoute = lazyRouteComponent(
 // Stays `undefined` until React fills it, so guards treat missing vault as
 // "not ready, don't decide".
 type VaultGuard = Pick<UseVault, "isLocked" | "ready" | "entries" | "unlockedWithRecoveryCode"> &
-	Partial<Pick<UseVault, "lockedByUser">>;
+	Partial<Pick<UseVault, "lockedAway">>;
 
 // Registry slice for the launch-time picker decision: how many vaults exist and whether
 // one is chosen. Undefined until React injects it, like the vault slice.
@@ -124,13 +124,13 @@ const selectVaultRoute = createRoute({
 const appLayoutRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	id: "_app",
-	// Guard for all authed routes: bounce to the unlock screen when locked, remembering the
-	// screen so the unlock returns to it. Not after the user's own Lock: that means done with it,
-	// so the unlock opens the list. Gated on `ready` to avoid redirecting a popped-out window
+	// Guard for all authed routes: bounce to the unlock screen when locked. A lock opens the list
+	// on unlock, except one from leaving the app (mobile), which remembers the screen so the
+	// unlock returns to it. Gated on `ready` to avoid redirecting a popped-out window
 	// pre-hydration.
 	beforeLoad: ({ context, location, matches }) => {
 		if (context.vault?.ready && context.vault.isLocked) {
-			if (isOneShot(matches) || context.vault.lockedByUser) throw redirect({ to: "/" });
+			if (isOneShot(matches) || !context.vault.lockedAway) throw redirect({ to: "/" });
 			throw redirect({
 				to: "/",
 				search: { redirect: location.href, vault: context.registry?.activeId ?? undefined },

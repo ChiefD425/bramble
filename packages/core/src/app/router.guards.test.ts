@@ -13,7 +13,7 @@ type VaultSlice = {
 	ready: boolean;
 	entries: Entry[];
 	unlockedWithRecoveryCode?: boolean;
-	lockedByUser?: boolean;
+	lockedAway?: boolean;
 };
 type RegistrySlice = { ready: boolean; count: number; hasActive: boolean; activeId?: string };
 
@@ -101,9 +101,9 @@ describe("route guards", () => {
 	});
 });
 
-// A lock mid-session (mobile's default "Immediately" fires on every trip to another app)
-// bounces to the unlock screen; unlocking should land back on the screen it interrupted.
-describe("unlock returns to the interrupted screen", () => {
+// Leaving the app locks it (mobile's default "Immediately" fires on every trip to another app);
+// unlocking should land back on the screen that trip interrupted.
+describe("unlock after leaving the app returns to the interrupted screen", () => {
 	const open: VaultSlice = { isLocked: false, ready: true, entries: [login("abc")] };
 
 	const active = (activeId: string): RegistrySlice => ({
@@ -117,7 +117,7 @@ describe("unlock returns to the interrupted screen", () => {
 		path: string,
 		unlocked: VaultSlice = open,
 		vaults: { locked?: RegistrySlice; unlocked?: RegistrySlice } = {},
-		lockedByUser = false,
+		lockedAway = true,
 	) {
 		const router = await load(path, open, vaults.locked);
 		const set = async (vault: VaultSlice, registry?: RegistrySlice) => {
@@ -126,7 +126,7 @@ describe("unlock returns to the interrupted screen", () => {
 			});
 			await router.invalidate();
 		};
-		await set({ ...open, isLocked: true, lockedByUser }, vaults.locked);
+		await set({ ...open, isLocked: true, lockedAway }, vaults.locked);
 		const locked = router.state.location.pathname;
 		await set(unlocked, vaults.unlocked ?? vaults.locked);
 		return { router, locked };
@@ -139,11 +139,22 @@ describe("unlock returns to the interrupted screen", () => {
 		expect(router.state.location.search).toMatchObject({ tab: "sync" });
 	});
 
-	// Pressing Lock means done with that screen; an auto-lock is an interruption.
-	it("opens the list after the user's own lock, not the screen they left", async () => {
-		const { router, locked } = await lockThenUnlock("/settings?tab=sync", open, {}, true);
+	// Any other lock (the Lock button, an idle timeout, the screen locking) starts over on the list.
+	it("opens the list after any other lock, not the screen it left", async () => {
+		const { router, locked } = await lockThenUnlock("/settings?tab=sync", open, {}, false);
 		expect(locked).toBe("/");
 		expect(router.state.location.search).not.toHaveProperty("redirect");
+		expect(router.state.location.pathname).toBe("/vault");
+	});
+
+	it("drops the list's search after any other lock", async () => {
+		const { router } = await lockThenUnlock("/vault?q=bank", open, {}, false);
+		expect(router.state.location.pathname).toBe("/vault");
+		expect(router.state.location.search).not.toHaveProperty("q");
+	});
+
+	it("leaves an open entry after any other lock", async () => {
+		const { router } = await lockThenUnlock("/vault/abc", open, {}, false);
 		expect(router.state.location.pathname).toBe("/vault");
 	});
 

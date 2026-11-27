@@ -204,50 +204,28 @@ test("Settings opened from a scrolled record starts at the top", async ({
 	expect(await settings.evaluate((el) => el.scrollTop)).toBe(0);
 });
 
-// A lock bounces to the unlock screen; unlocking returns to the screen it interrupted, as it was
-// (mobile's default "Immediately" auto-lock does this on every trip to another app).
-test("unlocking returns to the row the list was on", async ({ context, extensionId }) => {
-	test.setTimeout(120_000);
-	const popup = await popupWithLongList(context, extensionId);
-	const rows = await scrollDeep(popup);
-
-	await lock(popup);
-	await unlock(popup);
-
-	await expect.poll(() => topRow(popup)).toBe(rows[0]);
-});
-
-// The router already holds an older offset for this history entry (from the record), which it
-// must not apply over the one the lock took.
-test("unlocking returns to the row after a record was opened first", async ({
+// A lock means starting over: the unlock opens the list at the top, whatever was on screen. Only
+// leaving the mobile app returns to where it was (e2e/sync/unlock-after-leaving.spec.ts).
+test("unlocking after the Lock button opens the list at the top", async ({
 	context,
 	extensionId,
 }) => {
 	test.setTimeout(120_000);
 	const popup = await popupWithLongList(context, extensionId);
-	const first = await scrollDeep(popup);
-	await openRecord(popup, first[2]!);
-	await popup.getByRole("button", { name: "Go back" }).click();
-	await expect.poll(() => topRow(popup)).toBe(first[0]);
-
-	await list(popup).hover();
-	for (let i = 0; i < 6; i++) {
-		await popup.mouse.wheel(0, 300);
-		await popup.waitForTimeout(30);
-	}
-	await popup.waitForTimeout(300);
-	const rows = await visibleRows(popup);
-	expect(rows[0]).not.toBe(first[0]);
+	await scrollDeep(popup);
 
 	await lock(popup);
 	await unlock(popup);
 
-	await expect.poll(() => topRow(popup)).toBe(rows[0]);
+	await expect.poll(() => topRow(popup)).toBe("Open Entry 000");
 	await popup.waitForTimeout(1000);
-	expect(await topRow(popup)).toBe(rows[0]);
+	expect(await topRow(popup)).toBe("Open Entry 000");
 });
 
-test("unlocking keeps the search and its scroll", async ({ context, extensionId }) => {
+test("an auto-lock opens the list at the top, without the search", async ({
+	context,
+	extensionId,
+}) => {
 	test.setTimeout(120_000);
 	const popup = await popupWithLongList(context, extensionId);
 	const search = popup.getByLabel(/Search vault/i);
@@ -258,17 +236,15 @@ test("unlocking keeps the search and its scroll", async ({ context, extensionId 
 		await popup.mouse.wheel(0, 300);
 		await popup.waitForTimeout(30);
 	}
-	await popup.waitForTimeout(300);
-	const rows = await visibleRows(popup);
 
 	await autoLock(context, popup);
 	await unlock(popup);
 
-	await expect(search).toHaveValue("Entry 1");
-	await expect.poll(() => topRow(popup)).toBe(rows[0]);
+	await expect(search).toHaveValue("");
+	await expect.poll(() => topRow(popup)).toBe("Open Entry 000");
 });
 
-test("an auto-lock returns to the Settings tab", async ({ context, extensionId }) => {
+test("an auto-lock opens the list, not the Settings tab", async ({ context, extensionId }) => {
 	test.setTimeout(120_000);
 	const popup = await popupWithLongList(context, extensionId);
 	await popup.getByRole("button", { name: "Settings", exact: true }).click();
@@ -278,8 +254,8 @@ test("an auto-lock returns to the Settings tab", async ({ context, extensionId }
 	await autoLock(context, popup);
 	await unlock(popup);
 
-	await expect(tabs).toBeVisible();
-	await expect(tabs.getByRole("button", { name: "Sync" })).toHaveAttribute("aria-current", "true");
+	await expect(tabs).toHaveCount(0);
+	await expect(list(popup)).toBeVisible();
 });
 
 test("unlocking after the Lock button opens the list", async ({ context, extensionId }) => {
